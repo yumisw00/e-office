@@ -3,7 +3,6 @@ import '../../core/constants/app_config.dart';
 import '../../data/models/surat_model.dart';
 import '../../data/repositories/surat_repository.dart';
 import '../../core/network/dio_client.dart';
-import '../../core/constants/app_config.dart';
 
 part 'surat_provider.g.dart';
 

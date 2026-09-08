@@ -199,31 +199,7 @@ class MockSuratRepository implements SuratRepository {
       ),
     ];
 
-    return PaginatedResponse(
-      data: mockData,
-      currentPage: page,
-      pageSize: limit,
-      totalPage: 1,
-      totalRecords: mockData.length,
-    );
-  }
-
-  @override
-  Future<PaginatedResponse<SuratModel>> getSuratKeluar({int page = 1, int limit = 20}) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return PaginatedResponse(
-      data: [],
-      currentPage: page,
-      pageSize: limit,
-      totalPage: 0,
-      totalRecords: 0,
-    );
-  }
-
-  @override
-  Future<SuratModel?> getSuratDetail(String id) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return null;
+    return mockData;
   }
 
   @override
