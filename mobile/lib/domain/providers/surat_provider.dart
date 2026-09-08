@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../core/constants/app_config.dart';
 import '../../data/models/surat_model.dart';
 import '../../data/repositories/surat_repository.dart';
 import '../../core/network/dio_client.dart';
@@ -19,7 +20,8 @@ class SuratMasuk extends _$SuratMasuk {
   @override
   FutureOr<List<SuratModel>> build() async {
     final repository = ref.watch(suratRepositoryProvider);
-    return repository.getSuratMasuk(page: 1, limit: 20);
+    final response = await repository.getSuratMasuk(page: 1, limit: 20);
+    return response.data;
   }
 
   /// Refresh surat masuk list from API
@@ -27,8 +29,8 @@ class SuratMasuk extends _$SuratMasuk {
     state = const AsyncValue.loading();
     try {
       final repository = ref.read(suratRepositoryProvider);
-      final result = await repository.getSuratMasuk(page: 1, limit: 20);
-      state = AsyncValue.data(result);
+      final response = await repository.getSuratMasuk(page: 1, limit: 20);
+      state = AsyncValue.data(response.data);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -41,10 +43,10 @@ class SuratMasuk extends _$SuratMasuk {
 
     try {
       final repository = ref.read(suratRepositoryProvider);
-      final newItems = await repository.getSuratMasuk(page: page, limit: 20);
+      final response = await repository.getSuratMasuk(page: page, limit: 20);
       
       // Combine with existing data
-      final combined = [...currentList, ...newItems];
+      final combined = [...currentList, ...response.data];
       state = AsyncValue.data(combined);
     } catch (e) {
       // Keep existing data on error

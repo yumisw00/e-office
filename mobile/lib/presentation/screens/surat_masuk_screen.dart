@@ -17,7 +17,7 @@ class SuratMasukScreen extends ConsumerStatefulWidget {
 
 class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final suratMasukAsync = ref.watch(suratMasukProvider);
     final localizations = AppLocalizations.of(context);
 
