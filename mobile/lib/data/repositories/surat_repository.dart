@@ -198,6 +198,8 @@ class MockSuratRepository implements SuratRepository {
         ringkasan: 'Dokumen rincian biaya seva server cloud dari langganan google cloud.',
       ),
     ];
+
+    return mockData;
   }
 
   @override
