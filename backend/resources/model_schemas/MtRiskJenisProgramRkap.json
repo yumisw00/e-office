@@ -1,0 +1,30 @@
+[
+    {
+        "name": "id_jenis_program_rkap",
+        "dbType": "integer,true",
+        "htmlType": "number",
+        "validations": "",
+        "searchable": false,
+        "fillable": false,
+        "primary": true,
+        "inForm": false,
+        "inIndex": false,
+        "inView": false
+    },
+    {
+        "name": "nama",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:200|nullable|string|max:200|nullable|string|max:200",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "type": "relation",
+        "relation": "1tm,RiskProfileMitigasi,id_jenis_program_rkap"
+    }
+]

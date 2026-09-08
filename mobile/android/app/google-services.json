@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "784770798913",
+    "project_id": "e-office-f782c",
+    "storage_bucket": "e-office-f782c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:784770798913:android:d12884705d0cf9ccf2fdc0",
+        "android_client_info": {
+          "package_name": "id.co.aksima.e_office_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyl6nrUF6QxUpgViyZ_vx_PAedyuWv3cs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

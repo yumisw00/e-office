@@ -1,0 +1,50 @@
+/* IMG EDITOR */
+.readonly-annotator {
+  pointer-events: none;
+}
+
+.readonly-annotator .udt-top-bar,
+.readonly-annotator .udt-side-bar,
+.readonly-annotator .css-le51im,
+.readonly-annotator .css-1nesnea {
+  display: none !important;
+}
+
+.readonly-annotator::after {
+  content: "Mode lihat saja";
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.css-le51im>button.MuiButtonBase-root:nth-child(2),
+.css-le51im>button.MuiButtonBase-root:nth-child(3) {
+  display: none;
+}
+
+.sc-hLBbgQ.jaBxpN,
+.sc-bcXHqh.bKFTYf>textarea {
+  color: black !important;
+}
+
+.sc-iBYQkw.iTBqos,
+.sc-jSUZEO.mldCV {
+  border: 4px dashed var(--danger) !important;
+}
+
+.sc-pyfCh.joMcgu>.sc-jrcTuM.fLgTnm {
+  display: none !important;
+}
+
+.readonly-annotator+div .sc-dkrFOf.cFSzTb {
+  display: none;
+}
+
+
+/* IMG EDITOR */

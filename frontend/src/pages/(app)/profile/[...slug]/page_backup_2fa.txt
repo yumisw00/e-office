@@ -1,0 +1,1475 @@
+
+
+import React, { useState, useEffect, useRef } from 'react'
+import { usePathname, useRouter } from 'components/Navigation'
+import HeaderApp from 'components/HeaderApp'
+import { checkNotAuthorized, clearStorage, getStorage, initAccessMethod, saveStorage, showToastr } from 'pages/Utils'
+import InputSelect from 'components/InputSelect'
+import InputCheckbox from 'components/InputCheckbox'
+import InputNumeric from 'components/InputNumeric'
+import Input from 'components/Input'
+import Button from 'components/Button'
+import InputRadio from 'components/InputRadio'
+import { api_services } from 'hooks/api_services'
+import Label from 'components/Label'
+import { VAR_SET_NAME } from 'hooks/redux'
+import { useSelector, useDispatch } from 'react-redux'
+import FormGroup from 'components/FormGroup'
+import { Modal } from 'react-bootstrap'
+import { headers } from 'pages/(app)/sys_user/page'
+import BtnIcon from 'components/BtnIcon'
+import TableHead from 'components/TableHead'
+import Pagination from 'components/Pagination'
+import BtnIconAct from 'components/BtnIconAct'
+import { useAuth } from 'hooks/auth'
+import $ from 'jquery'
+import { ModalChooseGroup } from 'pages/(auth)/login/page'
+
+const titlePage = 'Profile'
+
+// const rules = {
+//     nid: { label: 'Nid', required: false },
+//     email: { label: 'Email', required: false },
+//     position_id: { label: 'Position Id ', required: false },
+//     nama_lengkap: { label: 'Nama Lengkap ', required: true },
+//     id_jabatan: { label: 'Jabatan ', required: false },
+// }
+
+const rules = {
+    name: { label: "Nama", required: true },
+    email: { label: "Username(Email)", required: true },
+    email_verified_at: { label: "Email Verified At ", required: false },
+    password: { label: "Password", required: true },
+    passwordConfirm: { label: "Confirm Password", required: true },
+    remember_token: { label: "Remember Token ", required: false },
+    last_ip: { label: "Last Ip ", required: false },
+    last_login: { label: "Last Login ", required: false },
+    salt: { label: "Salt", required: false },
+    id_pegawai: { label: "Pegawai ", required: false },
+    id_jabatan: { label: "Jabatan ", required: false },
+    id_group: { label: "Group", required: false },
+    dataAll: { label: "Group Dan Jabatan", required: false },
+};
+
+const Profileedit = props => {
+    const page_url = 'profile'
+
+    const dispatch = useDispatch()
+    const pathname = usePathname()
+    const router = useRouter()
+    const [errors, setErrors] = useState({})
+    const [path, setpath] = useState('detail')
+    const [is_disabled, setis_disabled] = useState(true)
+    const [access_method, setaccess_method] = useState({})
+    const [is_loading, setis_loading] = useState(false)
+    const [btn_loading, setbtn_loading] = useState(false)
+    // const id = props.params.slug[1]
+
+
+
+    const {
+        getapi_services,
+        getapi_servicesid,
+        postapi_services,
+        putapi_services,
+        deleteapi_services,
+    } = api_services({})
+
+    const { login_as, choose_group } = useAuth({})
+
+    // const { login, logout, choose_group } = useAuth({
+    //     middleware: 'guest',
+    //     redirectIfAuthenticated: '/dashboard',
+    //     onRequestDone: handleRequestDone,
+
+    // })
+
+    // const [nid, setnid] = useState('')
+    // const [email, setemail] = useState('')
+    // const [position_id, setposition_id] = useState('')
+    // const [nama_lengkap, setnama_lengkap] = useState('')
+    // const [id_jabatan, setid_jabatan] = useState('')
+
+    const [name, setname] = useState("");
+    const [email, setemail] = useState("");
+    const [email_verified_at, setemail_verified_at] = useState("");
+    const [password, setpassword] = useState("");
+    const [passwordConfirm, setpasswordConfirm] = useState("");
+    const [id, setid] = useState('')
+    const [user_login, setuser_login] = useState({})
+    const [id_user_delegasi, setid_user_delegasi] = useState('')
+    const [modalDelegasiJabatan, setmodalDelegasiJabatan] = useState(false)
+    const [modalSelectJabatan, setmodalSelectJabatan] = useState(false)
+    const [delegasiList, setDelegasiList] = useState([])
+    const [delegasi_delete, setDelegasi_delete] = useState([])
+    const [modalLoginAsJabatan, setmodalLoginAsJabatan] = useState(false)
+
+    const [listreferensi, setlistreferensi] = useState([])
+    const [filter, setfilter] = useState([])
+    const [order, setorder] = useState([])
+
+    const [sys_user, setsys_user] = useState([]);
+    const [sys_user_item, setsys_user_item] = useState(null);
+    const [datafilter, setdatafilter] = useState({
+        paginate: {
+            page: 1,
+            pagesize: 20,
+        },
+    });
+    const [btn_popup_loading, setbtn_popup_loading] = useState(false)
+    const [dt_jabatan, setdt_jabatan] = useState([])
+    const [delegasi, setdelegasi] = useState([])
+    const [is_login_as, setis_login_as] = useState(false)
+    const [is_sedang_login_as, setis_sedang_login_as] = useState(false)
+    const [nama_group, setnama_group] = useState('')
+    const [isDelegasiAktif, setisDelegasiAktif] = useState('')
+    const [dataDelegasi, setdataDelegasi] = useState('')
+
+    const [modalChooseGroup, setmodalChooseGroup] = useState(false)
+    const [groups, setgroups] = useState([])
+    const [groups_item, setgroups_item] = useState(null)
+    const [is_login_role, setis_login_role] = useState(false)
+
+    const initialized = useRef(false)
+
+    useEffect(() => {
+        //first load
+        handleInitAccessMethod()
+
+        // handlegetmt_sdm_pegawaiid()
+
+        // handlegetid_jabatan()
+        if (!initialized.current) {
+            initialized.current = true
+            handleInitMyAccount()
+            initUserLogin()
+
+            handlegetid_pegawai();
+            handlegetmt_sdm_jabatan();
+            handlegetmt_sdm_unit();
+            handlegetmt_sdm_dit_bid();
+            handlegetsys_group();
+        }
+    }, [pathname])
+
+    useEffect(() => {
+        handlegetsys_user();
+    }, [filter, datafilter.paginate.pagesize, datafilter.paginate.page, order])
+
+    const handleInitAccessMethod = async () => {
+        console.log('handleInitAccessMethod')
+        // const { access_method, path, id } = await initAccessMethod(
+        //     page_url,
+        //     props.params,
+        // )
+
+        let path = 'detail'
+        const pathnamearr = pathname.split('/')
+        // console.log(pathnamearr)
+        for (let i = 0; i < pathnamearr.length; i++) {
+            if (pathnamearr[i] == 'edit') {
+                path = 'edit'
+                break
+            }
+        }
+
+
+        let btn_top = []
+        if (path == 'detail') {
+
+            btn_top.push({
+                icon: 'edit',
+                label: 'Edit',
+                url: `/profile/edit`
+            })
+        } else {
+
+            btn_top.push({
+                icon: 'visibility',
+                label: 'Detail',
+                url: `/profile/detail`
+            })
+        }
+        setaccess_method({
+            btn_top
+        })
+
+        // setaccess_method(access_method)
+        setpath(path)
+        if (path === 'detail') {
+            setis_disabled(true)
+        } else {
+            setis_disabled(false)
+
+        }
+    }
+
+    const handleErrors = (column, message) => {
+        setErrors({
+            ...errors,
+            [column]: message,
+        })
+    }
+
+    const handleInitMyAccount = async () => {
+        const user_loginObj = await getStorage('user_login')
+        const user_login = JSON.parse(user_loginObj)
+
+        setname(user_login.user.name)
+        setemail(user_login.user.email)
+        setid(user_login.user.id_user)
+
+        setuser_login(user_login)
+
+        handlegetmy_jabatan(user_login.user.id_user)
+
+        const is_login_as = user_login?.accessmethod?.dashboard?.login_as || false
+        setis_login_as(is_login_as)
+
+        if (user_login.id_group_old && user_login.id_user_old) {
+            setis_sedang_login_as(true)
+        }
+    }
+
+    const initUserLogin = async () => {
+        const userLoginObj = await getStorage("user_login")
+        const user_login = JSON.parse(userLoginObj)
+
+        console.log('initUserLogin=>user_login')
+        console.log(user_login)
+
+        setnama_group(user_login.nama_group ? user_login.nama_group : "")
+
+        dispatch({
+            type: VAR_SET_NAME,
+            value: user_login.user.name,
+        });
+
+        const delegasiAccessmethod = user_login?.accessmethod?.dashboard?.delegasi
+
+        const isDelegasiAktif = delegasiAccessmethod === true || delegasiAccessmethod === 'true' || delegasiAccessmethod === 1
+
+
+
+        console.log('Delegasi aktif:', isDelegasiAktif)
+        setisDelegasiAktif(isDelegasiAktif)
+
+        // const dataDelegasi = user_login?.data_delegasi ?? []
+        // setdataDelegasi(Array.isArray(dataDelegasi) ? dataDelegasi : [])
+
+        const is_login_role = user_login?.groups || false
+        let groups = []
+        if (is_login_role) {
+            groups = user_login.groups
+        }
+        // setis_login_role(is_login_role)
+        // setgroups(groups)
+    };
+
+
+    const handleputsys_profile = async () => {
+        // const body = {
+        //     nid,
+        //     email,
+        //     // position_id,
+        //     nama_lengkap,
+        //     id_jabatan,
+        // }
+        // setbtn_loading(true)
+        // const response = await postapi_services({ setErrors, ...body })
+        // // console.log('postmt_sdm_pegawai')
+        // // console.log(response)
+        // setbtn_loading(false)
+
+        // checkNotAuthorized(response)
+
+        // if (response.error || response.code) return
+
+        // router.push(`/${page_url}`)
+    }
+
+    const handlegetsys_userid = async (id) => {
+        const { getapi_servicesid } = api_services({ api_path: '/sys_user' })
+        if (!id) return;
+
+        const response = await getapi_servicesid({ setErrors, id });
+        if (response.code || response.error) return
+
+        // if(response.delegasi && response.delegasi.length > 0) {
+        //     setsys_user_item(response.delegasi[0])
+        // }
+
+        setdelegasi(response.delegasi ? response.delegasi : [])
+    };
+
+    const handleputsys_user = async () => {
+        // console.log(typeof password)
+        // const body = {
+        //     name,
+        //     email,
+        // }
+
+
+
+        let body = {
+            name,
+            email,
+            id_user: id,
+            id_user_delegasi
+        };
+        if (password && passwordConfirm !== password) {
+            showToastr("error", "Confirm Password Salah!");
+            return
+        }
+        if (password) {
+            body = { ...body, password: password };
+        }
+        setbtn_loading(true);
+        const response = await postapi_services({
+            setErrors,
+            ...body,
+            // api_path: `/update_profile/${id}`
+            api_path: `/update_profile`,
+            disabledAlert: true
+        });
+
+        setbtn_loading(false);
+
+        checkNotAuthorized(response);
+        if (response.error || response.code) return;
+
+        const new_user_login = {
+            ...user_login,
+            user: {
+                ...user_login.user,
+                name: response.name,
+                email: response.email
+            }
+        }
+        await saveStorage('user_login', JSON.stringify(new_user_login))
+
+        dispatch({
+            type: VAR_SET_NAME,
+            value: response.name
+        })
+
+        router.push(`/${page_url}/detail`)
+    };
+
+    // const handleputmt_sdm_pegawai = async () => {
+    //     const body = {
+    //         nid,
+    //         email,
+    //         // position_id,
+    //         nama_lengkap,
+    //         id_jabatan,
+    //     }
+
+    //     setbtn_loading(true)
+    //     const response = await putapi_services({ setErrors, ...body, id })
+    //     // console.log('putmt_sdm_pegawai')
+    //     // console.log(response)
+    //     setbtn_loading(false)
+
+    //     checkNotAuthorized(response)
+
+    //     if (response.error || response.code) return
+
+    //     router.push(`/${page_url}`)
+    // }
+
+    // const [dataid_jabatan, setdataid_jabatan] = useState([])
+
+    // const handlegetid_jabatan = async () => {
+    //     const response = await getapi_services({
+    //         setErrors,
+    //         api_path: '/mt_sdm_jabatan',
+    //         filter: {
+    //             paginate: {
+    //                 page: 1,
+    //                 pagesize: 10,
+    //             },
+    //         },
+    //     })
+    //     // console.log('getmt_sdm_jabatan')
+    //     // console.log(response)
+
+    //     checkNotAuthorized(response)
+    //     if (response.error || response.code) return
+    //     let dataarr = []
+    //     response.data.map(m => {
+    //         dataarr.push({
+    //             label: m.nama,
+    //             value: m.id_jabatan,
+    //         })
+    //     })
+    //     setdataid_jabatan(dataarr)
+    // }
+
+    const handlegetsys_user = async () => {
+        const { getapi_services } = api_services({ api_path: `/sys_user` })
+        setis_loading(true);
+
+        var filterarr = {};
+        headers.map((v, k) => {
+            if (filter[v.name]) {
+                if (v.type == "list") {
+                    filterarr[v.name] = filter[v.name];
+                } else {
+                    filterarr[v.name] = "%" + filter[v.name] + "%";
+                }
+            }
+        });
+
+        const fltr = {
+            ...datafilter,
+            filter: filterarr,
+            order: order,
+        }
+
+        // fltr.filter.id_user_delegasi = false
+
+        const response = await getapi_services({
+            setErrors,
+            filter: fltr,
+        });
+        // console.log('getsys_user')
+        // console.log(response)
+        if (!response.error || response.error.message != "canceled")
+            setis_loading(false);
+
+        checkNotAuthorized(response);
+        if (response.error || response.code) return;
+        setsys_user(response.data);
+        setdatafilter({
+            ...datafilter,
+            paginate: {
+                ...datafilter.paginate,
+                total_records: response.total_records,
+            },
+        });
+    };
+
+    const handlegetid_pegawai = async () => {
+        const response = await getapi_services({
+            setErrors,
+            api_path: "/mt_sdm_pegawai",
+            filter: {
+                paginate: {
+                    page: 1,
+                    pagesize: 10000,
+                },
+            },
+        });
+        // console.log('getmt_sdm_pegawai')
+        // console.log(response)
+
+        checkNotAuthorized(response);
+        if (response.error || response.code) return;
+        let dataarr = [];
+        response.data.map((m) => {
+            dataarr[m.id_pegawai] = m.nama;
+        });
+        setlistreferensi((listreferensi) => ({
+            ...listreferensi,
+            id_pegawai: dataarr,
+        }));
+    };
+
+    const handlegetmt_sdm_jabatan = async (inputValue, callback) => {
+        // console.log('handlegetmt_sdm_jabatan');
+        // console.log(inputValue);
+        // console.log(callback);
+
+        const datafilter = {
+            paginate: {
+                page: 1,
+                pagesize: 20,
+            },
+        }
+        if (inputValue && callback) {
+            datafilter.paginate.pagesize = 20
+            datafilter.filter = {
+                nama: inputValue
+            }
+        }
+        const response = await getapi_services({
+            setErrors,
+            api_path: "/mt_sdm_jabatan",
+            filter: datafilter
+        });
+        // console.log('mt_sdm_jabatan')
+        // console.log(response)
+
+        checkNotAuthorized(response);
+        if (response.error || response.code) return;
+
+        let namearr = {};
+        let dataarr = [];
+        response.data.map((m) => {
+            namearr[m.id_jabatan] = m.nama;
+            dataarr.push({ label: m.nama, value: m.id_jabatan })
+        });
+
+        if (inputValue && callback) {
+            return callback(dataarr)
+        }
+
+        setlistreferensi((listreferensi) => ({
+            ...listreferensi,
+            id_jabatan: namearr,
+        }));
+    };
+
+    const handlegetmt_sdm_unit = async () => {
+        const response = await getapi_services({
+            setErrors,
+            api_path: "/mt_sdm_unit",
+            filter: {
+                paginate: {
+                    page: 1,
+                    pagesize: 10000,
+                },
+            },
+        });
+        // console.log('mt_sdm_jabatan')
+        // console.log(response)
+
+        checkNotAuthorized(response);
+        if (response.error || response.code) return;
+        let dataarr = [];
+        response.data.map((m) => {
+            dataarr[m.id_unit] = m.nama;
+        });
+        setlistreferensi((listreferensi) => ({
+            ...listreferensi,
+            id_unit: dataarr,
+        }));
+    };
+
+    const handlegetmt_sdm_dit_bid = async () => {
+        const response = await getapi_services({
+            setErrors,
+            api_path: "/mt_sdm_dit_bid",
+            filter: {
+                paginate: {
+                    page: 1,
+                    pagesize: 10000,
+                },
+            },
+        });
+        // console.log('mt_sdm_jabatan')
+        // console.log(response)
+
+        checkNotAuthorized(response);
+        if (response.error) return;
+
+        let dataarr = {};
+        response.data.map((m) => {
+            dataarr[m.code] = m.nama;
+        });
+        setlistreferensi((listreferensi) => ({
+            ...listreferensi,
+            id_dit_bid: dataarr,
+        }));
+    };
+
+    const handlegetsys_group = async () => {
+        const response = await getapi_services({
+            setErrors,
+            api_path: "/sys_group",
+            filter: {
+                paginate: {
+                    page: 1,
+                    pagesize: 10000,
+                },
+            },
+        });
+        // console.log('mt_sdm_jabatan')
+        // console.log(response)
+
+        checkNotAuthorized(response);
+        if (response.error || response.code) return;
+        let dataarr = [];
+        response.data.map((m) => {
+            dataarr[m.id_group] = m.nama;
+        });
+        setlistreferensi((listreferensi) => ({
+            ...listreferensi,
+            id_group: dataarr,
+        }));
+    };
+
+    const handlegetmy_jabatan = async (id) => {
+        const response = await getapi_services({
+            setErrors,
+            filter: {
+                paginate: {
+                    page: 1,
+                    pagesize: 1000,
+                },
+                filter: {
+                    id_user: id,
+                },
+            },
+            api_path: "/sys_user_group",
+        });
+        if (response.code || response.error) return
+
+        setdt_jabatan(response.data)
+    }
+
+    const handlepost_delegasi_jabatan = async () => {
+        setbtn_popup_loading(true);
+        let response;
+        for (let m of delegasi) {
+            if (m.hasOwnProperty('id_user_delegasi') && m.id_user_delegasi) {
+                const body = {
+                    id_user_parent: user_login.user.id_user,
+                    id_user: m.id_user,
+                };
+                response = await putapi_services({
+                    disabledAlert: true,
+                    ...body,
+                    api_path: `/sys_user_delegasi`,
+                    id: m.id_user_delegasi
+                });
+            } else {
+                const body = {
+                    id_user_parent: user_login.user.id_user,
+                    id_user: m.id_user,
+                };
+                response = await postapi_services({
+                    disabledAlert: true,
+                    setErrors,
+                    ...body,
+                    api_path: `/sys_user_delegasi`
+                });
+            }
+        }
+
+        if (delegasi_delete.length > 0) {
+            for (let item of delegasi_delete) {
+                if (item.id_user_delegasi) {
+                    await deleteapi_services({
+                        disabledAlert: true,
+                        api_path: `/sys_user_delegasi`,
+                        id: item.id_user_delegasi
+                    })
+                }
+
+            }
+        }
+        setbtn_popup_loading(false);
+        // if (response.code || response.error) return
+
+        showToastr('success', 'Data berhasil disimpan!')
+        setmodalDelegasiJabatan(false);
+        setsys_user_item(null);
+    }
+
+    const handlelogin_as = async (item) => {
+        const body = {
+            id_group: item.id_group,
+            id_user: item.id_user,
+            id_jabatan: item?.id_jabatan || ''
+        }
+        // console.log('body');
+        // console.log(body);
+
+        // return
+
+        $('.layout-app').addClass('is-loading-global')
+        await clearStorage()
+
+        const response = await login_as({
+            ...body,
+        });
+        if (response.code || response.error) return
+
+    }
+
+    const handleLoadOptions = (inputValue, callback, name_column) => {
+        if (name_column == 'id_jabatan') {
+            handlegetmt_sdm_jabatan(inputValue, callback)
+        }
+
+    }
+
+    const login_on_group = async () => {
+        setbtn_popup_loading(true)
+        choose_group({
+            id_group: groups_item.id_group,
+            id_user_delegasi: groups_item.id_user_delegasi,
+            id_user: groups_item.id_user,
+            id_jabatan: groups_item?.id_jabatan || '',
+            // remember: shouldRemember,
+            setErrors,
+            // setStatus,
+        })
+    }
+
+    return (
+        <>
+            <HeaderApp
+                title={`${path === 'add'
+                    ? 'Tambah'
+                    : path === 'edit'
+                        ? 'Edit'
+                        : ''
+                    } ${titlePage}`}
+                is_loading={is_loading}
+                data_btn={
+                    Object.keys(access_method).length > 0
+                        ? access_method.btn_top
+                        : []
+                }
+                btnCustom={
+                    <>
+                        {is_login_role ? (
+                            <Button
+                                disabled={false}
+                                className={`btn-default-app bg-success ms-2`}
+                                onClick={() => {
+                                    setmodalChooseGroup(true)
+                                }}
+                            >
+                                Login Role
+                            </Button>
+                        ) : null}
+
+                        {is_login_as ? (
+                            <Button
+                                disabled={false}
+                                className={`btn-default-app bg-danger ms-2`}
+                                onClick={() => {
+                                    setmodalLoginAsJabatan(true)
+                                }}
+                            >
+                                Login As
+                            </Button>
+                        ) : null}
+
+                        {isDelegasiAktif == true && (
+                            <Button
+                                disabled={false}
+                                className={`btn-default-app ms-2`}
+                                onClick={() => {
+                                    setmodalDelegasiJabatan(true)
+                                    handlegetsys_userid(user_login.user.id_user)
+                                }}
+                            >
+                                Delegasi Jabatan
+                            </Button>
+                        )}
+
+                    </>
+                }
+            />
+            <div className="container pl-4 pr-4">
+                <div className="row">
+                    {is_sedang_login_as ? (
+                        <div className="col-md-12">
+                            <div className="alert alert-warning mt-3" role="alert">
+                                <h4 className='mb-2'>
+                                    <strong>Warning!</strong>
+                                </h4>
+                                <div>Anda sedang menggunakan fitur "LOGIN AS". sebagai: {user_login?.nama_group || ''}</div>
+                                <div className="d-flex mt-2">
+                                    <BtnIconAct
+                                        icon={'keyboard_return'}
+                                        label={'Kembali ke Akun Sebelumnya'}
+                                        onTap={() => {
+                                            handlelogin_as({ id_user: user_login?.id_user_old || '', id_group: user_login?.id_group_old || '' })
+                                        }}
+                                        className="bg-warning"
+                                    />
+                                </div>
+
+                            </div>
+                        </div>
+                    ) : null}
+                    <div className="col-md-6">
+                        {/* <Input
+                            ref={null}
+                            id="nid"
+                            type="text"
+                            label={rules.nid.label}
+                            placeholder={rules.nid.label}
+                            value={nid}
+                            className="block mt-1 w-full"
+                            onChange={event => setnid(event.target.value)}
+                            required={rules.nid.required}
+                            autoFocus
+                            message_error={errors.nid}
+                            onError={handleErrors}
+                            disabled={is_disabled}
+                        />
+
+                        <Input
+                            ref={null}
+                            id="email"
+                            type="email"
+                            label={rules.email.label}
+                            placeholder={rules.email.label}
+                            value={email}
+                            className="block mt-1 w-full"
+                            onChange={event => setemail(event.target.value)}
+                            required={rules.email.required}
+                            autoFocus
+                            message_error={errors.email}
+                            onError={handleErrors}
+                            disabled={is_disabled}
+                        /> */}
+
+                        <FormGroup
+                            label={"Nama"}
+                            required={rules.name.required}
+                            message_error={errors.name}
+                            disabled={is_disabled}
+                        // tooltips="Diisi dengan metode yang digunakan untuk menguji kontrol"
+                        >
+                            <div className="col">
+                                <Input
+                                    ref={null}
+                                    id="name"
+                                    type="textarea"
+                                    label={rules.name.label}
+                                    placeholder={rules.name.label}
+                                    value={name}
+                                    className="block mt-1 w-full"
+                                    onChange={(value) => setname(value)}
+                                    required={rules.name.required}
+                                    autoFocus
+                                    message_error={errors.name}
+                                    onError={handleErrors}
+                                    disabled={is_disabled}
+                                />
+                            </div></FormGroup>
+
+                        <FormGroup
+                            label={"Email"}
+                            required={rules.email.required}
+                            message_error={errors.email}
+                            disabled={is_disabled}
+                        // tooltips="Diisi dengan metode yang digunakan untuk menguji kontrol"
+                        >
+                            <div className="col">
+                                <Input
+                                    ref={null}
+                                    id="email"
+                                    type="email"
+                                    label={rules.email.label}
+                                    placeholder={rules.email.label}
+                                    value={email}
+                                    className="block mt-1 w-full"
+                                    onChange={(value) => setemail(value)}
+                                    required={rules.email.required}
+                                    autoFocus
+                                    message_error={errors.email}
+                                    onError={handleErrors}
+                                    disabled={is_disabled}
+                                />
+                            </div></FormGroup>
+
+                    </div>
+                    <div className="col-md-6">
+
+                        {path == "edit" ? (
+                            <div className="w-full flex">
+                                <div className="col-sm-4"></div>
+                                <Label className={"ps-[12px] mb-2"}>
+                                    Kosongkan password apabila Anda tidak ingin merubahnya.
+                                </Label>
+                            </div>
+                        ) : (
+                            ""
+                        )}
+
+                        {path == 'edit' ? (
+                            <>
+                                <FormGroup
+                                    label={"Password"}
+                                    required={rules.password.required}
+                                    message_error={errors.password}
+                                    disabled={is_disabled}
+                                // tooltips="Diisi dengan metode yang digunakan untuk menguji kontrol"
+                                >
+                                    <div className="col">
+                                        <Input
+                                            ref={null}
+                                            id="password"
+                                            type="password"
+                                            label={rules.password.label}
+                                            placeholder={rules.password.label}
+                                            value={is_disabled ? '' : password}
+                                            className="block mt-1 w-full"
+                                            onChange={(value) => setpassword(value)}
+                                            required={false}
+                                            autoFocus
+                                            message_error={errors.password}
+                                            onError={handleErrors}
+                                            disabled={is_disabled}
+                                        />
+                                    </div></FormGroup>
+                                <FormGroup
+                                    label={"Confirm Password"}
+                                    required={rules.passwordConfirm.required}
+                                    message_error={errors.passwordConfirm}
+                                    disabled={is_disabled}
+                                // tooltips="Diisi dengan metode yang digunakan untuk menguji kontrol"
+                                >
+                                    <div className="col">
+                                        <Input
+                                            ref={null}
+                                            id="passwordConfirm"
+                                            type="password"
+                                            label={rules.passwordConfirm.label}
+                                            placeholder={rules.passwordConfirm.label}
+                                            value={is_disabled ? '' : passwordConfirm}
+                                            className="block mt-1 w-full"
+                                            onChange={(value) => setpasswordConfirm(value)}
+                                            required={false}
+                                            autoFocus
+                                            message_error={errors.passwordConfirm}
+                                            onError={handleErrors}
+                                            disabled={is_disabled}
+                                        />
+                                    </div></FormGroup>
+                            </>
+                        ) : null}
+
+                        {/* <Input
+                            ref={null}
+                            id="nama_lengkap"
+                            type="textarea"
+                            label={rules.nama_lengkap.label}
+                            placeholder={rules.nama_lengkap.label}
+                            value={nama_lengkap}
+                            className="block mt-1 w-full"
+                            onChange={event =>
+                                setnama_lengkap(event.target.value)
+                            }
+                            required={rules.nama_lengkap.required}
+                            autoFocus
+                            message_error={errors.nama_lengkap}
+                            onError={handleErrors}
+                            disabled={is_disabled}
+                        />
+
+                        <InputSelect
+                            ref={null}
+                            id="id_jabatan"
+                            type="select"
+                            label={'Jabatan '}
+                            placeholder={'Pilih...'}
+                            value={id_jabatan}
+                            className="block mt-1 w-full"
+                            data={dataid_jabatan}
+                            onChange={setid_jabatan}
+                            required={rules.id_jabatan.required}
+                            autoFocus
+                            isClearable
+                            isMulti={false}
+                            message_error={errors.id_jabatan}
+                            onError={handleErrors}
+                            disabled={is_disabled}
+                        /> */}
+                    </div>
+
+                    {/* <div className="col-md-6">
+                        <FormGroup
+                            label={"Delegasi Jabatan"}
+                            message_error={errors.email}
+                            disabled={is_disabled}
+                            // tooltips="Diisi jabat"
+                        >
+                            <div className="col">
+                                <InputSelect
+                                    ref={null}
+                                    id=''
+                                    type='select'
+                                    placeholder={'Pilih...'}
+                                    className='block mt-1 w-full'
+                                    data={
+                                        []
+                                    }
+                                    required={false}
+                                    isMulti={false}
+                                    value={id_user_delegasi}
+                                    onChange={value => {
+                                        setid_user_delegasi(value)
+                                    }}
+                                    message_error={null}
+                                    onError={handleErrors}
+                                    disabled={is_disabled}
+                                />
+                            </div>
+                        </FormGroup>
+                    </div> */}
+                </div>
+
+                {path !== 'detail' ? (
+                    <div className="flex justify-end">
+                        <Button
+                            className="btn-default-app"
+                            disabled={btn_loading}
+                            onClick={
+                                handleputsys_user
+                            }>
+                            {btn_loading ? (
+                                'Loading...'
+                            ) : (
+                                <>
+                                    <span className="material-icons icon-btn-left mr-1">
+                                        save
+                                    </span>
+                                    Save
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                ) : null}
+            </div>
+
+            <ModalDelegasiJabatan
+                btn_popup_loading={btn_popup_loading}
+                show={modalDelegasiJabatan}
+                onHide={() => setmodalDelegasiJabatan(false)}
+                setmodalSelectJabatan={() => {
+                    setmodalSelectJabatan(true)
+                }}
+                sys_user_item={sys_user_item}
+                setsys_user_item={setsys_user_item}
+                setDelegasi_delete={setDelegasi_delete}
+                delegasi_delete={delegasi_delete}
+                delegasi={delegasi}
+                onAdd={handlepost_delegasi_jabatan}
+                onDelete={(m) => {
+                    delegasi_delete.push(m)
+                    setDelegasi_delete(delegasi_delete)
+                    let delegasiNew = []
+                    for (let x of delegasi) {
+                        if (x.id_user == m.id_user) continue
+                        delegasiNew.push(x)
+                    }
+                    setdelegasi(delegasiNew)
+                }}
+                onEdit={(m) => {
+                    delegasi_delete.push(m)
+                    setDelegasi_delete(delegasi_delete)
+                    let delegasiNew = []
+                    for (let x of delegasi) {
+                        if (x.id_user == m.id_user) continue
+                        delegasiNew.push(x)
+                    }
+                    setdelegasi(delegasiNew)
+                }}
+            />
+            <ModalSelectJabatan
+                show={modalSelectJabatan}
+                onHide={() => setmodalSelectJabatan(false)}
+                filter={filter}
+                order={order}
+                setfilter={setfilter}
+                setorder={setorder}
+                listreferensi={listreferensi}
+                setsys_user_item={setsys_user_item}
+                sys_user_item={sys_user_item}
+                sys_user={sys_user}
+                datafilter={datafilter}
+                setdatafilter={page => {
+                    setdatafilter({
+                        ...datafilter,
+                        paginate: {
+                            ...datafilter.paginate,
+                            page: page.selected + 1,
+                        },
+                    });
+                }}
+                onPilih={item => {
+                    setmodalSelectJabatan(false);
+                    setsys_user_item(item)
+                    setdelegasi(prev => [...prev, item]);
+                }}
+                handleLoadOptions={handleLoadOptions}
+            />
+
+            <ModalLoginAsJabatan
+                show={modalLoginAsJabatan}
+                onHide={() => setmodalLoginAsJabatan(false)}
+                filter={filter}
+                order={order}
+                setfilter={setfilter}
+                setorder={setorder}
+                listreferensi={listreferensi}
+                setsys_user_item={setsys_user_item}
+                sys_user_item={sys_user_item}
+                sys_user={sys_user}
+                datafilter={datafilter}
+                setdatafilter={page => {
+                    setdatafilter({
+                        ...datafilter,
+                        paginate: {
+                            ...datafilter.paginate,
+                            page: page.selected + 1,
+                        },
+                    });
+                }}
+                onPilih={item => {
+                    setmodalLoginAsJabatan(false)
+                    handlelogin_as(item)
+                }}
+                handleLoadOptions={handleLoadOptions}
+            />
+
+            <ModalChooseGroup
+                show={modalChooseGroup}
+                onHide={() => {
+                    setmodalChooseGroup(false)
+                    // logout()
+                }}
+                btn_popup_loading={btn_popup_loading}
+                groups={groups}
+                groups_item={groups_item}
+                setgroups_item={setgroups_item}
+                onlogin_on_group={login_on_group}
+            />
+        </>
+    )
+}
+
+export default Profileedit
+
+const ModalDelegasiJabatan = props => {
+    return (
+        <Modal
+            show={props.show}
+            className=""
+            onShow={() => {
+
+            }}
+            onHide={props.onHide}
+        >
+            <Modal.Header closeButton={true}>
+                <Modal.Title>
+                    Delegasi Jabatan
+                </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                <div className="row">
+                    <div className="col-md-12">
+
+                        {/* {props.delegasi.map((m, i) => (
+                            <div
+                                key={i}
+                                className={`items-groups d-flex align-items-center`}
+                            >
+                                <div className="flex-1">
+                                    <div className='title'>
+                                        {m.nama}
+                                    </div>
+                                    <div className='subtitle color-grey'>
+                                        {m.nid} {m.name}
+                                    </div>
+                                </div>
+                                <BtnIcon
+                                    icon={props.sys_user_item ? 'edit' : 'add'}
+                                    onTap={() => props.setmodalSelectJabatan()}
+                                    tooltips={props.sys_user_item ? "Edit user..." : "Tambah user..."}
+                                />
+                                <BtnIcon
+                                    icon={'delete'}
+                                    onTap={() => props.setmodalSelectJabatan()}
+                                    tooltips="Delete user..."
+                                />
+                            </div>
+
+                        ))} */}
+                        {props.delegasi.map((m, i) => (
+                            <div key={i} className="items-groups d-flex align-items-center">
+                                <div className="flex-1">
+                                    <div className='title'>{m.nama}</div>
+                                    <div className='subtitle color-grey'>{m.nid} {m.name}</div>
+                                </div>
+                                <BtnIcon
+                                    icon="edit"
+                                    onTap={() => {
+                                        props.onEdit(m)
+                                        props.setsys_user_item(m)
+                                        props.setmodalSelectJabatan(true)
+                                    }}
+                                    tooltips="Edit user..."
+                                />
+                                <BtnIcon
+                                    icon={'delete'}
+                                    onTap={() => props.onDelete(m)}
+                                    tooltips="Delete user..."
+                                />
+                            </div>
+                        ))}
+
+                        <div
+                            className={`items-groups d-flex justify-content-center align-items-center`}
+                        >
+                            <BtnIcon
+                                icon={'add'}
+                                onTap={() => {
+                                    props.setsys_user_item(null)
+                                    props.setmodalSelectJabatan(true)
+                                }}
+                                tooltips={"Tambah user..."}
+                                size={40}
+                            />
+                        </div>
+
+                        <div className="d-flex justify-content-end">
+
+
+                            <Button
+                                className="btn-default-app"
+                                disabled={props.btn_popup_loading}
+                                onClick={() => {
+                                    props.onAdd()
+                                }}
+                            >
+                                {props.btn_popup_loading ? (
+                                    "Loading..."
+                                ) : (
+                                    <>
+                                        <span className="material-icons icon-btn-left mr-1">
+                                            save
+                                        </span>
+                                        Save
+                                    </>
+                                )}
+                            </Button>
+
+
+                        </div>
+                    </div>
+                </div>
+            </Modal.Body>
+
+        </Modal>
+    )
+}
+
+const ModalSelectJabatan = props => {
+    return (
+        <Modal
+            show={props.show}
+            className=""
+            onShow={() => {
+
+            }}
+            onHide={props.onHide}
+            size="md"
+            fullscreen
+        >
+            <Modal.Header closeButton={true}>
+                <Modal.Title>
+                    Pilih Jabatan
+                </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                <div className="row">
+                    <div className="col-md-12">
+                        <table className="w-full table table-auto border-collapse border">
+                            <thead>
+                                <TableHead
+                                    data={headers}
+                                    access_role={[]}
+                                    referensi={props.listreferensi}
+                                    onChange={(key, value) => {
+                                        props.setfilter({
+                                            ...props.filter,
+                                            [key]: value,
+                                        });
+                                    }}
+                                    setOrder={(v) => {
+                                        props.setOrder(v);
+                                    }}
+                                    filter={props.filter}
+                                    loadOptions={props.handleLoadOptions}
+                                />
+                            </thead>
+                            <tbody>
+                                {props.sys_user.map((m, i) => (
+                                    <tr key={i}>
+                                        <td className="border text-center">
+                                            {(parseInt(props.datafilter.paginate.page) - 1) *
+                                                parseInt(props.datafilter.paginate.pagesize) +
+                                                i +
+                                                1}
+                                        </td>
+
+                                        {headers.map((x, k) => (
+                                            <td key={k} className="border">
+                                                {/* {x.type == "list"
+                                                    ? props.listreferensi[x.name]
+                                                        ? props.listreferensi[x.name][m[x.name]]
+                                                        : null
+                                                    : m[x.name]} */}
+
+                                                {x.type == "list" ? (
+                                                    <>
+                                                        {x.name == 'id_jabatan' ? (
+                                                            <>
+                                                                {m.nama_jabatan}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                {props.listreferensi[x.name]
+                                                                    ? props.listreferensi[x.name][m[x.name]]
+                                                                    : null}
+                                                            </>
+                                                        )}
+                                                    </>
+                                                ) : m[x.name]}
+                                            </td>
+                                        ))}
+
+                                        <td className="border">
+                                            <div className="flex align-center justify-end td-action">
+                                                <BtnIconAct
+                                                    icon="done"
+                                                    label="Pilih"
+                                                    // onTap={() => props.onPilih(m)}
+                                                    onTap={() => {
+                                                        console.log("DATA M:", m);
+                                                        props.onPilih(m);
+                                                    }}
+                                                    className="bg-primary"
+                                                />
+                                            </div>
+
+                                        </td>
+
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        <Pagination
+                            paginate={props.datafilter.paginate}
+                            onPageClick={(page) => {
+                                props.setdatafilter(page)
+
+                            }}
+                        />
+
+                    </div>
+                </div>
+            </Modal.Body>
+
+        </Modal>
+    )
+}
+
+const ModalLoginAsJabatan = props => {
+    return (
+        <Modal
+            show={props.show}
+            className=""
+            onShow={() => {
+
+            }}
+            onHide={props.onHide}
+            size="md"
+            fullscreen
+        >
+            <Modal.Header closeButton={true}>
+                <Modal.Title>
+                    Login As
+                </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                <div className="row">
+                    <div className="col-md-12">
+                        <table className="w-full table table-auto border-collapse border">
+                            <thead>
+                                <TableHead
+                                    data={headers}
+                                    access_role={[]}
+                                    referensi={props.listreferensi}
+                                    onChange={(key, value) => {
+                                        props.setfilter({
+                                            ...props.filter,
+                                            [key]: value,
+                                        });
+                                    }}
+                                    setOrder={(v) => {
+                                        props.setOrder(v);
+                                    }}
+                                    filter={props.filter}
+                                    loadOptions={props.handleLoadOptions}
+                                />
+                            </thead>
+                            <tbody>
+                                {props.sys_user.map((m, i) => (
+                                    <tr key={i}>
+                                        <td className="border text-center">
+                                            {(parseInt(props.datafilter.paginate.page) - 1) *
+                                                parseInt(props.datafilter.paginate.pagesize) +
+                                                i +
+                                                1}
+                                        </td>
+
+                                        {headers.map((x, k) => (
+                                            <td key={k} className="border">
+                                                {x.type == "list" ? (
+                                                    <>
+                                                        {x.name == 'id_jabatan' ? (
+                                                            <>
+                                                                {m.nama_jabatan}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                {props.listreferensi[x.name]
+                                                                    ? props.listreferensi[x.name][m[x.name]]
+                                                                    : null}
+                                                            </>
+                                                        )}
+                                                    </>
+                                                ) : m[x.name]}
+                                            </td>
+                                        ))}
+
+                                        <td className="border">
+                                            <div className="flex align-center justify-end td-action">
+                                                <BtnIconAct
+                                                    icon="login"
+                                                    label="Login"
+                                                    // onTap={() => props.onPilih(m)}
+                                                    onTap={() => {
+                                                        // console.log("DATA M:", m);
+                                                        props.onPilih(m);
+                                                    }}
+                                                    className="bg-primary"
+                                                />
+                                            </div>
+
+                                        </td>
+
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        <Pagination
+                            paginate={props.datafilter.paginate}
+                            onPageClick={(page) => {
+                                props.setdatafilter(page)
+
+                            }}
+                        />
+
+                    </div>
+                </div>
+            </Modal.Body>
+
+        </Modal>
+    )
+}
+

@@ -1,0 +1,3089 @@
+import React, { Component, useEffect, useMemo, useRef, useState } from 'react'
+import IndexPage from '../IndexPage'
+import HeaderApp from 'components/HeaderApp'
+import FormGroup from 'components/FormGroup'
+import InputSelectAsync from 'components/InputSelectAsync'
+import { api_services } from 'hooks/api_services'
+import { colorsPallette, getStorage, initAccessMethod, kk_idx, ruang_lingkup_combo, ruang_lingkup_id, ruang_lingkup_nama, saveStorage, stringEnter } from 'pages/Utils'
+import InputSelect from 'components/InputSelect'
+import { Chart, ArcElement, Tooltip, Legend, Title } from 'chart.js'
+import { Doughnut, Bar } from 'react-chartjs-2'
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+import { color_pengajuan_hardcode_hex, is_activated_first_line_status_color_grey, status_line_csa_arr, status_line_tod_arr, status_line_too_arr, status_line_toe_arr, status_pengajuan_hardcode } from '../CsaIndexPage'
+import BtnIcon from 'components/BtnIcon'
+import periodeModel from 'hooks/models/periodeModel'
+import mt_sdm_unitModel from 'hooks/models/mt_sdm_unitModel'
+import { status_pengajuan_remediasi_combo, status_pengajuan_remediasi_hex, status_pengajuan_remediasi_idx } from '../RcmRemediasi'
+import { status_kuesioner_combo, status_kuesioner_hex, status_kuesioner_idx } from '../KuesionerIndexPage'
+import { Modal } from 'react-bootstrap'
+import Button from 'components/Button'
+import { efektif_tidakefektif_tat_hex, efektif_tidakefektif_tat_idx } from '../CsaEdit'
+import { status_remediasi_edit_hex, status_remediasi_edit_idx } from '../RemediasiPengujian'
+import mt_segmenModel from 'hooks/models/mt_segmenModel'
+import { kesimpulan_atas_tingkat_keparahan_hex, kesimpulan_atas_tingkat_keparahan_idx } from '../DodWorkingPaper'
+import mt_statusModel from 'hooks/models/mt_statusModel'
+import { status_dod_combo, status_dod_hex, status_dod_idx } from '../DodIndexPage'
+import BtnIconAct from 'components/BtnIconAct'
+import $ from 'jquery'
+
+Chart.register(ArcElement, Tooltip, Legend, Title);
+Chart.register(ChartDataLabels);
+Chart.defaults.set('plugins.datalabels', {
+  color: '#000'
+});
+
+const datafakesakti = {
+  csa: {
+    labels: status_line_csa_arr.map(m => status_pengajuan_hardcode[m]),
+    datasets: [
+      {
+        label: '',
+        data: [1, 2, 3, 4, 5],
+        backgroundColor: status_line_csa_arr.map(m => color_pengajuan_hardcode_hex[m]),
+        hoverOffset: 4,
+      }
+    ]
+  },
+  tod: {
+    labels: status_line_tod_arr.map(m => status_pengajuan_hardcode[m]),
+    datasets: [
+      {
+        label: '',
+        data: [1, 2, 3, 4, 5],
+        backgroundColor: status_line_tod_arr.map(m => color_pengajuan_hardcode_hex[m]),
+        hoverOffset: 4,
+      }
+    ]
+  },
+  toe: {
+    labels: status_line_toe_arr.map(m => status_pengajuan_hardcode[m]),
+    datasets: [
+      {
+        label: '',
+        data: [1, 2, 3, 4, 5],
+        backgroundColor: status_line_toe_arr.map(m => color_pengajuan_hardcode_hex[m]),
+        hoverOffset: 4,
+      }
+    ]
+  },
+}
+
+const optiondonat = {
+  responsive: true,
+  plugins: {
+    legend: {
+      display: true,
+      position: 'bottom',
+      labels: {
+        usePointStyle: true,
+      },
+    },
+    title: {
+      display: true,
+    },
+
+  },
+  // maintainAspectRatio: false,
+  // cutout: '20%',
+  // width: 200,
+  // height: 200
+}
+
+const progress_efektivitas_combo = [
+  { label: 'Progress', value: 'progres' },
+  { label: 'Efektivitas', value: 'efektivitas' },
+]
+
+const is_activated_status_null = true
+
+const column_efektivitas = {
+  csa: 'efektivitas_csa',
+  tod: 'hasil_kesimpulan',
+  too: 'hasil_kesimpulan',
+  toe: 'hasil_uji_keseluruhan',
+  dod: 'kesimpulan_defisiensi',
+  remediasi: 'status',
+}
+
+const line_tlc_progres = ['kuesioner', 'csa', 'tod', 'toe']
+const line_tlc_efektivitas = ['kuesioner', 'csa', 'tod', 'too', 'toe', 'dod', 'remediasi']
+const line_elcitgc_progres = ['kuesioner', 'csa', 'tod']
+const line_elcitgc_efektivitas = ['kuesioner', 'csa', 'tod']
+
+
+
+export default class page extends IndexPage {
+  periodeModel = new periodeModel()
+  mt_sdm_unitModel = new mt_sdm_unitModel()
+  mt_segmenModel = new mt_segmenModel()
+  mt_statusModel = new mt_statusModel()
+
+  constructor(props) {
+    super(props)
+    // inisialisasi state
+    this.state = {
+      access_method: [],
+      datafilter: {
+        paginate: {
+          page: 1,
+          pagesize: 20
+        }
+      },
+      is_loading: false,
+      list: [],
+      listreferensi: [],
+      listcombo: [],
+      filter: {},
+      order: '',
+      showModal: false,
+      showModalSegmen: false,
+      showModalList: false,
+      path: '',
+      titleModal: '',
+      dtprogress: null,
+      dtefektivitas: null,
+      other_state: {
+        // id_periode: '',
+        // id_ruang_lingkup: '5',
+        id_periode: JSON.parse(getStorage('filter'))?.dashboard?.id_periode || '',
+        id_ruang_lingkup: JSON.parse(getStorage('filter'))?.dashboard?.id_ruang_lingkup || '5',
+        jenis_progress_efektivitas: JSON.parse(getStorage('filter'))?.dashboard?.jenis_progress_efektivitas || 'progres',
+        is_firstload_done: false,
+        id_unit_detail: '',
+        id_segmen_detail: '',
+        no_sub_proses: '',
+        status_pengajuan_line: {
+          csa: {},
+          tod: {},
+          toe: {},
+          too: {}
+        },
+        kuesioner: {
+          bar: {},
+          donat: {},
+          is_bar: false
+        },
+        csa: {
+          bar: {},
+          donat: {},
+          is_bar: false
+        },
+        tod: {
+          bar: {},
+          donat: {},
+          is_bar: false
+        },
+        too: {
+          bar: {},
+          donat: {},
+          is_bar: false
+        },
+        toe: {
+          bar: {},
+          donat: {},
+          is_bar: false
+        },
+        dod: {
+          bar: {},
+          donat: {},
+          is_bar: false
+        },
+        remediasi: {
+          bar: {},
+          donat: {},
+          is_bar: false
+        },
+
+        unit_detail_detail: [],
+
+        on_detail_line: '',
+        line_detail: {},
+        unit_detail: {},
+
+      },
+
+
+
+    }
+  }
+
+
+
+  modaldetail = (child) => (
+    <Modal
+      show={this.state.showModal}
+      className=""
+      onShow={() => {
+
+      }}
+      onHide={() => {
+        this.setState(state => ({
+          showModal: false,
+          other_state: {
+            ...state.other_state,
+            unit_detail_detail: []
+          }
+        }))
+      }}
+      size="lg"
+      fullscreen
+    >
+      <Modal.Header closeButton={true}>
+        <Modal.Title>
+          Detail {this.state.other_state.jenis_progress_efektivitas == 'progres' ? 'Progress' : 'Efektivitas'} {this.state.other_state.on_detail_line ? (kk_idx[this.state.other_state.on_detail_line]) : ''} {ruang_lingkup_id[this.state.other_state.id_ruang_lingkup] ? ruang_lingkup_id[this.state.other_state.id_ruang_lingkup].toUpperCase() : ''} {this.state.listreferensi.id_periode && this.state.other_state.id_periode ? this.state.listreferensi.id_periode[this.state.other_state.id_periode] : ''}
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        {child}
+      </Modal.Body>
+
+    </Modal>
+  )
+
+  modaldetail_segmen = (child) => (
+    <Modal
+      show={this.state.showModalSegmen}
+      className=""
+      onShow={() => {
+
+      }}
+      onHide={() => {
+        this.setState(state => ({
+          showModalSegmen: false,
+          other_state: {
+            ...state.other_state,
+            unit_detail_detail: []
+          }
+        }))
+      }}
+      size="lg"
+      fullscreen
+    >
+      <Modal.Header closeButton={true}>
+        <Modal.Title>
+          Detail {this.state.other_state.jenis_progress_efektivitas == 'progres' ? 'Progress' : 'Efektivitas'} {this.state.other_state.on_detail_line ? (kk_idx[this.state.other_state.on_detail_line]) : ''} {ruang_lingkup_id[this.state.other_state.id_ruang_lingkup] ? ruang_lingkup_id[this.state.other_state.id_ruang_lingkup].toUpperCase() : ''} {this.state.listreferensi.id_periode && this.state.other_state.id_periode ? this.state.listreferensi.id_periode[this.state.other_state.id_periode] : ''}
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        {child}
+      </Modal.Body>
+
+    </Modal>
+  )
+
+  modallist = (child) => (
+    <Modal
+      show={this.state.showModalList}
+      className=""
+      onShow={() => {
+
+      }}
+      onHide={() => {
+        this.setState(state => ({
+          showModalList: false,
+          other_state: {
+            ...state.other_state,
+            unit_detail_detail: []
+          }
+        }))
+      }}
+      size="lg"
+    // fullscreen
+    >
+      <Modal.Header closeButton={true}>
+        <Modal.Title>
+          Detail {this.state.other_state.jenis_progress_efektivitas == 'progres' ? 'Progress' : 'Efektivitas'} {this.state.other_state.on_detail_line ? (kk_idx[this.state.other_state.on_detail_line]) : ''} {ruang_lingkup_id[this.state.other_state.id_ruang_lingkup] ? ruang_lingkup_id[this.state.other_state.id_ruang_lingkup].toUpperCase() : ''} {this.state.listreferensi.id_periode && this.state.other_state.id_periode ? this.state.listreferensi.id_periode[this.state.other_state.id_periode] : ''}
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        {child}
+      </Modal.Body>
+
+    </Modal>
+  )
+
+  reload_state_donat = () => {
+    return this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        kuesioner: {
+          ...state.other_state.kuesioner,
+          donat: {
+            ...state.other_state.kuesioner.donat,
+            datasets: []
+          }
+        },
+        csa: {
+          ...state.other_state.csa,
+          donat: {
+            ...state.other_state.csa.donat,
+            datasets: []
+          }
+        },
+        tod: {
+          ...state.other_state.tod,
+          donat: {
+            ...state.other_state.tod.donat,
+            datasets: []
+          }
+        },
+        too: {
+          ...state.other_state.too,
+          donat: {
+            ...state.other_state.too.donat,
+            datasets: []
+          }
+        },
+        toe: {
+          ...state.other_state.toe,
+          donat: {
+            ...state.other_state.toe.donat,
+            datasets: []
+          }
+        },
+        dod: {
+          ...state.other_state.dod,
+          donat: {
+            ...state.other_state.dod.donat,
+            datasets: []
+          }
+        },
+        remediasi: {
+          ...state.other_state.remediasi,
+          donat: {
+            ...state.other_state.remediasi.donat,
+            datasets: []
+          }
+        },
+      }
+    }))
+  }
+
+  reload_state_unitsegmen = (event) => {
+    if (event == 'unit') {
+      return this.setState(state => ({
+        other_state: {
+          ...state.other_state,
+          line_detail: {},
+          // unit_detail: {}
+        }
+      }))
+    }
+    return this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        // line_detail: {},
+        unit_detail: {}
+      }
+    }))
+  }
+
+  init = async () => {
+    // console.log('INIT=>');
+
+    const { access_method, path } = await initAccessMethod(this.props.pathaccess);
+    const filterobj = await getStorage('filter')
+    // const filter = JSON.parse(filterobj)
+    // if (filter.csa[this.typeRcm]) {
+    //   // if (filter.csa[this.typeRcm].page) {
+    //   //     this.setState(state => ({
+    //   //         datafilter: {
+    //   //             ...state.datafilter,
+    //   //             paginate: {
+    //   //                 ...state.datafilter.paginate,
+    //   //                 page: filter.csa[this.typeRcm].page
+    //   //             }
+    //   //         }
+    //   //     }))
+    //   // }
+    //   this.setState({ filter: filter.csa[this.typeRcm] })
+    // }
+
+    await this.handlegetmt_status()
+    this.setState({ path, access_method }, () => {
+      // this.getmaxperiode(filter.csa[this.typeRcm])
+      // this.getdatasakti()
+      this.getmaxperiode(ruang_lingkup_id[this.state.other_state.id_ruang_lingkup])
+      this.getreferensi()
+      this.update_periode_jadwal()
+    })
+  }
+
+  // fnc_get_session = async () => {
+  //   const { getapi_services } = api_services({ api_path: '/get_session' })
+  //   const response = await getapi_services({})
+  // }
+
+  handlegetmt_status = async (is_return) => {
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1,
+          pagesize: 10000
+        },
+        filter: {}
+      }
+    }
+    const dataarr = await this.mt_statusModel.getCombo(datafilter)
+    if (dataarr.error || dataarr.code) return
+
+    let dataidx = {}
+    let dataname = {}
+    dataarr.map(x => {
+      dataidx[x.value] = x.color_code
+      dataname[x.value] = x.nama
+    })
+    this.setState(state => ({
+      listreferensi: {
+        ...state.listreferensi,
+        id_status_color: dataidx,
+        id_status: dataname
+      },
+    }), this.getstatusall)
+
+  }
+
+  getstatusall = (is_return) => {
+    const { other_state } = this.state
+    console.log('this.state.listreferensi');
+    console.log(this.state.listreferensi);
+
+    for (let m of status_line_csa_arr) {
+      // other_state.status_pengajuan_line.csa[m] = status_pengajuan_hardcode[m]
+      other_state.status_pengajuan_line.csa[m] = this.state.listreferensi.id_status[m]
+    }
+    for (let m of status_line_tod_arr) {
+      other_state.status_pengajuan_line.tod[m] = this.state.listreferensi.id_status[m]
+    }
+    for (let m of status_line_toe_arr) {
+      other_state.status_pengajuan_line.toe[m] = this.state.listreferensi.id_status[m]
+    }
+    for (let m of status_line_too_arr) {
+      other_state.status_pengajuan_line.too[m] = this.state.listreferensi.id_status[m]
+    }
+
+    let csa_donat = {}
+    let too_donat = {}
+    let tod_donat = {}
+    let toe_donat = {}
+
+    for (let m in other_state.status_pengajuan_line.csa) {
+      if (!csa_donat.labels) {
+        csa_donat.labels = []
+        csa_donat.datasets = []
+      }
+      csa_donat.labels.push(other_state.status_pengajuan_line.csa[m])
+    }
+    for (let m in other_state.status_pengajuan_line.too) {
+      if (!too_donat.labels) {
+        too_donat.labels = []
+        too_donat.datasets = []
+      }
+      too_donat.labels.push(other_state.status_pengajuan_line.too[m])
+    }
+    for (let m in other_state.status_pengajuan_line.tod) {
+      if (!tod_donat.labels) {
+        tod_donat.labels = []
+        tod_donat.datasets = []
+      }
+      tod_donat.labels.push(other_state.status_pengajuan_line.tod[m])
+    }
+    for (let m in other_state.status_pengajuan_line.toe) {
+      if (!toe_donat.labels) {
+        toe_donat.labels = []
+        toe_donat.datasets = []
+      }
+      toe_donat.labels.push(other_state.status_pengajuan_line.toe[m])
+    }
+
+    this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        status_pengajuan_line: other_state.status_pengajuan_line,
+        csa: {
+          ...state.other_state.csa,
+          donat: csa_donat
+        },
+        tod: {
+          ...state.other_state.tod,
+          donat: tod_donat
+        },
+        too: {
+          ...state.other_state.too,
+          donat: too_donat
+        },
+        toe: {
+          ...state.other_state.toe,
+          donat: toe_donat
+        },
+      }
+    }), () => {
+      console.log('OTHERRSTT FRST');
+      console.log(this.state.other_state);
+
+
+      if (is_return) {
+        return true
+      }
+    })
+  }
+
+  getdatasakti = () => {
+    // console.log('getdatasakti');
+    // console.log(datafakesakti);
+    const { other_state } = this.state
+
+    for (let m of datafakesakti.csa.datasets) {
+      if (!other_state.csa.donat.datasets) {
+        other_state.csa.donat.datasets = []
+      }
+      other_state.csa.donat.datasets.push(m)
+    }
+    for (let m of datafakesakti.tod.datasets) {
+      if (!other_state.tod.donat.datasets) {
+        other_state.tod.donat.datasets = []
+      }
+      other_state.tod.donat.datasets.push(m)
+    }
+    for (let m of datafakesakti.toe.datasets) {
+      if (!other_state.toe.donat.datasets) {
+        other_state.toe.donat.datasets = []
+      }
+      other_state.toe.donat.datasets.push(m)
+    }
+
+    this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        csa: other_state.csa,
+        tod: other_state.tod,
+        toe: other_state.toe,
+      }
+    }))
+  }
+
+  getmaxperiode = async (filtersave) => {
+    const { datafilter, other_state } = this.state
+    const { getapi_services } = api_services({ api_path: `/get_max_periode` })
+
+    this.setState({ is_loading: true })
+    const response = await getapi_services({
+      filter: {
+        ...datafilter,
+        filter: {
+          id_ruang_lingkup: other_state.id_ruang_lingkup
+        },
+      },
+    })
+
+    this.setState({ is_loading: false })
+    if (response.code || response.error) return
+    if (response.data.length == 0) return
+    let id_periode = response.data[response.data.length - 1].id_periode
+
+    if (filtersave && filtersave['id_periode']) {
+      id_periode = filtersave['id_periode']
+    }
+
+    if (other_state.id_periode) {
+      id_periode = other_state.id_periode
+    }
+
+    this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        id_periode
+      }
+    }), this.gets)
+  }
+
+  handlegetperiode = async (inputValue, callback) => {
+    const { other_state } = this.state
+    const datafilter = {
+      filter: {
+        ...this.state.datafilter,
+        filter: {
+          id_ruang_lingkup: other_state.id_ruang_lingkup
+        }
+      }
+    }
+    datafilter.filter.filter.not_draft = 1
+    if (inputValue && callback) {
+      datafilter.filter.nama = inputValue
+    }
+    const dataarr = await this.periodeModel.getCombo(datafilter)
+    if (dataarr.error || dataarr.code) return
+
+    if (inputValue && callback) {
+      callback(dataarr)
+      return
+    }
+
+    let dataidx = {}
+    dataarr.map(x => {
+      dataidx[x.value] = x.label
+    })
+    this.setState(state => ({
+      listreferensi: {
+        ...state.listreferensi,
+        id_periode: dataidx
+      },
+      listcombo: {
+        ...state.listcombo,
+        id_periode: dataarr
+      }
+    }))
+
+  }
+
+  handlegetmt_sdm_unit = async (inputValue, callback) => {
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1,
+          pagesize: 10000
+        },
+        filter: {}
+      }
+    }
+    if (inputValue && callback) {
+      datafilter.filter.nama = inputValue
+    }
+    const dataarr = await this.mt_sdm_unitModel.getCombo(datafilter)
+    if (dataarr.error || dataarr.code) return
+
+    if (inputValue && callback) {
+      callback(dataarr)
+      return
+    }
+
+    let dataidx = {}
+    dataarr.map(x => {
+      dataidx[x.value] = x.label
+    })
+    this.setState(state => ({
+      listreferensi: {
+        ...state.listreferensi,
+        id_lokasi: dataidx
+      },
+      listcombo: {
+        ...state.listcombo,
+        id_lokasi: dataarr
+      }
+    }))
+
+  }
+
+  handlegetmt_segmen = async (inputValue, callback) => {
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1,
+          pagesize: 10000
+        },
+        filter: {}
+      }
+    }
+    if (inputValue && callback) {
+      datafilter.filter.nama = inputValue
+    }
+    const dataarr = await this.mt_segmenModel.getCombo(datafilter)
+    if (dataarr.error || dataarr.code) return
+
+    if (inputValue && callback) {
+      callback(dataarr)
+      return
+    }
+
+    let dataidx = {}
+    dataarr.map(x => {
+      dataidx[x.value] = x.label
+    })
+    this.setState(state => ({
+      listreferensi: {
+        ...state.listreferensi,
+        id_segmen: dataidx
+      },
+      listcombo: {
+        ...state.listcombo,
+        id_segmen: dataarr
+      }
+    }))
+
+  }
+
+  getreferensi = async () => {
+    // if (!this.model.relasi) return
+    // for (let m in this.model.relasi) {
+    //     const thismodel = this.model.relasi[m]
+    //     const dataarr = await thismodel.getCombo()
+    //     if (dataarr.error || dataarr.code) return
+
+    //     let dataidx = {}
+    //     dataarr.map(x => {
+    //         dataidx[x.value] = x.label
+    //     })
+    //     this.setState(state => ({
+    //         listreferensi: {
+    //             ...state.listreferensi,
+    //             [m]: dataidx
+    //         },
+    //     }))
+    // }
+
+    this.handlegetperiode()
+    this.handlegetmt_sdm_unit()
+    this.handlegetmt_segmen()
+  }
+
+  gets = async () => {
+    const { other_state } = this.state
+
+    const filterobj = await getStorage('filter')
+    const filter = JSON.parse(filterobj)
+
+    const filter_save = {
+      jenis_progress_efektivitas: other_state.jenis_progress_efektivitas,
+      id_ruang_lingkup: other_state.id_ruang_lingkup,
+      id_periode: other_state.id_periode
+    }
+    await saveStorage('filter', JSON.stringify({
+      ...filter,
+      dashboard: filter_save
+    }))
+
+    await this.reload_state_donat()
+
+    this.getrcmunit()
+
+    if (other_state.jenis_progress_efektivitas == 'progres') {
+      await this.getstatusall()
+      this.getprogress()
+    } else {
+      this.getefektivitas()
+
+    }
+  }
+
+  getunits = async () => {
+    const { other_state } = this.state
+
+    await this.reload_state_unitsegmen('unit')
+
+    if (other_state.jenis_progress_efektivitas == 'progres') {
+      this.getunit()
+    } else {
+      this.getunit_efektivitas()
+
+    }
+  }
+
+  getunitdetails = async () => {
+    const { other_state } = this.state
+
+    if (other_state.jenis_progress_efektivitas == 'progres') {
+      // if (['toe'].includes(other_state.on_detail_line)) {
+      //   this.getunitdetail()
+      // } else {
+      //   this.getunitsegmen()
+      // }
+
+      this.getunitsegmen()
+    } else {
+      if (['too', 'toe', 'dod', 'remediasi'].includes(other_state.on_detail_line)) {
+        this.getunitdetail_efektivitas()
+      } else {
+        this.getunitsegmen_efektivitas()
+
+      }
+
+    }
+  }
+
+  getunit_detail_details = () => {
+    const { other_state } = this.state
+    if (other_state.jenis_progress_efektivitas == 'progres') {
+      this.getunitdetail()
+    } else {
+      this.getunitdetail_efektivitas()
+
+    }
+  }
+
+  // PROGRESS
+  // PROGRESS
+  // PROGRESS
+  // PROGRESS
+  // PROGRESS
+  // PROGRESS
+  getprogress = async () => {
+    const { other_state } = this.state
+    const { getapi_services } = api_services({ api_path: `/get_progres` })
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1, pagesize: 10000
+        },
+        filter: {},
+      },
+    }
+    if (other_state.id_ruang_lingkup) {
+      datafilter.filter.filter.id_ruang_lingkup = other_state.id_ruang_lingkup
+    }
+    if (other_state.id_periode) {
+      datafilter.filter.filter.id_periode = other_state.id_periode
+    }
+
+    this.setState({ is_loading: true })
+    const response = await getapi_services(datafilter)
+
+    this.setState({ is_loading: false })
+    if (response.code || response.error) return
+
+
+    let donat_csa = {}
+    let donat_tod = {}
+    let donat_too = {}
+    let donat_toe = {}
+    let donat_remediasi = {}
+    let donat_kuesioner = {}
+    let donat_dod = {}
+
+    donat_csa = this.getdonat('csa', response.progres_csa)
+    donat_tod = this.getdonat('tod', response.progres_tod)
+    donat_too = this.getdonat('too', response.progres_too)
+    donat_toe = this.getdonat('toe', response.progres_toe)
+
+    donat_remediasi = this.getdonatother('remediasi', response.progres_remediasi)
+    if (response.progres_kuesioner && response.progres_kuesioner.length > 0) {
+      const progres_kuesioner1 = response.progres_kuesioner.map(m => ({ ...m, status_pengajuan: m.status == 'draft' ? '0' : '1' }))
+      response.progres_kuesioner = progres_kuesioner1
+
+    }
+    donat_kuesioner = this.getdonatother('kuesioner', response.progres_kuesioner)
+    if (response.progres_dod && response.progres_dod.length > 0) {
+      const progres_dod1 = response.progres_dod.map(m => ({ ...m, status_pengajuan: m.status_dod }))
+      response.progres_dod = progres_dod1
+    }
+    donat_dod = this.getdonatother('dod', response.progres_dod)
+
+    this.setState(state => ({
+      dtprogress: response,
+      other_state: {
+        ...state.other_state,
+        csa: {
+          ...state.other_state.csa,
+          donat: donat_csa
+        },
+        tod: {
+          ...state.other_state.tod,
+          donat: donat_tod
+        },
+        toe: {
+          ...state.other_state.toe,
+          donat: donat_toe
+        },
+        remediasi: {
+          ...state.other_state.remediasi,
+          donat: donat_remediasi
+        },
+        too: {
+          ...state.other_state.too,
+          donat: donat_too
+        },
+        kuesioner: {
+          ...state.other_state.kuesioner,
+          donat: donat_kuesioner
+        },
+        dod: {
+          ...state.other_state.dod,
+          donat: donat_dod
+        },
+      }
+    }), () => {
+      console.log('OTHERSTTE');
+      console.log(this.state.other_state);
+    })
+
+  }
+
+  getdonat = (kk, data_donat) => {
+    const { other_state } = this.state
+    let donat = {}
+    donat.labels = other_state[kk].donat.labels
+    if (kk == 'too') {
+      donat.labels = other_state['tod'].donat.labels
+    }
+    donat.datasets = []
+    donat.total = 0
+
+    // console.log('GETDONAT' + kk);
+    // console.log(donat);
+
+
+
+    if (data_donat && data_donat.length > 0) {
+
+      const id_status_labels = []
+      for (let m of other_state[kk].donat.labels) {
+        // id_status_labels.push(Object.keys(status_pengajuan_hardcode).filter(x => status_pengajuan_hardcode[x] == m ? x : '')[0])
+        id_status_labels.push(Object.keys(this.state.listreferensi.id_status).filter(x => this.state.listreferensi.id_status[x] == m ? x : '')[0])
+      }
+      let datastatus_line_arr = kk == 'csa' ? status_line_csa_arr : kk == 'tod' ? status_line_tod_arr : status_line_toe_arr
+      if (kk == 'too') {
+        datastatus_line_arr = status_line_tod_arr
+      }
+
+      const color_pengajuan = {
+        // ...color_pengajuan_hardcode_hex
+        ...this.state.listreferensi.id_status_color
+      }
+
+      if (is_activated_first_line_status_color_grey) {
+        if (kk == 'tod' || kk == 'too') {
+          color_pengajuan['6'] = colorsPallette.grey
+        }
+        if (kk == 'toe') {
+          color_pengajuan['10'] = colorsPallette.grey
+
+        }
+      }
+
+      const datasetsitem = {
+        label: '',
+        backgroundColor: datastatus_line_arr.map(m => color_pengajuan[m]),
+        hoverOffset: 4,
+      }
+      let datac = []
+      for (let m of id_status_labels) {
+        datac.push(0)
+      }
+      for (let m of data_donat) {
+        let idx_of_labels = id_status_labels.indexOf(`${m.id_status}`)
+        datac[idx_of_labels] = m.jumlah
+        donat.total += m.jumlah
+      }
+      datasetsitem.data = datac
+      donat.datasets.push(datasetsitem)
+
+    }
+
+    return donat
+  }
+
+  getdonatother = (kk, data_donat) => {
+    const { other_state } = this.state
+    let status_combo =
+      kk == 'remediasi' ? status_pengajuan_remediasi_combo
+        : kk == 'dod' ? status_dod_combo
+          : kk == 'kuesioner' ? status_kuesioner_combo : []
+    let status_idx =
+      kk == 'remediasi' ? status_pengajuan_remediasi_idx
+        : kk == 'dod' ? status_dod_idx
+          : kk == 'kuesioner' ? status_kuesioner_idx : {}
+    let status_hex =
+      kk == 'remediasi' ? status_pengajuan_remediasi_hex
+        : kk == 'dod' ? status_dod_hex
+          : kk == 'kuesioner' ? status_kuesioner_hex : {}
+
+    // if (kk == 'dod') {
+
+    //   const status_combo_dod = status_pengajuan_remediasi_combo.filter(m => m.value != 'tolak')
+    //   const status_idx_dod = {
+    //     ...status_pengajuan_remediasi_idx
+    //   }
+    //   delete status_idx_dod['tolak']
+    //   const status_hex_dod = {
+    //     ...status_pengajuan_remediasi_hex
+    //   }
+    //   delete status_hex_dod['tolak']
+    //   status_combo = status_combo_dod
+    //   status_idx = status_idx_dod
+    //   status_hex = status_hex_dod
+    // }
+
+    let donat = {}
+    donat.labels = status_combo.map(m => m.label)
+    donat.datasets = []
+    donat.total = 0
+
+    if (data_donat && data_donat.length > 0) {
+
+      const id_status_labels = []
+      for (let m of donat.labels) {
+        id_status_labels.push(Object.keys(status_idx).filter(x => status_idx[x] == m ? x : '')[0])
+      }
+      const datastatus_line_arr = status_hex
+      const datasetsitem = {
+        label: '',
+        backgroundColor: Object.keys(datastatus_line_arr).map(m => datastatus_line_arr[m]),
+        hoverOffset: 4,
+      }
+      let datac = []
+      for (let m of id_status_labels) {
+        datac.push(0)
+      }
+      for (let m of data_donat) {
+        let idx_of_labels = id_status_labels.indexOf(`${m.status_pengajuan}`)
+        datac[idx_of_labels] = m.jumlah
+        donat.total += m.jumlah
+      }
+      datasetsitem.data = datac
+      donat.datasets.push(datasetsitem)
+
+    }
+
+    return donat
+  }
+
+  getunit = async () => {
+    const { other_state } = this.state
+    let api_path = `/progres_${other_state.on_detail_line}_detail`
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1, pagesize: 10000
+        },
+        filter: {},
+      },
+    }
+    if (other_state.id_ruang_lingkup) {
+      datafilter.filter.filter.id_ruang_lingkup = other_state.id_ruang_lingkup
+    }
+    if (other_state.id_periode) {
+      datafilter.filter.filter.id_periode = other_state.id_periode
+    }
+    const { getapi_services } = api_services({ api_path })
+    let dtprogress = await getapi_services(datafilter)
+    if (dtprogress.code || dtprogress.error) {
+      return this.setState(state => ({
+        other_state: {
+          ...state.other_state,
+          line_detail: {}
+        }
+      }))
+    }
+
+    if (!dtprogress[`progres_${other_state.on_detail_line}_detail`]) return
+
+    let line_detail = {}
+    if (['csa', 'tod', 'toe', 'too'].includes(other_state.on_detail_line)) {
+      for (let m in dtprogress[`progres_${other_state.on_detail_line}_detail`]) {
+        if (!line_detail[m]) {
+          line_detail[m] = {
+            donat: {},
+            bar: {}
+          }
+        }
+
+        line_detail[m].donat = this.getdonat(other_state.on_detail_line, dtprogress[`progres_${other_state.on_detail_line}_detail`][m])
+      }
+    }
+    if (['kuesioner'].includes(other_state.on_detail_line)) {
+      for (let m in dtprogress[`progres_${other_state.on_detail_line}_detail`]) {
+        if (!line_detail[m]) {
+          line_detail[m] = {
+            donat: {},
+            bar: {}
+          }
+        }
+        let data_donat = dtprogress[`progres_${other_state.on_detail_line}_detail`][m]
+        if (other_state.on_detail_line == 'kuesioner') {
+          data_donat = data_donat.map(x => ({ ...x, status_pengajuan: x.status == 'draft' ? '0' : '1' }))
+        }
+
+        line_detail[m].donat = this.getdonatother(other_state.on_detail_line, data_donat)
+      }
+    }
+    if (['remediasi', 'dod'].includes(other_state.on_detail_line)) {
+      for (let m in dtprogress[`progres_${other_state.on_detail_line}_detail`]) {
+        if (!line_detail[m]) {
+          line_detail[m] = {
+            donat: {},
+            bar: {}
+          }
+        }
+        let data_donat = dtprogress[`progres_${other_state.on_detail_line}_detail`][m]
+
+        if (other_state.on_detail_line == 'dod') {
+          data_donat = dtprogress[`progres_${other_state.on_detail_line}_detail`][m].map(x => ({ ...x, status_pengajuan: x.status_dod }))
+        }
+
+        line_detail[m].donat = this.getdonatother(other_state.on_detail_line, data_donat)
+      }
+    }
+
+
+    this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        line_detail
+      }
+    }), () => {
+      console.log('OTHR STT UNT');
+      console.log(this.state.other_state);
+
+    })
+  }
+
+  getunitsegmen = async () => {
+    const { other_state } = this.state
+    let api_path = `/progres_${other_state.on_detail_line}_detail_detail`
+    const column_datas = `progres_${other_state.on_detail_line}_detail_detail`
+
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1, pagesize: 10000
+        },
+        filter: {},
+      },
+    }
+    if (other_state.id_ruang_lingkup) {
+      datafilter.filter.filter.id_ruang_lingkup = other_state.id_ruang_lingkup
+    }
+    if (other_state.id_periode) {
+      datafilter.filter.filter.id_periode = other_state.id_periode
+    }
+    if (other_state.id_unit_detail) {
+      datafilter.filter.filter.id_lokasi = other_state.id_unit_detail
+      if (other_state.on_detail_line == 'tod') {
+        delete datafilter.filter.filter.id_lokasi
+        datafilter.filter.filter.id_unit = other_state.id_unit_detail
+      }
+    }
+    if (other_state.on_detail_line == 'toe' && other_state.id_segmen_detail) {
+      datafilter.filter.filter.id_segmen = other_state.id_segmen_detail
+    }
+
+    const { getapi_services } = api_services({ api_path })
+    let dtprogress = await getapi_services(datafilter)
+    if (dtprogress.code || dtprogress.error) {
+      return this.setState(state => ({
+        other_state: {
+          ...state.other_state,
+          unit_detail: {}
+        }
+      }))
+    }
+
+    if (!dtprogress[column_datas]) return
+
+    let unit_detail = {}
+    if (['csa', 'tod', 'toe', 'too'].includes(other_state.on_detail_line)) {
+      for (let m in dtprogress[column_datas]) {
+        if (!unit_detail[m]) {
+          unit_detail[m] = {
+            donat: {},
+            bar: {}
+          }
+        }
+
+        unit_detail[m].donat = this.getdonat(other_state.on_detail_line, dtprogress[column_datas][m])
+      }
+    }
+    if (['kuesioner'].includes(other_state.on_detail_line)) {
+      for (let m in dtprogress[column_datas]) {
+        if (!unit_detail[m]) {
+          unit_detail[m] = {
+            donat: {},
+            bar: {}
+          }
+        }
+        let data_donat = dtprogress[column_datas][m]
+        if (other_state.on_detail_line == 'kuesioner') {
+          data_donat = data_donat.map(x => ({ ...x, status_pengajuan: x.status == 'draft' ? '0' : '1' }))
+        }
+
+        unit_detail[m].donat = this.getdonatother(other_state.on_detail_line, data_donat)
+      }
+    }
+    if (['remediasi', 'dod'].includes(other_state.on_detail_line)) {
+      for (let m in dtprogress[column_datas]) {
+        if (!unit_detail[m]) {
+          unit_detail[m] = {
+            donat: {},
+            bar: {}
+          }
+        }
+        let data_donat = dtprogress[column_datas][m]
+
+        if (other_state.on_detail_line == 'dod') {
+          data_donat = dtprogress[column_datas][m].map(x => ({ ...x, status_pengajuan: x.status_dod }))
+        }
+
+        unit_detail[m].donat = this.getdonatother(other_state.on_detail_line, data_donat)
+      }
+    }
+
+
+    this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        unit_detail
+      }
+    }), () => {
+      console.log('OTHR STT UNT');
+      console.log(this.state.other_state);
+
+    })
+  }
+
+  getunitdetail = async () => {
+    const { other_state } = this.state
+    let api_path = `/progres_${other_state.on_detail_line}_detail_detail_detail`
+    let column_datas = `progres_${other_state.on_detail_line}_detail_detail_detail`
+
+    // if (other_state.on_detail_line == 'toe') {
+    //   api_path = `/progres_${other_state.on_detail_line}_detail_detail`
+    //   column_datas = `progres_${other_state.on_detail_line}_detail_detail`
+    // }
+
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1, pagesize: 10000
+        },
+        filter: {},
+      },
+    }
+    if (other_state.id_ruang_lingkup) {
+      datafilter.filter.filter.id_ruang_lingkup = other_state.id_ruang_lingkup
+    }
+    if (other_state.id_periode) {
+      datafilter.filter.filter.id_periode = other_state.id_periode
+    }
+    if (other_state.id_unit_detail) {
+      datafilter.filter.filter.id_lokasi = other_state.id_unit_detail
+      if (other_state.on_detail_line == 'tod') {
+        delete datafilter.filter.filter.id_lokasi
+        datafilter.filter.filter.id_unit = other_state.id_unit_detail
+      }
+    }
+    if (other_state.id_segmen_detail) {
+      datafilter.filter.filter.id_segmen = other_state.id_segmen_detail
+    }
+
+    if (other_state.on_detail_line == 'toe' && other_state.no_sub_proses) {
+      datafilter.filter.filter.no_sub_proses = other_state.no_sub_proses
+
+    }
+
+    const { getapi_services } = api_services({ api_path })
+    let response = await getapi_services(datafilter)
+    if (response.code || response.error) {
+      return
+    }
+
+    let unit_detail_detail = response[column_datas]
+    if (other_state.on_detail_line == 'toe') {
+      unit_detail_detail = []
+      for (let m in response[column_datas]) {
+        unit_detail_detail.push(response[column_datas][m])
+      }
+    }
+
+    this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        unit_detail_detail
+      }
+    }), () => {
+      console.log('OTHRSTTE');
+      console.log(this.state.other_state);
+
+
+    })
+  }
+
+  get_progres_detaildetaildetail_elc_itgc = async () => {
+    const { other_state } = this.state
+    let api_path = `/progres_${other_state.on_detail_line}_detail_detail_detail`
+    let column_datas = `progres_${other_state.on_detail_line}_detail_detail_detail`
+
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1, pagesize: 10000
+        },
+        filter: {},
+      },
+    }
+    if (other_state.id_ruang_lingkup) {
+      datafilter.filter.filter.id_ruang_lingkup = other_state.id_ruang_lingkup
+    }
+    if (other_state.id_periode) {
+      datafilter.filter.filter.id_periode = other_state.id_periode
+    }
+    if (other_state.id_unit_detail) {
+      datafilter.filter.filter.id_lokasi = other_state.id_unit_detail
+      if (other_state.on_detail_line == 'tod') {
+        delete datafilter.filter.filter.id_lokasi
+        datafilter.filter.filter.id_unit = other_state.id_unit_detail
+      }
+    }
+    if (other_state.id_segmen_detail) {
+      datafilter.filter.filter.id_segmen = other_state.id_segmen_detail
+    }
+
+    if (other_state.on_detail_line == 'toe' && other_state.no_sub_proses) {
+      datafilter.filter.filter.no_sub_proses = other_state.no_sub_proses
+
+    }
+
+    const { getapi_services } = api_services({ api_path })
+    let response = await getapi_services(datafilter)
+    if (response.code || response.error) {
+      return
+    }
+
+    let unit_detail_detail = response[column_datas]
+    if (other_state.on_detail_line == 'toe') {
+      unit_detail_detail = []
+      for (let m in response[column_datas]) {
+        unit_detail_detail.push(response[column_datas][m])
+      }
+    }
+
+    this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        unit_detail_detail
+      }
+    }), () => {
+      console.log('OTHRSTTE');
+      console.log(this.state.other_state);
+
+
+    })
+  }
+  // PROGRESS
+  // PROGRESS
+  // PROGRESS
+  // PROGRESS
+  // PROGRESS
+  // PROGRESS
+
+  // EFEKTIVITAS
+  // EFEKTIVITAS
+  // EFEKTIVITAS
+  // EFEKTIVITAS
+  getefektivitas = async () => {
+    const { other_state } = this.state
+    const { getapi_services } = api_services({ api_path: `/get_efektivitas` })
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1, pagesize: 10000
+        },
+        filter: {},
+      },
+    }
+    if (other_state.id_ruang_lingkup) {
+      datafilter.filter.filter.id_ruang_lingkup = other_state.id_ruang_lingkup
+    }
+    if (other_state.id_periode) {
+      datafilter.filter.filter.id_periode = other_state.id_periode
+    }
+
+    this.setState({ is_loading: true })
+    const response = await getapi_services(datafilter)
+
+    this.setState({ is_loading: false })
+    if (response.code || response.error) return
+
+    let efektivitas_csa = response.efektivitas_csa ? response.efektivitas_csa : []
+    let efektivitas_tod = response.efektivitas_tod ? response.efektivitas_tod : []
+    let efektivitas_too = response.efektivitas_too ? response.efektivitas_too : []
+    let efektivitas_toe = response.efektivitas_toe ? response.efektivitas_toe : []
+    let efektivitas_remediasi = response.efektivitas_remediasi ? response.efektivitas_remediasi : []
+    let efektivitas_kuesioner = response.efektivitas_kuesioner ? response.efektivitas_kuesioner : []
+    let efektivitas_dod = response.efektivitas_dod ? response.efektivitas_dod : []
+
+    let donat_csa = {}
+    let donat_tod = {}
+    let donat_too = {}
+    let donat_toe = {}
+    let donat_remediasi = {}
+    let donat_kuesioner = {}
+    let donat_dod = {}
+
+    // donat_csa = this.getdonat_efektivitas('csa', response.efektivitas_csa)
+    // donat_tod = this.getdonat_efektivitas('tod', response.efektivitas_tod)
+    // donat_too = this.getdonat_efektivitas('too', response.efektivitas_too)
+    // donat_toe = this.getdonat_efektivitas('toe', response.efektivitas_toe)
+
+    donat_csa = this.getdonat_efektivitas('csa', efektivitas_csa.map(m => ({ ...m, status_kosong: m.efektivitas_csa })))
+    donat_tod = this.getdonat_efektivitas('tod', efektivitas_tod.map(m => ({ ...m, status_kosong: m.hasil_kesimpulan })))
+    donat_too = this.getdonat_efektivitas('too', efektivitas_too.map(m => ({ ...m, status_kosong: m.hasil_kesimpulan })))
+    donat_toe = this.getdonat_efektivitas('toe', efektivitas_toe.map(m => ({ ...m, status_kosong: m.hasil_uji_keseluruhan })))
+
+    donat_remediasi = this.getdonatother_efektivitas('remediasi', efektivitas_remediasi.map(m => ({ ...m, status_kosong: m.status })))
+    if (efektivitas_kuesioner && efektivitas_kuesioner.length > 0) {
+      const efektivitas_kuesioner1 = efektivitas_kuesioner.map(m => ({ ...m, status_pengajuan: m.status == 'draft' ? '0' : '1' }))
+      efektivitas_kuesioner = efektivitas_kuesioner1
+
+    }
+    donat_kuesioner = this.getdonatother_efektivitas('kuesioner', response.efektivitas_kuesioner)
+    if (efektivitas_dod && efektivitas_dod.length > 0) {
+      const efektivitas_dod1 = efektivitas_dod.map(m => ({ ...m, status: m.kesimpulan_defisiensi, status_kosong: m.kesimpulan_defisiensi }))
+      efektivitas_dod = efektivitas_dod1
+    }
+    donat_dod = this.getdonatother_efektivitas('dod', efektivitas_dod)
+
+    this.setState(state => ({
+      dtprogress: response,
+      other_state: {
+        ...state.other_state,
+        csa: {
+          ...state.other_state.csa,
+          donat: donat_csa
+        },
+        tod: {
+          ...state.other_state.tod,
+          donat: donat_tod
+        },
+        toe: {
+          ...state.other_state.toe,
+          donat: donat_toe
+        },
+        remediasi: {
+          ...state.other_state.remediasi,
+          donat: donat_remediasi
+        },
+        too: {
+          ...state.other_state.too,
+          donat: donat_too
+        },
+        kuesioner: {
+          ...state.other_state.kuesioner,
+          donat: donat_kuesioner
+        },
+        dod: {
+          ...state.other_state.dod,
+          donat: donat_dod
+        }
+      }
+    }), () => {
+      console.log('OTHERSTTE');
+      console.log(this.state.other_state);
+    })
+
+  }
+
+  getdonat_efektivitas = (kk, data_donat_param) => {
+    const { other_state } = this.state
+    let donat = {}
+    donat.labels = Object.keys(efektif_tidakefektif_tat_idx).map(m => efektif_tidakefektif_tat_idx[m])
+    donat.datasets = []
+    donat.total = 0
+
+    let data_donat = []
+    data_donat = data_donat_param
+
+    if (data_donat_param && data_donat_param.length > 0 && kk == 'csa') {
+      data_donat = data_donat_param.map(m => ({ ...m, status: m.efektivitas_csa }))
+    }
+    if (data_donat_param && data_donat_param.length > 0 && kk == 'tod') {
+      data_donat = data_donat_param.map(m => ({ ...m, status: m.hasil_kesimpulan }))
+    }
+    if (data_donat_param && data_donat_param.length > 0 && kk == 'too') {
+      data_donat = data_donat_param.map(m => ({ ...m, status: m.hasil_kesimpulan }))
+    }
+    if (data_donat_param && data_donat_param.length > 0 && kk == 'toe') {
+      data_donat = data_donat_param.map(m => ({ ...m, status: m.hasil_uji_keseluruhan }))
+    }
+    if (data_donat && data_donat.length > 0) {
+
+      const id_status_labels = Object.keys(efektif_tidakefektif_tat_idx).map(m => m)
+      const datasetsitem = {
+        label: '',
+        backgroundColor: id_status_labels.map(m => efektif_tidakefektif_tat_hex[m]),
+        hoverOffset: 4,
+      }
+
+      let datac = []
+      for (let m of id_status_labels) {
+        datac.push(0)
+      }
+
+
+      let is_status_null_already = false
+      for (let m of data_donat) {
+        if (m.hasOwnProperty('status_kosong')) {
+          is_status_null_already = true
+          break
+        }
+      }
+
+      if (is_activated_status_null && is_status_null_already) {
+        donat.labels.push('Dalam Proses')
+        datasetsitem.backgroundColor.push(colorsPallette.lightgrey)
+        datac.push(0)
+      }
+
+      for (let m of data_donat) {
+        let idx_of_labels = id_status_labels.indexOf(`${m.status}`)
+        datac[idx_of_labels] = m.jumlah
+        donat.total += m.jumlah
+
+        if (is_activated_status_null && is_status_null_already && !m.status_kosong) {
+          datac[datac.length - 1] = m.jumlah
+        }
+      }
+
+      datasetsitem.data = datac
+      donat.datasets.push(datasetsitem)
+
+    }
+
+    return donat
+  }
+
+  getdonatother_efektivitas = (kk, data_donat_param) => {
+    const { other_state } = this.state
+
+    let donat = {}
+    donat.labels = Object.keys(efektif_tidakefektif_tat_idx).map(m => efektif_tidakefektif_tat_idx[m])
+    donat.datasets = []
+    donat.total = 0
+
+    if (kk == 'remediasi') {
+      donat.labels = Object.keys(status_remediasi_edit_idx).map(m => status_remediasi_edit_idx[m])
+    }
+    if (kk == 'dod') {
+      donat.labels = Object.keys(kesimpulan_atas_tingkat_keparahan_idx).map(m => kesimpulan_atas_tingkat_keparahan_idx[m])
+    }
+
+    let data_donat = data_donat_param
+    if (data_donat && data_donat.length > 0) {
+
+      let id_status_labels = Object.keys(efektif_tidakefektif_tat_idx).map(m => m)
+      let datastatus_line_arr = Object.keys(efektif_tidakefektif_tat_idx).map(m => efektif_tidakefektif_tat_hex[m])
+
+      if (kk == 'remediasi') {
+        id_status_labels = Object.keys(status_remediasi_edit_idx).map(m => m)
+        datastatus_line_arr = Object.keys(status_remediasi_edit_idx).map(m => status_remediasi_edit_hex[m])
+
+      }
+      if (kk == 'dod') {
+        id_status_labels = Object.keys(kesimpulan_atas_tingkat_keparahan_idx).map(m => m)
+        datastatus_line_arr = Object.keys(kesimpulan_atas_tingkat_keparahan_idx).map(m => kesimpulan_atas_tingkat_keparahan_hex[m])
+
+      }
+
+      const datasetsitem = {
+        label: '',
+        backgroundColor: datastatus_line_arr,
+        hoverOffset: 4,
+      }
+      let datac = []
+      for (let m of id_status_labels) {
+        datac.push(0)
+      }
+
+      let is_status_null_already = false
+      for (let m of data_donat) {
+        if (m.hasOwnProperty('status_kosong')) {
+          is_status_null_already = true
+          break
+        }
+      }
+
+      if (is_activated_status_null && is_status_null_already) {
+        donat.labels.push('Dalam Proses')
+        datasetsitem.backgroundColor.push(colorsPallette.lightgrey)
+        datac.push(0)
+      }
+
+      for (let m of data_donat) {
+        let idx_of_labels = id_status_labels.indexOf(`${m.status}`)
+        datac[idx_of_labels] = m.jumlah
+        donat.total += m.jumlah
+
+        if (is_activated_status_null && is_status_null_already && !m.status_kosong) {
+          datac[datac.length - 1] = m.jumlah
+        }
+      }
+
+      datasetsitem.data = datac
+      donat.datasets.push(datasetsitem)
+
+    }
+
+    return donat
+  }
+
+  getunit_efektivitas = async () => {
+    const { other_state } = this.state
+    let api_path = `/efektivitas_${other_state.on_detail_line}_detail`
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1, pagesize: 10000
+        },
+        filter: {},
+      },
+    }
+    if (other_state.id_ruang_lingkup) {
+      datafilter.filter.filter.id_ruang_lingkup = other_state.id_ruang_lingkup
+    }
+    if (other_state.id_periode) {
+      datafilter.filter.filter.id_periode = other_state.id_periode
+    }
+    const { getapi_services } = api_services({ api_path })
+    let dtefektivitass = await getapi_services(datafilter)
+    if (dtefektivitass.code || dtefektivitass.error) {
+      return this.setState(state => ({
+        other_state: {
+          ...state.other_state,
+          line_detail: {}
+        }
+      }))
+    }
+
+    const column_datas = `efektivitas_${other_state.on_detail_line}_detail`
+    if (!dtefektivitass[column_datas]) return
+
+    let line_detail = {}
+    if (['csa', 'tod', 'toe', 'too'].includes(other_state.on_detail_line)) {
+      for (let m in dtefektivitass[column_datas]) {
+        if (!line_detail[m]) {
+          line_detail[m] = {
+            donat: {},
+            bar: {}
+          }
+        }
+
+        // line_detail[m].donat = this.getdonat_efektivitas(other_state.on_detail_line, dtefektivitass[column_datas][m])
+        line_detail[m].donat = this.getdonat_efektivitas(other_state.on_detail_line, dtefektivitass[column_datas][m].map(x => ({ ...x, status_kosong: x[column_efektivitas[other_state.on_detail_line]] })))
+
+      }
+    }
+    if (['kuesioner'].includes(other_state.on_detail_line)) {
+      for (let m in dtefektivitass[column_datas]) {
+        if (!line_detail[m]) {
+          line_detail[m] = {
+            donat: {},
+            bar: {}
+          }
+        }
+        let data_donat = dtefektivitass[column_datas][m]
+        if (other_state.on_detail_line == 'kuesioner') {
+          data_donat = data_donat.map(x => ({ ...x, status_pengajuan: x.status == 'draft' ? '0' : '1' }))
+        }
+
+        line_detail[m].donat = this.getdonatother_efektivitas(other_state.on_detail_line, data_donat)
+      }
+    }
+    if (['remediasi', 'dod'].includes(other_state.on_detail_line)) {
+      for (let m in dtefektivitass[column_datas]) {
+        if (!line_detail[m]) {
+          line_detail[m] = {
+            donat: {},
+            bar: {}
+          }
+        }
+        // let data_donat = dtefektivitass[column_datas][m]
+        let data_donat = dtefektivitass[column_datas][m].map(x => ({ ...x, status_kosong: x[column_efektivitas[other_state.on_detail_line]] }))
+        if (other_state.on_detail_line == 'dod') {
+          data_donat = dtefektivitass[column_datas][m].map(x => ({ ...x, status: x.kesimpulan_defisiensi }))
+        }
+
+        line_detail[m].donat = this.getdonatother_efektivitas(other_state.on_detail_line, data_donat)
+      }
+    }
+
+
+    this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        line_detail
+      }
+    }), () => {
+      console.log('OTHR STT UNT');
+      console.log(this.state.other_state);
+
+    })
+  }
+
+  getunitsegmen_efektivitas = async () => {
+    const { other_state } = this.state
+    let api_path = `/efektivitas_${other_state.on_detail_line}_detail_detail`
+    let column_datas = `efektivitas_${other_state.on_detail_line}_detail_detail`
+
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1, pagesize: 10000
+        },
+        filter: {},
+      },
+    }
+    if (other_state.id_ruang_lingkup) {
+      datafilter.filter.filter.id_ruang_lingkup = other_state.id_ruang_lingkup
+    }
+    if (other_state.id_periode) {
+      datafilter.filter.filter.id_periode = other_state.id_periode
+    }
+    if (other_state.id_unit_detail) {
+      datafilter.filter.filter.id_lokasi = other_state.id_unit_detail
+      if (other_state.on_detail_line == 'tod') {
+        delete datafilter.filter.filter.id_lokasi
+        datafilter.filter.filter.id_unit = other_state.id_unit_detail
+      }
+    }
+
+    const { getapi_services } = api_services({ api_path })
+    let dtefektivitass = await getapi_services(datafilter)
+    if (dtefektivitass.code || dtefektivitass.error) {
+      return this.setState(state => ({
+        other_state: {
+          ...state.other_state,
+          unit_detail: {}
+        }
+      }))
+    }
+
+    if (!dtefektivitass[column_datas]) return
+
+    let unit_detail = {}
+    if (['csa', 'tod', 'toe', 'too'].includes(other_state.on_detail_line)) {
+      for (let m in dtefektivitass[column_datas]) {
+        if (!unit_detail[m]) {
+          unit_detail[m] = {
+            donat: {},
+            bar: {}
+          }
+        }
+
+        // unit_detail[m].donat = this.getdonat_efektivitas(other_state.on_detail_line, dtefektivitass[column_datas][m])
+        unit_detail[m].donat = this.getdonat_efektivitas(other_state.on_detail_line, dtefektivitass[column_datas][m].map(x => ({ ...x, status_kosong: x[column_efektivitas[other_state.on_detail_line]] })))
+      }
+    }
+    if (['kuesioner'].includes(other_state.on_detail_line)) {
+      for (let m in dtefektivitass[column_datas]) {
+        if (!unit_detail[m]) {
+          unit_detail[m] = {
+            donat: {},
+            bar: {}
+          }
+        }
+        let data_donat = dtefektivitass[column_datas][m]
+        if (other_state.on_detail_line == 'kuesioner') {
+          data_donat = data_donat.map(x => ({ ...x, status_pengajuan: x.status == 'draft' ? '0' : '1' }))
+        }
+
+        unit_detail[m].donat = this.getdonatother_efektivitas(other_state.on_detail_line, data_donat)
+      }
+    }
+    if (['remediasi', 'dod'].includes(other_state.on_detail_line)) {
+      for (let m in dtefektivitass[column_datas]) {
+        if (!unit_detail[m]) {
+          unit_detail[m] = {
+            donat: {},
+            bar: {}
+          }
+        }
+        // let data_donat = dtefektivitass[column_datas][m]
+        let data_donat = dtefektivitass[column_datas][m].map(x => ({ ...x, status_kosong: x[column_efektivitas[other_state.on_detail_line]] }))
+        if (other_state.on_detail_line == 'dod') {
+          data_donat = dtefektivitass[column_datas][m].map(x => ({ ...x, status: x.kesimpulan_defisiensi }))
+        }
+
+        unit_detail[m].donat = this.getdonatother_efektivitas(other_state.on_detail_line, data_donat)
+      }
+    }
+
+
+    this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        unit_detail
+      }
+    }), () => {
+      console.log('OTHR STT UNT');
+      console.log(this.state.other_state);
+
+    })
+  }
+
+  getunitdetail_efektivitas = async () => {
+    const { other_state } = this.state
+    let api_path = `/efektivitas_${other_state.on_detail_line}_detail_detail_detail`
+    let column_datas = `efektivitas_${other_state.on_detail_line}_detail_detail_detail`
+
+    if (['too', 'toe', 'dod', 'remediasi'].includes(other_state.on_detail_line)) {
+      api_path = `/efektivitas_${other_state.on_detail_line}_detail_detail`
+      column_datas = `efektivitas_${other_state.on_detail_line}_detail_detail`
+
+    }
+
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1, pagesize: 10000
+        },
+        filter: {},
+      },
+    }
+    if (other_state.id_ruang_lingkup) {
+      datafilter.filter.filter.id_ruang_lingkup = other_state.id_ruang_lingkup
+    }
+    if (other_state.id_periode) {
+      datafilter.filter.filter.id_periode = other_state.id_periode
+    }
+    if (other_state.id_unit_detail) {
+      datafilter.filter.filter.id_lokasi = other_state.id_unit_detail
+      if (other_state.on_detail_line == 'tod') {
+        delete datafilter.filter.filter.id_lokasi
+        datafilter.filter.filter.id_unit = other_state.id_unit_detail
+      }
+    }
+    if (other_state.id_segmen_detail) {
+      datafilter.filter.filter.id_segmen = other_state.id_segmen_detail
+    }
+
+    const { getapi_services } = api_services({ api_path })
+    let response = await getapi_services(datafilter)
+    if (response.code || response.error) {
+      return
+    }
+
+    let unit_detail_detail = response[column_datas]
+    if (other_state.on_detail_line == 'toe') {
+      unit_detail_detail = []
+      for (let m in response[column_datas]) {
+        unit_detail_detail.push(response[column_datas][m])
+      }
+    }
+
+    this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        unit_detail_detail
+      }
+    }))
+  }
+
+  get_efektivitas_detaildetaildetail_elc_itgc = async () => {
+    const { other_state } = this.state
+    let api_path = `/efektivitas_${other_state.on_detail_line}_detail_detail_detail`
+    let column_datas = `efektivitas_${other_state.on_detail_line}_detail_detail_detail`
+
+    if (['too', 'toe', 'dod', 'remediasi'].includes(other_state.on_detail_line)) {
+      api_path = `/efektivitas_${other_state.on_detail_line}_detail_detail`
+      column_datas = `efektivitas_${other_state.on_detail_line}_detail_detail`
+
+    }
+
+    const datafilter = {
+      filter: {
+        paginate: {
+          page: 1, pagesize: 10000
+        },
+        filter: {},
+      },
+    }
+    if (other_state.id_ruang_lingkup) {
+      datafilter.filter.filter.id_ruang_lingkup = other_state.id_ruang_lingkup
+    }
+    if (other_state.id_periode) {
+      datafilter.filter.filter.id_periode = other_state.id_periode
+    }
+    if (other_state.id_unit_detail) {
+      datafilter.filter.filter.id_lokasi = other_state.id_unit_detail
+      if (other_state.on_detail_line == 'tod') {
+        delete datafilter.filter.filter.id_lokasi
+        datafilter.filter.filter.id_unit = other_state.id_unit_detail
+      }
+    }
+    if (other_state.id_segmen_detail) {
+      datafilter.filter.filter.id_segmen = other_state.id_segmen_detail
+    }
+
+    const { getapi_services } = api_services({ api_path })
+    let response = await getapi_services(datafilter)
+    if (response.code || response.error) {
+      return
+    }
+
+    let unit_detail_detail = response[column_datas]
+    if (other_state.on_detail_line == 'toe') {
+      unit_detail_detail = []
+      for (let m in response[column_datas]) {
+        unit_detail_detail.push(response[column_datas][m])
+      }
+    }
+
+    this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        unit_detail_detail
+      }
+    }))
+  }
+  // EFEKTIVITAS
+  // EFEKTIVITAS
+  // EFEKTIVITAS
+  // EFEKTIVITAS
+
+  update_periode_jadwal = async () => {
+    const { getapi_services } = api_services({ api_path: `/update_periode_jadwal` })
+    await getapi_services({})
+  }
+
+
+  // SUMMARY 
+  getrcmunit = async () => {
+    const { getapi_services } = api_services({ api_path: `/rcm_unit` })
+    const { other_state } = this.state
+
+    const fltr = {
+      filter: {
+        paginate: {
+          page: 1,
+          pagesize: 1
+        },
+        filter: {},
+      },
+    }
+
+    if (!other_state.id_periode || !other_state.id_ruang_lingkup) return
+    if (other_state.id_periode) {
+      fltr.filter.filter.id_periode = other_state.id_periode
+    }
+    if (other_state.id_ruang_lingkup) {
+      fltr.filter.filter.id_ruang_lingkup = other_state.id_ruang_lingkup
+    }
+
+    this.setState({ is_loading: true })
+
+    const response = await getapi_services(fltr)
+    this.setState({ is_loading: false })
+    if (response.error || response.code) return
+
+    let jumlah_kontrol = 0
+    let jumlah_segmen = 0
+    let jumlah_unit = 0
+
+    if (response.header) {
+      jumlah_kontrol = response.header.rcm
+      jumlah_segmen = response.header.segmen
+      jumlah_unit = response.header.unit
+    }
+
+    this.setState(state => ({
+      other_state: {
+        ...state.other_state,
+        jumlah_kontrol,
+        jumlah_segmen,
+        jumlah_unit
+      }
+    }))
+  }
+
+
+  handlesend_reminder = async (jenis) => {
+    const confirm = window.confirm('Proses ini memungkinkan membutuhkan waktu yang lama, Apakah Anda ingin melanjutkan?')
+    if (!confirm) {
+      return
+    }
+    // console.log('LANJYUT!!');
+    // return
+
+    const { other_state } = this.state
+    const { postapi_services } = api_services({ api_path: `/reminder/${jenis}` })
+    const body = {
+      id_periode: other_state.id_periode,
+      id_ruang_lingkup: other_state.id_ruang_lingkup
+    }
+    $('.layout-app').addClass('is-loading-global')
+    const response = await postapi_services({ ...body })
+    $('.layout-app').removeClass('is-loading-global')
+    if (response.code || response.error) return
+  }
+
+  render() {
+    return (
+      <>
+        <HeaderApp
+          title={`Dashboard`}
+          is_loading={this.state.is_loading}
+          data_btn={[]}
+        />
+        <div className='container pl-4 pr-4'>
+
+
+
+          <div className="row">
+            <div className="col-md-3">
+              <FormGroup
+                label={"Ruang Lingkup"}
+                required={false}
+                message_error={null}
+                formCol
+              >
+                <div className="col">
+
+                  <InputSelect
+                    ref={null}
+                    id=''
+                    type='select'
+                    placeholder={'Pilih...'}
+                    className='block mt-1 w-full'
+                    data={ruang_lingkup_combo}
+                    required={false}
+                    // isClearable
+                    isMulti={false}
+                    value={this.state.other_state.id_ruang_lingkup}
+                    onChange={value => {
+                      // const { filter } = this.state
+                      // filter.id_ruang_lingkup = value
+                      this.setState(state => ({
+                        other_state: {
+                          ...state.other_state,
+                          id_ruang_lingkup: value,
+                          id_periode: '',
+                          id_unit_detail: '',
+                          id_segmen_detail: '',
+                          no_sub_proses: ''
+                        },
+                        // filter
+                      }), () => {
+                        this.handlegetperiode()
+                        this.reload_state_donat()
+                      })
+                    }}
+                    message_error={null}
+                    onError={() => null}
+
+                  />
+
+                </div>
+              </FormGroup>
+            </div>
+            <div className="col-md-3">
+              <FormGroup
+                label={"Periode"}
+                required={false}
+                message_error={null}
+                formCol
+              >
+                <div className="col">
+
+                  <InputSelectAsync
+                    ref={null}
+                    id='id_periode'
+                    type='select'
+                    placeholder={'Pilih...'}
+                    className='block mt-1 w-full'
+                    data={this.state.listcombo.id_periode ? this.state.listcombo.id_periode : []}
+                    required={false}
+                    // isClearable
+                    isMulti={false}
+                    value={this.state.other_state.id_periode}
+                    onChange={value => {
+                      this.setState(state => ({
+                        other_state: {
+                          ...state.other_state,
+                          id_periode: value
+                        }
+                      }), () => {
+                        this.gets()
+                        // this.getrcmunit()
+                      })
+                    }}
+                    message_error={null}
+                    onError={() => null}
+                    loadOptions={this.handlegetperiode}
+                  />
+
+                </div>
+              </FormGroup>
+            </div>
+            <div className="col-md-3">
+              <FormGroup
+                label={"Jenis"}
+                required={false}
+                message_error={null}
+                formCol
+              >
+                <div className="col">
+
+                  <InputSelect
+                    ref={null}
+                    id=''
+                    type='select'
+                    placeholder={'Pilih...'}
+                    className='block mt-1 w-full'
+                    data={progress_efektivitas_combo}
+                    required={false}
+                    // isClearable
+                    isMulti={false}
+                    value={this.state.other_state.jenis_progress_efektivitas}
+                    onChange={value => {
+                      this.setState(state => ({
+                        other_state: {
+                          ...state.other_state,
+                          jenis_progress_efektivitas: value,
+                          id_unit_detail: '',
+                          id_segmen_detail: '',
+                          no_sub_proses: ''
+                        }
+                      }), this.gets)
+                    }}
+                    message_error={null}
+                    onError={() => null}
+
+                  />
+
+                </div>
+              </FormGroup>
+            </div>
+          </div>
+
+          {this.state.other_state.id_ruang_lingkup && this.state.other_state.id_periode ? (
+            <div className="row mb-3">
+              <div className="col-md-4">
+                <div className="rcm-card-up-table">
+                  <div>{this.state.other_state?.jumlah_unit || ''}</div>
+                  <div>Unit</div>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="rcm-card-up-table">
+                  <div>{this.state.other_state?.jumlah_kontrol || ''}</div>
+                  <div>Kontrol</div>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="rcm-card-up-table">
+                  <div>{this.state.other_state?.jumlah_segmen || ''}</div>
+                  <div>Segmen</div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+
+          <div className="row">
+            <div className="col-md-12 mb-3">
+              <div className="card card-dashboard">
+                <div className="card-header bold d-flex justify-content-between">
+                  1st Line
+
+                  <BtnIconAct
+                    icon="send"
+                    label="Reminder"
+                    onTap={() => {
+                      this.handlesend_reminder('csa')
+                    }}
+                    className="bg-primary"
+                  />
+                </div>
+                <div className="card-body">
+                  <div className="row justify-content-center">
+                    {(this.state.other_state?.csa?.donat?.datasets && this.state.other_state?.csa?.donat?.datasets.length > 0) ? (
+                      <div className="col-sm-4">
+                        <div className='card-tt'>CSA</div>
+                        <PieOrBar
+                          title={kk_idx['csa']}
+                          data={this.state.other_state.csa.donat}
+                          ondetail={() => {
+                            this.setState(state => ({
+                              titleModal: 'Detail',
+                              showModal: true,
+                              other_state: {
+                                ...state.other_state,
+                                on_detail_line: 'csa'
+                              }
+                            }), this.getunits)
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                    {(this.state.other_state?.remediasi?.donat?.datasets && this.state.other_state?.remediasi?.donat?.datasets.length > 0) ? (
+                      <div className="col-md-4">
+                        <div className='card-tt'>Remediasi</div>
+                        <PieOrBar
+                          title="Remediasi"
+                          data={this.state.other_state.remediasi.donat}
+                          ondetail={this.state.other_state.id_ruang_lingkup > 5 && this.state.other_state.jenis_progress_efektivitas == 'progres' ? null : () => {
+                            if (this.state.other_state.id_ruang_lingkup > 5 && this.state.other_state.jenis_progress_efektivitas == 'efektivitas') {
+                              return this.setState(state => ({
+                                titleModal: 'Detail',
+                                showModalList: true,
+                                other_state: {
+                                  ...state.other_state,
+                                  on_detail_line: 'remediasi'
+                                }
+                              }), this.get_efektivitas_detaildetaildetail_elc_itgc)
+                            }
+                            this.setState(state => ({
+                              titleModal: 'Detail',
+                              showModal: true,
+                              other_state: {
+                                ...state.other_state,
+                                on_detail_line: 'remediasi'
+                              }
+                            }), this.getunits)
+                          }}
+                        />
+                      </div>
+                    ) : null}
+
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-md-12 mb-3">
+              <div className="card card-dashboard">
+                <div className="card-header bold d-flex justify-content-between">
+                  2nd Line
+
+                  <BtnIconAct
+                    icon="send"
+                    label="Reminder"
+                    onTap={() => {
+                      this.handlesend_reminder('too')
+                    }}
+                    className="bg-primary"
+                  />
+                </div>
+                <div className="card-body">
+                  <div className="row justify-content-center">
+                    {(this.state.other_state?.too?.donat?.datasets && this.state.other_state?.too?.donat?.datasets.length > 0) ? (
+                      <div className="col-sm-4">
+                        <div className='card-tt'>TOO</div>
+                        <PieOrBar
+                          title={kk_idx['too']}
+                          data={this.state.other_state.too.donat}
+                          ondetail={this.state.other_state.id_ruang_lingkup > 5 && this.state.other_state.jenis_progress_efektivitas == 'progres' ? null : () => {
+                            if (this.state.other_state.id_ruang_lingkup > 5 && this.state.other_state.jenis_progress_efektivitas == 'efektivitas') {
+                              return this.setState(state => ({
+                                titleModal: 'Detail',
+                                showModalList: true,
+                                other_state: {
+                                  ...state.other_state,
+                                  on_detail_line: 'too'
+                                }
+                              }), this.get_efektivitas_detaildetaildetail_elc_itgc)
+                            }
+                            this.setState(state => ({
+                              titleModal: 'Detail',
+                              showModal: true,
+                              other_state: {
+                                ...state.other_state,
+                                on_detail_line: 'too'
+                              }
+                            }), this.getunits)
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-md-12 mb-3">
+              <div className="card card-dashboard">
+                <div className="card-header bold d-flex justify-content-between">
+                  3rd Line
+
+                  <BtnIconAct
+                    icon="send"
+                    label="Reminder"
+                    onTap={() => {
+                      this.handlesend_reminder('tod')
+                    }}
+                    className="bg-primary"
+                  />
+                </div>
+                <div className="card-body">
+                  <div className="row justify-content-center">
+                    {(this.state.other_state?.tod?.donat?.datasets && this.state.other_state?.tod?.donat?.datasets.length > 0) ? (
+                      <div className="col-sm-4">
+                        <div className='card-tt'>TOD</div>
+                        <PieOrBar
+                          title={kk_idx['tod']}
+                          data={this.state.other_state.tod.donat}
+                          ondetail={() => {
+                            this.setState(state => ({
+                              titleModal: 'Detail',
+                              showModal: true,
+                              other_state: {
+                                ...state.other_state,
+                                on_detail_line: 'tod'
+                              }
+                            }), this.getunits)
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                    {(this.state.other_state?.toe?.donat?.datasets && this.state.other_state?.toe?.donat?.datasets.length > 0) ? (
+                      <div className="col-sm-4">
+                        <div className='card-tt'>TOE</div>
+                        <PieOrBar
+                          title={kk_idx['toe']}
+                          data={this.state.other_state.toe.donat}
+                          ondetail={() => {
+                            const { other_state } = this.state
+                            if (other_state.id_ruang_lingkup > 5 && other_state.jenis_progress_efektivitas == 'progres') {
+                              return this.setState(state => ({
+                                titleModal: 'Detail',
+                                showModalList: true,
+                                other_state: {
+                                  ...state.other_state,
+                                  on_detail_line: 'toe'
+                                }
+                              }), this.get_progres_detaildetaildetail_elc_itgc)
+                            }
+                            if (this.state.other_state.id_ruang_lingkup > 5 && this.state.other_state.jenis_progress_efektivitas == 'efektivitas') {
+                              return this.setState(state => ({
+                                titleModal: 'Detail',
+                                showModalList: true,
+                                other_state: {
+                                  ...state.other_state,
+                                  on_detail_line: 'toe'
+                                }
+                              }), this.get_efektivitas_detaildetaildetail_elc_itgc)
+                            }
+                            this.setState(state => ({
+                              titleModal: 'Detail',
+                              showModal: true,
+                              other_state: {
+                                ...state.other_state,
+                                on_detail_line: 'toe'
+                              }
+                            }), this.getunits)
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                    {(this.state.other_state?.dod?.donat?.datasets && this.state.other_state?.dod?.donat?.datasets.length > 0) ? (
+
+                      <div className="col-sm-4">
+                        <div className='card-tt'>DOD</div>
+                        <PieOrBar
+                          title={kk_idx['dod']}
+                          data={this.state.other_state.dod.donat}
+                          ondetail={this.state.other_state.id_ruang_lingkup > 5 && this.state.other_state.jenis_progress_efektivitas == 'progres' ? null : () => {
+                            if (this.state.other_state.id_ruang_lingkup > 5 && this.state.other_state.jenis_progress_efektivitas == 'efektivitas') {
+                              return this.setState(state => ({
+                                titleModal: 'Detail',
+                                showModalList: true,
+                                other_state: {
+                                  ...state.other_state,
+                                  on_detail_line: 'dod'
+                                }
+                              }), this.get_efektivitas_detaildetaildetail_elc_itgc)
+                            }
+                            this.setState(state => ({
+                              titleModal: 'Detail',
+                              showModal: true,
+                              other_state: {
+                                ...state.other_state,
+                                on_detail_line: 'dod'
+                              }
+                            }), this.getunits)
+                          }}
+                        />
+                      </div>
+                    ) : null}
+
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+          </div>
+        </div>
+
+        {this.modaldetail(
+          <ModalUnit
+            linearr={
+              this.state.other_state.jenis_progress_efektivitas == 'progres' && ruang_lingkup_id[this.state.other_state.id_ruang_lingkup] == 'tlc' ?
+                line_tlc_progres
+                : this.state.other_state.jenis_progress_efektivitas == 'efektivitas' && ruang_lingkup_id[this.state.other_state.id_ruang_lingkup] == 'tlc' ?
+                  line_tlc_efektivitas
+                  : this.state.other_state.jenis_progress_efektivitas == 'progres' && ['elc', 'itgc'].includes(ruang_lingkup_id[this.state.other_state.id_ruang_lingkup]) ?
+                    line_elcitgc_progres
+                    : this.state.other_state.jenis_progress_efektivitas == 'efektivitas' && ['elc', 'itgc'].includes(ruang_lingkup_id[this.state.other_state.id_ruang_lingkup]) ?
+                      line_elcitgc_efektivitas
+                      : []
+            }
+            other_state={this.state.other_state}
+            ondetailunit={async item => {
+              const { other_state } = this.state
+              console.log('ModalUnit=>item');
+              console.log(item);
+
+              let id_unit = ''
+              for (let m of this.state.listcombo.id_lokasi) {
+                if (m.label.trim() == item.trim()) {
+                  id_unit = m.value
+                  break
+                }
+              }
+
+              if (['elc', 'itgc'].includes(ruang_lingkup_id[other_state.id_ruang_lingkup])) {
+                return this.setState(state => ({
+                  other_state: {
+                    ...state.other_state,
+                    id_unit_detail: id_unit,
+                  },
+                  showModalList: true
+                }), () => {
+                  if (other_state.jenis_progress_efektivitas == 'progres') {
+                    this.get_progres_detaildetaildetail_elc_itgc()
+                  } else {
+                    this.get_efektivitas_detaildetaildetail_elc_itgc()
+                  }
+                })
+              }
+
+              let id_segmen_detail = ''
+              if (
+                ['kuesioner', 'csa', 'toe'].includes(other_state.on_detail_line) &&
+                other_state.jenis_progress_efektivitas == 'progres'
+              ) {
+                for (let m of this.state.listcombo.id_segmen) {
+                  if (m.label.trim() == item.trim()) {
+                    id_segmen_detail = m.value
+                    break
+                  }
+                }
+              }
+
+              console.log('id_segmen_detail');
+              console.log(id_segmen_detail);
+
+              await this.reload_state_unitsegmen('segmen')
+
+              if (
+                ['toe', 'too', 'dod', 'remediasi'].includes(other_state.on_detail_line) &&
+                other_state.jenis_progress_efektivitas == 'efektivitas'
+              ) {
+                for (let m of this.state.listcombo.id_segmen) {
+                  if (m.label == item) {
+                    id_segmen_detail = m.value
+                    break
+                  }
+                }
+              }
+
+              if (other_state.on_detail_line == 'toe' && other_state.jenis_progress_efektivitas == 'progres') {
+                return this.setState(state => ({
+                  other_state: {
+                    ...state.other_state,
+                    id_unit_detail: id_unit,
+                    id_segmen_detail
+                  },
+                  showModalSegmen: true
+                }), this.getunitdetails)
+              }
+
+              if (['too', 'toe', 'dod', 'remediasi'].includes(other_state.on_detail_line)) {
+
+                this.setState(state => ({
+                  other_state: {
+                    ...state.other_state,
+                    id_unit_detail: id_unit,
+                    id_segmen_detail
+                  },
+                  showModalList: true
+                }), this.getunitdetails)
+
+              } else {
+
+                this.setState(state => ({
+                  other_state: {
+                    ...state.other_state,
+                    id_unit_detail: id_unit,
+                    id_segmen_detail
+                  },
+                  showModalSegmen: true
+                }), this.getunitdetails)
+              }
+            }}
+          />
+        )}
+        {this.modaldetail_segmen(
+          <ModalSegmen
+            linearr={
+              this.state.other_state.jenis_progress_efektivitas == 'progres' && ruang_lingkup_id[this.state.other_state.id_ruang_lingkup] == 'tlc' ?
+                line_tlc_progres
+                : this.state.other_state.jenis_progress_efektivitas == 'efektivitas' && ruang_lingkup_id[this.state.other_state.id_ruang_lingkup] == 'tlc' ?
+                  line_tlc_efektivitas
+                  : this.state.other_state.jenis_progress_efektivitas == 'progres' && ['elc', 'itgc'].includes(ruang_lingkup_id[this.state.other_state.id_ruang_lingkup]) ?
+                    line_elcitgc_progres
+                    : this.state.other_state.jenis_progress_efektivitas == 'efektivitas' && ['elc', 'itgc'].includes(ruang_lingkup_id[this.state.other_state.id_ruang_lingkup]) ?
+                      line_elcitgc_efektivitas
+                      : []
+            }
+            other_state={this.state.other_state}
+            ondetailsegmen={item => {
+              console.log('ModalSegmen=>item');
+              console.log(item);
+
+
+              const { other_state } = this.state
+
+              if (other_state.on_detail_line == 'toe' && other_state.jenis_progress_efektivitas == 'progres') {
+                let no_sub_proses = item
+                return this.setState(state => ({
+                  other_state: {
+                    ...state.other_state,
+                    no_sub_proses
+                  },
+                  showModalList: true
+                }), this.getunit_detail_details)
+              }
+
+              let id_segmen_detail = ''
+              if (
+                ['kuesioner', 'csa', 'tod', 'toe'].includes(other_state.on_detail_line) &&
+                other_state.jenis_progress_efektivitas == 'progres'
+              ) {
+                for (let m of this.state.listcombo.id_segmen) {
+                  if (m.label == item) {
+                    id_segmen_detail = m.value
+                    break
+                  }
+                }
+              }
+
+              if (
+                ['csa', 'tod', 'toe', 'too', 'dod', 'remediasi'].includes(other_state.on_detail_line) &&
+                other_state.jenis_progress_efektivitas == 'efektivitas'
+              ) {
+                for (let m of this.state.listcombo.id_segmen) {
+                  if (m.label == item) {
+                    id_segmen_detail = m.value
+                    break
+                  }
+                }
+              }
+
+              this.setState(state => ({
+                other_state: {
+                  ...state.other_state,
+                  id_segmen_detail
+                },
+                showModalList: true
+              }), this.getunit_detail_details)
+            }}
+          />
+        )}
+        {this.modallist(
+          <ModalUnitList
+            other_state={this.state.other_state}
+            listreferensi={this.state.listreferensi}
+          />
+        )}
+      </>
+    )
+  }
+}
+
+const PieOrBar = props => {
+
+  // console.log('PieOrBar');
+  // console.log(props);
+  const chartRef = useRef();
+  const { is_bar, data, title, ondetail } = props
+
+  const centerTextPlugin = (total) => {
+    return {
+      id: 'centerText',
+      afterDraw: (chart) => {
+        const { width, height } = chart;
+        const { top, bottom, left, right } = chart.chartArea;
+
+        const ctx = chart.ctx;
+        ctx.save();
+
+        const fontSize = (height / 150).toFixed(2);
+        ctx.font = `${fontSize}em sans-serif`;
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+
+        const text = total?.toString() || '0';
+
+        const textX = (left + right) / 2;
+        const textY = (top + bottom) / 2;
+
+        ctx.fillText(text, textX, textY);
+        ctx.restore();
+      },
+    }
+  }
+
+
+
+  if (is_bar && data && Object.keys(data).length > 0) {
+    return (
+      <Bar
+        data={data}
+        options={optiondonat}
+        height={70}
+      />
+    )
+  }
+  if (!is_bar && data && Object.keys(data).length > 0 && data.datasets.length > 0) {
+    return (
+      <>
+        <Doughnut
+          ref={chartRef}
+          options={{
+            ...optiondonat,
+            plugins: {
+              ...optiondonat.plugins,
+              title: {
+                ...optiondonat.plugins.title,
+                text: title
+              }
+            }
+          }}
+          data={data}
+          plugins={data.datasets.length > 0 ? [centerTextPlugin(data.total)] : []}
+        // height={300}
+        // width={300}
+        />
+        {ondetail && data && data.datasets && data.datasets.length > 0 ? (
+          <div className="d-flex justify-content-center mt-3 mb-3">
+            <Button
+              className="btn-default-app"
+              disabled={false}
+              onClick={ondetail}
+            >
+              Detail
+              <span className="material-icons icon-btn-left ms-1">
+                chevron_right
+              </span>
+            </Button>
+          </div>
+        ) : null}
+      </>
+
+    )
+  }
+  return null
+}
+
+const ModalUnit = (props) => {
+
+  return (
+    <div className="row">
+      {props.other_state.line_detail && Object.keys(props.other_state.line_detail).length > 0 ? (
+        <>
+          {Object.keys(props.other_state.line_detail).map((m, i) => (
+            <div className="col-md-3 mb-3" key={i}>
+              <div className="card card-dashboard">
+                <div className="card-header bold">
+                  {m}
+                </div>
+                <div className="card-body">
+                  <div className="row">
+                    <div className="col-sm-12">
+                      <PieOrBar
+                        title={m}
+                        data={props.other_state.line_detail[m].donat}
+                        ondetail={props.linearr.includes(props.other_state.on_detail_line) ? () => {
+                          props.ondetailunit(m)
+                        } : null}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+const ModalSegmen = (props) => {
+  return (
+    <div className="row">
+      {props.other_state.unit_detail && Object.keys(props.other_state.unit_detail).length > 0 ? (
+        <>
+          {Object.keys(props.other_state.unit_detail).map((m, i) => (
+            <div className="col-md-3 mb-3" key={i}>
+              <div className="card card-dashboard">
+                <div className="card-header bold">
+                  {m}
+                </div>
+                <div className="card-body">
+                  <div className="row">
+                    <div className="col-sm-12">
+                      <PieOrBar
+                        title={m}
+                        data={props.other_state.unit_detail[m].donat}
+                        // ondetail={(props.other_state.jenis_progress_efektivitas == 'progres' ? ['kuesioner', 'csa', 'tod', 'toe'] : ['kuesioner', 'csa', 'tod', 'too', 'toe', 'dod', 'remediasi']).includes(props.other_state.on_detail_line) ? () => {
+                        //   props.ondetailsegmen(m)
+                        // } : null}
+
+                        ondetail={props.linearr.includes(props.other_state.on_detail_line) ? () => {
+                          props.ondetailsegmen(m)
+                        } : null}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+const ModalUnitList = (props) => {
+
+  const head_toe = [
+    'Ref Kontrol',
+    'Frekuensi',
+    'Jumlah CSA (dalam 1 tahun dari semua unit)',
+    'Standard sampel TOE (1 tahun)',
+    'Kekurangan sampel'
+  ]
+
+  const head_line1 = [
+    'Ref Kontrol',
+    'No Sub Proses',
+    'Ref Proses lvl 4',
+    'Ref Proses lvl 5',
+    'Preparer',
+    'Efektivitas',
+  ]
+
+  const head_efektivitas = [
+    'No Sub Proses',
+    'Ref Kontrol',
+    'Unit',
+    'Efektivitas',
+
+  ]
+
+  let heads = []
+  if (props.other_state.jenis_progress_efektivitas == 'progres' && props.other_state.on_detail_line == 'kuesioner') {
+    heads = head_line1.map(m => m == 'Efektivitas' ? 'Status' : m)
+    if (props.other_state.id_ruang_lingkup > 5) {
+      heads = head_line1.map(m => m == 'Efektivitas' ? 'Status' : m).filter(m => !['Ref Proses lvl 4', 'Ref Proses lvl 5', 'No Sub Proses'].includes(m))
+    }
+  }
+  if (props.other_state.jenis_progress_efektivitas == 'progres' && props.other_state.on_detail_line == 'csa') {
+    heads = head_line1.map(m => m == 'Efektivitas' ? 'Status' : m)
+    if (props.other_state.id_ruang_lingkup > 5) {
+      heads = head_line1.map(m => m == 'Efektivitas' ? 'Status' : m).filter(m => !['Ref Proses lvl 4', 'Ref Proses lvl 5', 'No Sub Proses'].includes(m))
+    }
+  }
+  if (props.other_state.jenis_progress_efektivitas == 'progres' && props.other_state.on_detail_line == 'tod') {
+    heads = head_line1.map(m => m == 'Efektivitas' ? 'Status' : m).filter(m => m != 'Ref Proses lvl 4' && m != 'Ref Proses lvl 5')
+    // heads.splice(heads.length - 1, 0, 'Sub Bid')
+    if (props.other_state.id_ruang_lingkup > 5) {
+      heads = head_line1.map(m => m == 'Efektivitas' ? 'Status' : m).filter(m => !['Ref Proses lvl 4', 'Ref Proses lvl 5', 'No Sub Proses'].includes(m))
+    }
+    heads.splice(heads.length - 1, 0, 'Sub Bid')
+  }
+  if (props.other_state.jenis_progress_efektivitas == 'progres' && props.other_state.on_detail_line == 'too') {
+    // heads = head_too
+  }
+  if (props.other_state.jenis_progress_efektivitas == 'progres' && props.other_state.on_detail_line == 'toe' && props.other_state.unit_detail_detail.length > 0) {
+    if (props.other_state.id_ruang_lingkup > 5) {
+
+    }
+    let head_first = head_toe.filter((m, i) => i <= head_toe.findIndex(item => item === 'Frekuensi') ? m : null)
+    let head_lst = head_toe.filter((m, i) => i > head_toe.findIndex(item => item === 'Frekuensi') ? m : null)
+
+    heads = [
+      ...head_first,
+      ...Object.keys(props.other_state.unit_detail_detail[0].data_periode).map(m => props.other_state.unit_detail_detail[0].data_periode[m].nama),
+      ...head_lst,
+      'Status'
+    ]
+  }
+
+
+  // 
+  // 
+  if (props.other_state.jenis_progress_efektivitas == 'efektivitas' && props.other_state.on_detail_line == 'csa') {
+    heads = head_line1
+    if (props.other_state.id_ruang_lingkup > 5) {
+      heads = head_line1.filter(m => !['Ref Proses lvl 4', 'Ref Proses lvl 5', 'No Sub Proses'].includes(m))
+    }
+  }
+  if (props.other_state.jenis_progress_efektivitas == 'efektivitas' && props.other_state.on_detail_line == 'tod') {
+    heads = head_line1
+    heads.splice(heads.length - 1, 0, 'Sub Bid')
+    if (props.other_state.id_ruang_lingkup > 5) {
+      heads = head_line1.filter(m => !['Ref Proses lvl 4', 'Ref Proses lvl 5', 'No Sub Proses'].includes(m))
+    }
+  }
+  if (props.other_state.jenis_progress_efektivitas == 'efektivitas' && props.other_state.on_detail_line == 'too') {
+    heads = head_efektivitas
+    if (props.other_state.id_ruang_lingkup > 5) {
+      heads = head_efektivitas.filter(m => m != 'No Sub Proses')
+    }
+  }
+  if (props.other_state.jenis_progress_efektivitas == 'efektivitas' && props.other_state.on_detail_line == 'toe') {
+    heads = head_efektivitas.filter(m => m != 'No Sub Proses').map(m => m == 'Unit' ? 'Frekuensi' : m)
+  }
+  if (props.other_state.jenis_progress_efektivitas == 'efektivitas' && props.other_state.on_detail_line == 'dod') {
+    heads = head_efektivitas.map(m => m == 'Efektivitas' ? 'Kesimpulan' : m)
+    if (props.other_state.id_ruang_lingkup > 5) {
+      heads = head_efektivitas.map(m => m == 'Efektivitas' ? 'Kesimpulan' : m).filter(m => m != 'No Sub Proses')
+    }
+  }
+  if (props.other_state.jenis_progress_efektivitas == 'efektivitas' && props.other_state.on_detail_line == 'remediasi') {
+    heads = head_efektivitas.map(m => m == 'Efektivitas' ? 'Kesimpulan' : m)
+    if (props.other_state.id_ruang_lingkup > 5) {
+      heads = head_efektivitas.map(m => m == 'Efektivitas' ? 'Kesimpulan' : m).filter(m => m != 'No Sub Proses')
+    }
+  }
+
+  return (
+    <div className="row">
+      <div className="col-md-12">
+        <table className='w-full table table-auto border-collapse border'>
+          <thead>
+            <tr>
+              <th className="border" style={{ width: 1 }}>No.</th>
+              {heads.map((m, i) => (
+                <th key={i} className="border">{m}</th>
+              ))}
+            </tr>
+          </thead>
+          {props.other_state.jenis_progress_efektivitas == 'progres' ? (
+
+            <tbody>
+              {props.other_state.on_detail_line == 'kuesioner' ? (
+                <>
+                  {props.other_state.unit_detail_detail.map((m, i) => (
+                    <tr key={i}>
+                      <td className="border text-center">{i + 1}</td>
+                      <td className="border">{m.ref_kontrol}</td>
+                      {props.other_state.id_ruang_lingkup > 5 ? null : (
+                        <>
+                          <td className="border">{m.no_sub_proses}</td>
+                          <td className="border ">{m.ref_proses_lvl4}</td>
+                          <td className="border ">{m.ref_proses_lvl5}</td>
+                        </>
+                      )}
+                      <td className="border ">{m.control_preparer}</td>
+                      <td className="border">{m.status == 'draft' ? 'Draft' : 'Sudah Kuesioner'}</td>
+                    </tr>
+                  ))}
+                </>
+              ) : props.other_state.on_detail_line == 'csa' ? (
+                <>
+                  {props.other_state.unit_detail_detail.map((m, i) => (
+                    <tr key={i}>
+                      <td className="border text-center">{i + 1}</td>
+                      <td className="border">{m.ref_kontrol}</td>
+                      {props.other_state.id_ruang_lingkup > 5 ? null : (
+                        <>
+                          <td className="border">{m.no_sub_proses}</td>
+                          <td className="border ">{m.ref_proses_lvl4}</td>
+                          <td className="border ">{m.ref_proses_lvl5}</td>
+                        </>
+                      )}
+                      <td className="border">{m.control_preparer}</td>
+                      {/* <td className="border">{status_pengajuan_hardcode[m.id_status]}</td> */}
+                      <td className="border">{props.listreferensi.id_status[m.id_status]}</td>
+                    </tr>
+                  ))}
+                </>
+              ) : props.other_state.on_detail_line == 'tod' ? (
+                <>
+                  {props.other_state.unit_detail_detail.map((m, i) => (
+                    <tr key={i}>
+                      <td className="border text-center">{i + 1}</td>
+                      <td className="border">
+                        <div dangerouslySetInnerHTML={{ __html: stringEnter(m.ref_kontrol) }}></div>
+                      </td>
+                      {props.other_state.id_ruang_lingkup > 5 ? null : (
+                        <>
+                          <td className="border">
+                            <div dangerouslySetInnerHTML={{ __html: stringEnter(m.no_sub_proses) }}></div>
+                          </td>
+                        </>
+                      )}
+                      <td className="border">
+                        <div dangerouslySetInnerHTML={{ __html: stringEnter(m.control_preparer_jabatan) }}></div>
+                      </td>
+                      <td className="border">
+                        <div dangerouslySetInnerHTML={{ __html: stringEnter(m.nama_subbid) }}></div>
+                      </td>
+                      {/* <td className="border">{status_pengajuan_hardcode[m.id_status]}</td> */}
+                      <td className="border">{props.listreferensi.id_status[m.id_status]}</td>
+                    </tr>
+                  ))}
+                </>
+              ) : props.other_state.on_detail_line == 'toe' ? (
+                <>
+                  {props.other_state.unit_detail_detail.map((m, i) => (
+                    <tr key={i}>
+                      <td className="border text-center">{i + 1}</td>
+                      <td className="border">{m.ref_kontrol}</td>
+                      <td className="border">{m.frekuensi}</td>
+                      {m.data_periode && Object.keys(m.data_periode).length > 0 ? (
+                        <>
+                          {Object.keys(m.data_periode).map((x, y) => (
+                            <td className="border text-end" key={y}>{m.data_periode[x].jumlah_working_paper}</td>
+                          ))}
+                        </>
+                      ) : null}
+                      <td className="border text-end">{m.jumlah_sampel}</td>
+                      <td className="border text-end">{m.standard_sampel}</td>
+                      <td className="border text-end">{m.kekurangan_sampel}</td>
+                      <td className="border">{props.listreferensi.id_status[m.id_status]}</td>
+                    </tr>
+                  ))}
+                </>
+              ) : null}
+            </tbody>
+          ) : (
+
+            <tbody>
+              {['csa', 'tod'].includes(props.other_state.on_detail_line) ? (
+                <>
+                  {props.other_state.unit_detail_detail.map((m, i) => (
+                    <tr key={i}>
+                      <td className="border text-center">{i + 1}</td>
+                      <td className="border">{m.ref_kontrol}</td>
+                      {props.other_state.id_ruang_lingkup > 5 ? null : (
+                        <>
+                          <td className="border">{m.no_sub_proses}</td>
+                          <td className="border">{m.ref_proses_lvl4}</td>
+                          <td className="border">{m.ref_proses_lvl5}</td>
+                        </>
+                      )}
+                      <td className="border">{props.other_state.on_detail_line == 'tod' ? m.control_preparer_jabatan : m.control_preparer}</td>
+                      {props.other_state.on_detail_line == 'tod' ? (
+                        <td className="border">
+                          <div dangerouslySetInnerHTML={{ __html: stringEnter(m.nama_subbid) }}></div>
+                        </td>
+                      ) : null}
+                      <td className="border">{efektif_tidakefektif_tat_idx[props.other_state.on_detail_line == 'csa' ? m.efektivitas_csa : m.hasil_kesimpulan]}</td>
+
+                    </tr>
+                  ))}
+                </>
+              ) : props.other_state.on_detail_line == 'too' ? (
+                <>
+                  {props.other_state.unit_detail_detail.map((m, i) => (
+                    <tr key={i}>
+                      <td className="border text-center">{i + 1}</td>
+                      {props.other_state.id_ruang_lingkup > 5 ? null : (
+                        <>
+                          <td className="border">{m.no_sub_proses}</td>
+                        </>
+                      )}
+                      <td className="border">{m.ref_kontrol}</td>
+                      <td className="border">{m.lokasi}</td>
+                      <td className="border">{efektif_tidakefektif_tat_idx[props.other_state.on_detail_line == 'csa' ? m.efektivitas_csa : m.hasil_kesimpulan]}</td>
+
+                    </tr>
+                  ))}
+                </>
+              ) : props.other_state.on_detail_line == 'toe' ? (
+                <>
+                  {props.other_state.unit_detail_detail.map((m, i) => (
+                    <tr key={i}>
+                      <td className="border text-center">{i + 1}</td>
+                      <td className="border">{m.ref_kontrol}</td>
+                      <td className="border">{m.frekuensi}</td>
+                      <td className="border">{efektif_tidakefektif_tat_idx[m.hasil_uji_keseluruhan]}</td>
+
+                    </tr>
+                  ))}
+                </>
+              ) : props.other_state.on_detail_line == 'dod' ? (
+                <>
+                  {props.other_state.unit_detail_detail.map((m, i) => (
+                    <tr key={i}>
+                      <td className="border text-center">{i + 1}</td>
+                      {props.other_state.id_ruang_lingkup > 5 ? null : (
+                        <>
+                          <td className="border">{m.no_sub_proses}</td>
+                        </>
+                      )}
+                      <td className="border">{m.ref_kontrol}</td>
+                      <td className="border">{m.lokasi}</td>
+                      <td className="border">{m.kesimpulan_defisiensi}</td>
+
+                    </tr>
+                  ))}
+                </>
+              ) : props.other_state.on_detail_line == 'remediasi' ? (
+                <>
+                  {props.other_state.unit_detail_detail.map((m, i) => (
+                    <tr key={i}>
+                      <td className="border text-center">{i + 1}</td>
+                      {props.other_state.id_ruang_lingkup > 5 ? null : (
+                        <>
+                          <td className="border">{m.no_sub_proses}</td>
+                        </>
+                      )}
+                      <td className="border">{m.ref_kontrol}</td>
+                      <td className="border">{m.lokasi}</td>
+                      <td className="border">{status_remediasi_edit_idx[m.status_remediasi]}</td>
+
+                    </tr>
+                  ))}
+                </>
+              ) : null}
+            </tbody>
+
+          )}
+        </table>
+      </div>
+    </div>
+  )
+}
+
+
+{/* <div className="d-flex justify-content-between align-items-center">
+                    <BtnIcon
+                      icon={this.state.other_state.toe.is_bar ? 'toggle_on' : 'toggle_off'}
+                      onTap={() => {
+                        this.setState(state => ({
+                          other_state: {
+                            ...state.other_state,
+                            toe: {
+                              ...state.other_state.toe,
+                              is_bar: state.other_state.toe.is_bar ? false : true
+                            }
+                          }
+                        }))
+                      }}
+                      style={{ width: 25, height: 25 }}
+                    />
+                  </div> */}
+
+
+
+//                 < !DOCTYPE html >
+// <html>
+
+//   <head>
+//     <title>Laravel Mail</title>
+//   </head>
+
+//   <body>
+//     <h1>{{ $data['title'] }}</h1>
+//     <p>{{ $data['body'] }}</p>
+//     <p>buka: {{ $data['url'] }}</p>
+//     <p>Thank you</p>
+//   </body>
+
+// </html>

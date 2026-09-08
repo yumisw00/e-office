@@ -1,0 +1,38 @@
+[
+    {
+        "name": "jenis",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "",
+        "searchable": false,
+        "fillable": false,
+        "primary": true,
+        "inForm": false,
+        "inIndex": false,
+        "inView": false
+    },
+    {
+        "name": "nama",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "required|string|max:50|string|max:50|string|max:50",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "type": "relation",
+        "relation": "1tm,MtRiskTaksonomiObjective,jenis"
+    },
+    {
+        "type": "relation",
+        "relation": "mtm,MtRiskTaksonomiArea,mt_risk_taksonomi"
+    },
+    {
+        "type": "relation",
+        "relation": "mtm,MtRiskTaksonomiObjective,mt_risk_taksonomi_area"
+    }
+]

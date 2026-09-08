@@ -1,0 +1,34 @@
+[
+    {
+        "name": "id_mitigasi",
+        "dbType": "bigInteger,false",
+        "htmlType": "number",
+        "validations": "nullable|nullable|nullable",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "id_jenis_perlakuan",
+        "dbType": "integer,false",
+        "htmlType": "number",
+        "validations": "nullable|nullable|nullable",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "type": "relation",
+        "relation": "mt1,RiskProfileMitigasi,id_mitigasi"
+    },
+    {
+        "type": "relation",
+        "relation": "mt1,MtRiskJenisPerlakuan,id_jenis_perlakuan"
+    }
+]

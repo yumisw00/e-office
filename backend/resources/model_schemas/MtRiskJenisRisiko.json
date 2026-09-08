@@ -1,0 +1,66 @@
+[
+    {
+        "name": "id_jenis_risiko",
+        "dbType": "integer,true",
+        "htmlType": "number",
+        "validations": "",
+        "searchable": false,
+        "fillable": false,
+        "primary": true,
+        "inForm": false,
+        "inIndex": false,
+        "inView": false
+    },
+    {
+        "name": "id_kategori_risiko",
+        "dbType": "integer,false",
+        "htmlType": "number",
+        "validations": "nullable|nullable|nullable",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "kode",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:20|nullable|string|max:20|nullable|string|max:20",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "nama",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:2000|nullable|string|max:2000|nullable|string|max:2000",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "type": "relation",
+        "relation": "mt1,MtRiskKategoriRisiko,id_kategori_risiko"
+    },
+    {
+        "type": "relation",
+        "relation": "1tm,RiskMetrikStrategiRisiko,id_jenis_risiko"
+    },
+    {
+        "type": "relation",
+        "relation": "1tm,RiskProfile,id_jenis_risiko"
+    },
+    {
+        "type": "relation",
+        "relation": "mtm,MtRiskTaksonomi,risk_risiko"
+    }
+]

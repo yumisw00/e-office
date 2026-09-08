@@ -1,0 +1,97 @@
+{
+  "name": "Risk Management System",
+  "version": "0.1.0",
+  "private": true,
+  "author": "Aksima",
+  "keywords": [
+    "react",
+    "react-router",
+    "swr",
+    "tailwindcss",
+    "vercel",
+    "axios",
+    "react-hooks",
+    "laravel",
+    "sanctum",
+    "vite"
+  ],
+  "description": "Laravel Breeze is a cutting-edge React App template designed for Laravel Sanctum-based authentication, meticulously crafted using Vite.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nilanth/larave-breeze-react",
+    "directory": "/"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@headlessui/react": "^1.7.17",
+    "@rpldy/upload-button": "^1.8.1",
+    "@rpldy/upload-drop-zone": "^1.8.1",
+    "@rpldy/upload-preview": "^1.8.1",
+    "@rpldy/uploady": "^1.8.1",
+    "@tailwindcss/forms": "^0.5.6",
+    "@testing-library/jest-dom": "^5.16.2",
+    "@testing-library/user-event": "^13.5.0",
+    "@vitejs/plugin-react": "4.1.1",
+    "autoprefixer": "^10.4.16",
+    "axios": "^1.7.2",
+    "bootstrap": "^5.3.3",
+    "chart.js": "^3.9.1",
+    "chartjs-plugin-datalabels": "^2.2.0",
+    "exceljs": "^4.4.0",
+    "html-to-image": "^1.11.11",
+    "jquery": "^3.7.1",
+    "jsdom": "^27.2.0",
+    "material-icons": "^1.13.12",
+    "moment": "^2.30.1",
+    "next": "^14.2.35",
+    "postcss": "^8.4.31",
+    "rc-easyui": "^1.2.7",
+    "react": "^18.3.1",
+    "react-bootstrap": "^2.10.2",
+    "react-chartjs-2": "^4.3.1",
+    "react-color": "^2.19.3",
+    "react-contenteditable": "^3.3.7",
+    "react-currency-input-field": "^3.8.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
+    "react-dom": "^18.2.0",
+    "react-export-table-to-excel": "^1.0.6",
+    "react-hot-toast": "^2.4.1",
+    "react-mark-image": "^0.2.3",
+    "react-number-format": "^5.3.4",
+    "react-paginate": "^8.1.2",
+    "react-pdf-highlighter": "^8.0.0-rc.0",
+    "react-redux": "^9.1.2",
+    "react-router-dom": "^6.30.4",
+    "react-select": "^5.3.2",
+    "redux": "^5.0.1",
+    "sass": "^1.69.5",
+    "swr": "^2.2.4",
+    "tailwindcss": "^3.3.5",
+    "vite": "^4.5.14",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

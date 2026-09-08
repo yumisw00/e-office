@@ -1,0 +1,34 @@
+[
+    {
+        "name": "id_risk_agregasi_risiko",
+        "dbType": "bigInteger,false",
+        "htmlType": "number",
+        "validations": "nullable|nullable|nullable",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "id_kelompok_bisnis",
+        "dbType": "integer,false",
+        "htmlType": "number",
+        "validations": "nullable|nullable|nullable",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "type": "relation",
+        "relation": "mt1,MtRiskAgregasiRisiko,id_risk_agregasi_risiko"
+    },
+    {
+        "type": "relation",
+        "relation": "mt1,MtSdmKelompokBisni,id_kelompok_bisnis"
+    }
+]

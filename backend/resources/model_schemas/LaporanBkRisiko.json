@@ -1,0 +1,14 @@
+[
+    {
+        "name": "a",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|nullable|string|nullable|string",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    }
+]

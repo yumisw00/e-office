@@ -1,0 +1,469 @@
+import axios from "lib/axios";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { clearStorage, getStorage, saveStorage, showToastr } from "pages/Utils";
+import { usePathname, useRouter } from "components/Navigation";
+import useSWR from 'swr'
+import { page_without_menu } from "components/ApplicationMenu";
+import { api_services } from "./api_services";
+
+export const useAuth = ({ middleware, redirectIfAuthenticated, ...useAuthParams } = {}) => {
+    const router = useRouter()
+    const params = useParams()
+
+    // const { data: user, error, mutate } = useSWR('/api/user', () =>
+    //     axios
+    //         .get('/api/user')
+    //         .then(res => {
+    //             return res.data
+    //         })
+    //         // .then(async res => {
+    //         //     const isLoggedIn = await getStorage("isLoggedIn")
+    //         //     if(!isLoggedIn) {
+    //         //         window.location.href = '/login'
+    //         //     }
+    //         //     return res.data
+    //         // })
+    //         .catch(error => {
+    //             if (error.response.status !== 409) throw error
+
+    //             router.push('/verify-email')
+    //         }),
+    // )
+
+    const mutate = async () => {
+        const user_loginObj = getStorage("user_login");
+
+        // console.log('MUTATE==>');
+        // console.log('user_loginObj');
+        // console.log(user_loginObj);
+
+        if (user_loginObj) {
+            const user_login = JSON.parse(user_loginObj)
+            if (user_login.user && user_login.user.id_user) {
+                // navigate(redirectIfAuthenticated);
+
+                let path = '/dashboard'
+                const urlsaved = sessionStorage.getItem('urlsaved')
+                if (urlsaved) {
+                    path = urlsaved
+                }
+                window.location.href = path
+            }
+
+        } else {
+            sessionStorage.setItem('urlsaved', '')
+
+            window.location.pathname = '/login'
+
+        }
+    }
+
+    const csrf = () => axios.get('/sanctum/csrf-cookie')
+
+    const register = async ({ setErrors, ...props }) => {
+        await csrf()
+
+        setErrors([])
+
+        axios
+            .post('/register', props)
+            .then(() => mutate())
+            .catch(error => {
+                if (error.response.status !== 422) throw error
+
+                setErrors(error.response.data.errors)
+            })
+    }
+
+    // const [responDataLogin, setResponDataLogin] = useState({})
+    const login = async ({ setErrors, setStatus, ...props }) => {
+        await csrf()
+
+        setErrors([])
+        setStatus(null)
+
+        axios
+            .post('/login', props)
+            .then(async res => {
+                if (res.data.groups) {
+                    await handleSaveStorage('user_login', res.data)
+                }
+
+
+
+                let menu = []
+                if (res.data.menu) {
+                    res.data.menu.map(m => {
+                        if (!page_without_menu.includes(m.page)) {
+                            menu.push(m)
+                        }
+                    })
+
+                    await handleSaveStorage('user_login', { ...res.data, menu })
+                }
+
+                await save_default_filter(res)
+
+                if (res.data && res.data.groups && props.onshow_groups) {
+                    return props.onshow_groups()
+                }
+
+                if (res.data.user) {
+                    await handleSaveStorage('isLoggedIn', '1')
+                    showToastr('success', 'Login berhasil!')
+                    return mutate()
+                }
+
+            })
+            .catch(error => {
+                if (error.response.status !== 422) throw error
+                if (error.response.data.error && error.response.data.messages.errors) {
+                    showToastr('error', `Login gagal! ${error.response.data.messages.errors}`)
+                }
+                setErrors(error.response.data.errors)
+            })
+    }
+
+    const check_sso = async ({ setErrors, setStatus, ...props }) => {
+         axios
+            .get(`/authenticate?token=${props.token || ''}`, props)
+            .then(async res => {
+
+                // console.log('res');
+                // console.log(res);
+
+                if (res.data.groups) {
+                    await handleSaveStorage('user_login', res.data)
+                }
+
+
+
+                let menu = []
+                if (res.data.menu) {
+                    res.data.menu.map(m => {
+                        if (!page_without_menu.includes(m.page)) {
+                            menu.push(m)
+                        }
+                    })
+
+                    await handleSaveStorage('user_login', { ...res.data, menu })
+                }
+
+                await save_default_filter(res)
+
+                if (res.data && res.data.groups && props.onshow_groups) {
+                    return props.onshow_groups()
+                }
+
+                if (res.data.user) {
+                    await handleSaveStorage('isLoggedIn', '1')
+                    showToastr('success', 'Login berhasil!')
+                    return mutate()
+                }
+
+            })
+            .catch(error => {
+                if (error.response.data.redirect)
+                    window.location.href = error.response.data.redirect
+                // console.log('CATCH=>');
+                // console.log(error.response.data.messages.errors);
+
+                if (props.onError) {
+                    return props.onError(error)
+                }
+
+                if (error.response.status !== 422) throw error
+                if (error.response.data.error && error.response.data.messages && error.response.data.messages.errors) {
+                    showToastr('error', `Login gagal! ${error.response.data.messages.errors}`)
+                }
+                setErrors(error.response.data.errors)
+
+
+            })
+    }
+
+    const choose_group = async ({ setErrors, setStatus, ...props }) => {
+
+        if (setErrors) {
+            setErrors([])
+
+        }
+        if (setStatus) {
+
+            setStatus(null)
+        }
+
+        axios
+            .post('/choseGroup', props)
+            .then(async res => {
+
+                if (res.data.groups) {
+                    await handleSaveStorage('user_login', res.data)
+                }
+
+                await handleSaveStorage('isLoggedIn', '1')
+                // await handleSaveStorage('is_arr_group', '0')
+
+                let menu = []
+                if (res.data.menu) {
+                    res.data.menu.map(m => {
+                        if (!page_without_menu.includes(m.page)) {
+                            menu.push(m)
+                        }
+                    })
+
+                    const user_loginObj = await getStorage('user_login')
+                    const user_login = JSON.parse(user_loginObj)
+
+                    await handleSaveStorage('user_login', { ...user_login, ...res.data, menu })
+                }
+
+                await save_default_filter(res)
+
+                showToastr('success', 'Login berhasil!')
+                return mutate()
+
+
+            })
+            .catch(error => {
+                if (error.response.status !== 422) throw error
+                if (error.response.data.error && error.response.data.messages.errors) {
+                    showToastr('error', `Login gagal! ${error.response.data.messages.errors}`)
+                }
+                setErrors(error.response.data.errors)
+            })
+    }
+
+    const login_as = async ({ setErrors, setStatus, ...props }) => {
+
+        // setErrors([])
+        // setStatus(null)
+
+        axios
+            .post('/loginAs', props)
+            .then(async res => {
+
+                if (res.data.groups) {
+                    await handleSaveStorage('user_login', res.data)
+                }
+
+                await handleSaveStorage('isLoggedIn', '1')
+
+                let menu = []
+                if (res.data.menu) {
+                    res.data.menu.map(m => {
+                        if (!page_without_menu.includes(m.page)) {
+                            menu.push(m)
+                        }
+                    })
+
+                    const user_loginObj = await getStorage('user_login')
+                    const user_login = JSON.parse(user_loginObj)
+
+                    await handleSaveStorage('user_login', { ...user_login, ...res.data, menu })
+                }
+
+                await save_default_filter(res)
+
+                showToastr('success', 'Login berhasil!')
+                return mutate()
+
+
+            })
+            .catch(error => {
+                if (error.response.status !== 422) throw error
+                if (error.response.data.error && error.response.data.messages.errors) {
+                    showToastr('error', `Login gagal! ${error.response.data.messages.errors}`)
+                }
+                setErrors(error.response.data.errors)
+            })
+    }
+
+    const forgotPassword = async ({ setErrors, setStatus, email }) => {
+        await csrf()
+
+        setErrors([])
+        setStatus(null)
+
+        axios
+            .post('/forgot-password', { email })
+            .then(response => setStatus(response.data.status))
+            .catch(error => {
+                if (error.response.status !== 422) throw error
+
+                setErrors(error.response.data.errors)
+            })
+    }
+
+    const resetPassword = async ({ setErrors, setStatus, ...props }) => {
+        await csrf()
+
+        setErrors([])
+        setStatus(null)
+
+        axios
+            .post('/reset-password', { token: params.token, ...props })
+            .then(response =>
+                router.push('/login?reset=' + btoa(response.data.status)),
+            )
+            .catch(error => {
+                if (error.response.status !== 422) throw error
+
+                setErrors(error.response.data.errors)
+            })
+    }
+
+    const resendEmailVerification = ({ setStatus }) => {
+        axios
+            .post('/email/verification-notification')
+            .then(response => setStatus(response.data.status))
+    }
+
+    const logout = async () => {
+        // if (!error) {
+        //     // await clearStorage()
+        // }
+        await clearStorage()
+        const { getapi_services } = api_services({ api_path: '/get_session' })
+        const response = await getapi_services({})
+        if (response.code || response.error) return
+
+
+        let xtoken = ''
+        // const user_loginObj = getStorage("user_login");
+        // if (user_loginObj) {
+        //    const user_login = JSON.parse(user_loginObj)
+        //    xtoken = user_login['x-xsrf-token']
+        // }
+        xtoken = response.token
+
+        await axios.post('/logout', {}, {
+            headers: {
+                'x-xsrf-token': xtoken
+            }
+        }).then(() => {
+            return mutate()
+        }).catch(error => {
+            if (error.response.data && error.response.data.message == 'Unauthenticated.') {
+                //   window.location.pathname = '/login'
+            }
+        })
+
+        // window.location.pathname = '/login'
+    }
+
+    const update_periode_jadwal = async () => {
+        axios
+            .get('/update_periode_jadwal')
+            .then(res => res)
+            .catch(error => {
+                return error.response.data.errors
+            })
+    }
+
+    const handleSaveStorage = async (key, data) => {
+        await saveStorage(key, JSON.stringify(data))
+    }
+
+
+    const handleRedirectLogin = async () => {
+        const isLoggedIn = await getStorage('isLoggedIn')
+        if (isLoggedIn == '1') {
+            router.push(redirectIfAuthenticated)
+        }
+    }
+
+    const save_default_filter = async (res) => {
+
+        const filter = {
+            dashboard: {
+                jenis_progress_efektivitas: 'progres'
+            },
+            rcm_master: {
+                tlc: {},
+                elc: {},
+                itgc: {}
+            },
+            rcm_unit: {
+                tlc: {},
+                elc: {},
+                itgc: {}
+            },
+            csa: {
+                tlc: {},
+                elc: {},
+                itgc: {}
+            },
+            tod: {
+                tlc: {},
+                elc: {},
+                itgc: {}
+            },
+            toe: {
+                tlc: {},
+                elc: {},
+                itgc: {}
+            },
+            perubahan_kuesioner: {
+                tlc: {},
+                elc: {},
+                itgc: {}
+            },
+            remediasi: {
+                tlc: {},
+                elc: {},
+                itgc: {}
+            },
+            kuesioner: {
+                tlc: {},
+                elc: {},
+                itgc: {}
+            },
+            tod_edit: {
+                tlc: {},
+                elc: {},
+                itgc: {}
+            },
+            dod: {
+                tlc: {},
+                elc: {},
+                itgc: {}
+            },
+            too: {
+                tlc: {},
+                elc: {},
+                itgc: {}
+            },
+            too_remediasi: {
+                tlc: {},
+                elc: {},
+                itgc: {}
+            },
+            laporan_perubahan_rcm: {
+
+            },
+            periode: {}
+        }
+
+        // if (res && res.data && res.data.id_group == 2) {
+        //     filter.toe.tlc.id_status = '12'
+        //     filter.toe.elc.id_status = '12'
+        //     filter.toe.itgc.id_status = '12'
+        // }
+        return await handleSaveStorage('filter', filter)
+    }
+
+    return {
+        // user,
+        register,
+        login,
+        forgotPassword,
+        resetPassword,
+        resendEmailVerification,
+        logout,
+        choose_group,
+        login_as,
+        check_sso
+    }
+}

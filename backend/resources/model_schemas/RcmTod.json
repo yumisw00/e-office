@@ -1,0 +1,414 @@
+[
+    {
+        "name": "id_tod",
+        "dbType": "integer,true",
+        "htmlType": "number",
+        "validations": "",
+        "searchable": false,
+        "fillable": false,
+        "primary": true,
+        "inForm": false,
+        "inIndex": false,
+        "inView": false
+    },
+    {
+        "name": "id_segmen",
+        "dbType": "integer,false",
+        "htmlType": "number",
+        "validations": "nullable",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "id_unit",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:18",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "id_periode",
+        "dbType": "integer,false",
+        "htmlType": "number",
+        "validations": "nullable",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "efektivitas_tod",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:200",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "tgl_financial_statement",
+        "dbType": "datetime",
+        "htmlType": "date",
+        "validations": "nullable",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "ref_workpaper",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:100",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "preparer_tod",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:200",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "reviewer_tod",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:200",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "created_at",
+        "dbType": "datetime",
+        "htmlType": "date",
+        "validations": "nullable",
+        "searchable": false,
+        "fillable": false,
+        "primary": false,
+        "inForm": false,
+        "inIndex": false,
+        "inView": false
+    },
+    {
+        "name": "updated_at",
+        "dbType": "datetime",
+        "htmlType": "date",
+        "validations": "nullable",
+        "searchable": false,
+        "fillable": false,
+        "primary": false,
+        "inForm": false,
+        "inIndex": false,
+        "inView": false
+    },
+    {
+        "name": "deleted_at",
+        "dbType": "datetime",
+        "htmlType": "date",
+        "validations": "nullable",
+        "searchable": false,
+        "fillable": false,
+        "primary": false,
+        "inForm": false,
+        "inIndex": false,
+        "inView": false
+    },
+    {
+        "name": "created_by",
+        "dbType": "bigInteger,false",
+        "htmlType": "number",
+        "validations": "nullable",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "updated_by",
+        "dbType": "bigInteger,false",
+        "htmlType": "number",
+        "validations": "nullable",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "deleted_by",
+        "dbType": "bigInteger,false",
+        "htmlType": "number",
+        "validations": "nullable",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "created_by_desc",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:200",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "updated_by_desc",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:200",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "deleted_by_desc",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:200",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "preparer_tod_nid",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:200",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "preparer_tod_jabatan",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:200",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "reviewer_tod_nid",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:200",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "reviewer_tod_jabatan",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:200",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "id_ruang_lingkup",
+        "dbType": "integer,false",
+        "htmlType": "number",
+        "validations": "nullable",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "kesimpulan_mrc",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:10",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "nature_of_transaction",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:1000",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "kebijakan",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:1000",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "terinisiasi",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:1000",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "tercatat",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:1000",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "dilaporkan_buku_besar",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:1000",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "info_tambahan",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:1000",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "name": "perubahan_proses_bisnis",
+        "dbType": "string",
+        "htmlType": "text",
+        "validations": "nullable|string|max:1000",
+        "searchable": true,
+        "fillable": true,
+        "primary": false,
+        "inForm": true,
+        "inIndex": true,
+        "inView": true
+    },
+    {
+        "type": "relation",
+        "relation": "mt1,MtSegman,id_segmen"
+    },
+    {
+        "type": "relation",
+        "relation": "mt1,MtSdmUnit,id_unit"
+    },
+    {
+        "type": "relation",
+        "relation": "mt1,Periode,id_periode"
+    },
+    {
+        "type": "relation",
+        "relation": "mt1,MtRuangLingkup,id_ruang_lingkup"
+    },
+    {
+        "type": "relation",
+        "relation": "mtm,RcmDokPendukung,rcm_tod_dok_pendukung"
+    },
+    {
+        "type": "relation",
+        "relation": "1tm,RcmCsaTod,id_tod"
+    },
+    {
+        "type": "relation",
+        "relation": "1tm,RcmTodInquiry,id_tod"
+    },
+    {
+        "type": "relation",
+        "relation": "mtm,MtPertanyaanMrcDetail,rcm_tod_mrc"
+    },
+    {
+        "type": "relation",
+        "relation": "1tm,RcmTodAgreedFact,id_tod"
+    },
+    {
+        "type": "relation",
+        "relation": "1tm,RcmTodMom,id_tod"
+    }
+]

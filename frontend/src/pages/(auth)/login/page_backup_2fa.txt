@@ -1,0 +1,369 @@
+
+
+import Button from 'components/Button'
+import Input from 'components/Input'
+import InputError from 'components/InputError'
+import Label from 'components/Label'
+import Link from 'components/Link'
+import { useAuth } from 'hooks/auth'
+import { useEffect, useRef, useState } from 'react'
+import { usePathname, useRouter } from 'components/Navigation'
+import AuthSessionStatus from 'pages/(auth)/AuthSessionStatus'
+import { getStorage, is_apply_login_with_sso, showToastr } from 'pages/Utils'
+import { Modal } from 'react-bootstrap'
+import BtnIcon from 'components/BtnIcon'
+import { api_services } from 'hooks/api_services'
+import { useLocation } from 'react-router-dom'
+import $ from 'jquery'
+
+const Login = (props) => {
+
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const token = queryParams.get("token");
+
+    const router = useRouter()
+
+    const [email, setemail] = useState('')
+    const [password, setPassword] = useState('')
+    const [shouldRemember, setShouldRemember] = useState(false)
+    const [errors, setErrors] = useState([])
+    const [status, setStatus] = useState(null)
+    const [btn_loading, setbtn_loading] = useState(false)
+    const [modalChooseGroup, setmodalChooseGroup] = useState(false)
+    const [btn_popup_loading, setbtn_popup_loading] = useState(false)
+    const [groups, setgroups] = useState([])
+    const [groups_item, setgroups_item] = useState(null)
+
+    const [is_authenticate_error, setis_authenticate_error] = useState(false)
+    const [messages_error_sso, setmessages_error_sso] = useState('')
+
+    const handleRequestDone = () => {
+        console.log('handleRequestDone')
+        setbtn_loading(false)
+    }
+
+    const handleshow_groups = async () => {
+        const user_loginObj = await getStorage('user_login')
+        const user_login = JSON.parse(user_loginObj)
+
+        setgroups(user_login.groups)
+        setmodalChooseGroup(true)
+    }
+
+    const { login, logout, choose_group, check_sso } = useAuth({
+        middleware: 'guest',
+        redirectIfAuthenticated: '/dashboard',
+        onRequestDone: handleRequestDone,
+
+    })
+
+
+
+    const initialized = useRef(false)
+
+    useEffect(() => {
+        if (router.reset?.length > 0 && errors.length === 0) {
+            setStatus(atob(router.reset))
+        } else {
+            setStatus(null)
+        }
+
+    }, [])
+
+
+
+    useEffect(() => {
+        setbtn_loading(false)
+    }, [errors])
+
+    useEffect(() => {
+        if (!initialized.current) {
+            checkIsLoggedIn()
+            checkAuthenticate()
+            initialized.current = true
+        }
+    }, [])
+
+    const checkIsLoggedIn = async () => {
+        const isLoggedIn = await getStorage('isLoggedIn')
+        if (isLoggedIn) {
+            window.location.pathname = '/'
+        }
+    }
+
+
+    const submitForm = async event => {
+        event.preventDefault()
+
+        // logout()
+        // return
+        setbtn_loading(true)
+        login({
+            email,
+            password,
+            remember: shouldRemember,
+            setErrors,
+            setStatus,
+            onshow_groups: handleshow_groups
+        })
+    }
+
+    const login_on_group = async () => {
+        setbtn_popup_loading(true)
+        choose_group({
+            id_group: groups_item.id_group,
+            id_user_delegasi: groups_item.id_user_delegasi,
+            id_user: groups_item.id_user,
+            id_jabatan: groups_item?.id_jabatan || '',
+            remember: shouldRemember,
+            setErrors,
+            setStatus,
+        })
+    }
+
+    const login_on_sso = () => {
+        const url = import.meta.env.VITE_IDENTIFIER_ID
+        return (
+            <a
+                className="container-login-sso-btn"
+                disabled={btn_loading}
+                href={url}
+            >
+                {btn_loading ? 'Loading...' : 'Login with SSO'}
+            </a>
+        )
+    }
+
+    const checkAuthenticate = async () => {
+        console.log('checkAuthenticate');
+        console.log(props);
+        if (!props.is_page_authenticate) return
+
+        if (!token) {
+            const msg = 'Token tidak ditemukan!'
+            setis_authenticate_error(true)
+            setmessages_error_sso(msg)
+            return showToastr('error', msg)
+
+        }
+
+        $('.layout-app').addClass('is-loading-global')
+        console.log(token);
+
+        check_sso({
+            setErrors,
+            setStatus,
+            token,
+            onshow_groups: handleshow_groups,
+            onError: handleErrorSSO
+        })
+
+    }
+
+    const handleErrorSSO = (error) => {
+        // console.log('handleErrorSSO');
+        // console.log(error);
+
+        setis_authenticate_error(true)
+        if (error.response.data && error.response.data.messages && error.response.data.messages.errors) {
+            const msg = error.response.data.messages.errors
+            setmessages_error_sso(msg)
+            return showToastr('error', msg)
+        }
+
+    }
+
+    return (
+        <>
+            {!is_apply_login_with_sso ? (
+                <>
+                    <AuthSessionStatus className="mb-4" status={status} />
+                    <form onSubmit={submitForm}>
+                        <div className="container-form-login">
+                            <Label htmlFor="email" className={errors.email ? `color-danger` : ''}>Email</Label>
+
+                            <Input
+                                id="email"
+                                type="text"
+                                value={email}
+                                className={`block mt-1 w-full ${errors.email ? 'form-controll-error' : ''}`}
+                                placeholder="Email"
+                                onChange={value => setemail(value)}
+                                required
+                                autoFocus
+                                formCol
+                            />
+
+                            <InputError messages={errors.email} className="mt-2" />
+                        </div>
+
+                        <div className="container-form-login">
+                            <Label htmlFor="password">Password</Label>
+
+                            <Input
+                                id="password"
+                                type="password"
+                                placeholder="Password"
+                                value={password}
+                                className="block mt-1 w-full"
+                                onChange={value => setPassword(value)}
+                                required
+                                autoComplete="current-password"
+                                formCol
+                            />
+
+                            <InputError messages={errors.password} className="mt-2" />
+                        </div>
+
+
+
+                        <div className="flex items-center justify-end mt-4 c-btn-login">
+
+                            <Button className="" disabled={btn_loading}>
+                                {btn_loading ? 'Loading...' : 'Login'}
+                            </Button>
+                        </div>
+
+
+                        {login_on_sso()}
+
+
+                    </form>
+                </>
+            ) : (
+                <div
+                    className='container-login-sso'
+                    style={{ backgroundImage: `url('/bg-login-sso${is_authenticate_error ? '-error' : ''}.png')` }}
+                >
+
+                    {!is_authenticate_error ? (
+
+                        <div className='container-login-sso-card'>
+                            <div className="layout-login-left-area-logo">
+                                <img src="/logo-site.png" />
+                            </div>
+
+                            <div className='container-login-sso-title'>
+                                ICOFR
+                            </div>
+                            <div className='container-login-sso-hr'></div>
+
+                            <div className='container-login-sso-mt-btn'></div>
+                            <div className='container-login-sso-cbtn'>
+                                {login_on_sso()}
+                                <a
+                                    className="container-login-sso-btn clsb-white"
+                                    disabled={btn_loading}
+                                    href="https://aka.ms/sspr"
+                                >
+                                    Reset Password
+                                </a>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className='container-login-sso-card clsc-error'>
+                            <div>Login Gagal:</div>
+                            <div>{messages_error_sso}</div>
+                        </div>
+
+                    )}
+
+
+                </div>
+            )}
+
+
+            <ModalChooseGroup
+                show={modalChooseGroup}
+                onHide={() => {
+                    setmodalChooseGroup(false)
+                    // logout()
+                }}
+                btn_popup_loading={btn_popup_loading}
+                groups={groups}
+                groups_item={groups_item}
+                setgroups_item={setgroups_item}
+                onlogin_on_group={login_on_group}
+            />
+        </>
+    )
+}
+
+export default Login
+
+export const ModalChooseGroup = props => {
+    return (
+        <Modal
+            show={props.show}
+            className=""
+            onShow={() => {
+
+            }}
+            onHide={props.onHide}
+            size="md"
+        >
+            <Modal.Header closeButton={true}>
+                <Modal.Title>
+                    Login Sebagai
+                </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                <div className="row">
+                    <div className="col-md-12">
+                        {props.groups.map((m, i) => {
+                            const is_checked = (props.groups_item &&
+                                (props.groups_item.id_user == m.id_user) &&
+                                (props.groups_item.id_group == m.id_group) &&
+                                (props.groups_item.id_jabatan == m.id_jabatan)) || false
+                            return (
+                                <div
+                                    key={i}
+                                    className={`items-groups d-flex align-items-center cursor-pointer ${is_checked ? 'active' : ''}`}
+                                    onClick={() => props.setgroups_item(m)}
+                                >
+                                    <div className="flex-1">
+                                        <div className='title'>
+                                            {m.nama}
+                                        </div>
+                                        <div className='subtitle color-grey'>
+                                            {m.nama_user} - {m.nama_jabatan}
+                                        </div>
+                                    </div>
+                                    <BtnIcon
+                                        icon={
+                                            is_checked ? 'radio_button_checked' : 'radio_button_unchecked'}
+                                        onTap={() => null}
+                                    />
+                                </div>
+                            )
+                        })}
+                        <div className="d-flex justify-content-end">
+
+                            <Button
+                                className="btn-default-app"
+                                disabled={props.btn_popup_loading}
+                                onClick={() => {
+                                    props.onlogin_on_group()
+                                }}
+                            >
+                                {props.btn_popup_loading ? (
+                                    "Loading..."
+                                ) : (
+                                    <>
+                                        <span className="material-icons icon-btn-left mr-1">
+                                            login
+                                        </span>
+                                        Login
+                                    </>
+                                )}
+                            </Button>
+
+                        </div>
+                    </div>
+                </div>
+            </Modal.Body>
+
+        </Modal>
+    )
+}

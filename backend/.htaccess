@@ -1,0 +1,65 @@
+<IfModule mod_rewrite.c>
+
+#replace url
+RewriteEngine On
+RewriteBase /hk_rms
+RewriteCond %{REQUEST_URI} ^system.*
+RewriteRule ^(.*)$ /index.php/$1 [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php/$1 [L]
+
+#mengamankan dari robot
+RewriteCond %{HTTP_USER_AGENT} ^Anarchie [OR]
+RewriteCond %{HTTP_USER_AGENT} ^ASPSeek [OR]
+RewriteCond %{HTTP_USER_AGENT} ^attach [OR]
+RewriteCond %{HTTP_USER_AGENT} ^autoemailspider [OR]
+RewriteCond %{HTTP_USER_AGENT} ^Xaldon\ WebSpider [OR]
+RewriteCond %{HTTP_USER_AGENT} ^Xenu [OR]
+RewriteCond %{HTTP_USER_AGENT} ^Zeus.*Webster [OR]
+RewriteCond %{HTTP_USER_AGENT} ^Zeus
+RewriteRule ^.* - [F,L]
+</IfModule>
+
+#performance
+<ifmodule mod_php5.c>
+php_value zlib.output_compression 16386
+php_value post_max_size 500M
+php_value upload_max_filesize 500M
+php_value memory_limit 128M
+php_value max_execution_time 300
+php_value max_input_time 300
+php_value session.gc_maxlifetime 21600
+</ifmodule>
+
+<ifmodule mod_php7.c>
+php_value zlib.output_compression 16386
+php_value post_max_size 500M
+php_value upload_max_filesize 500M
+php_value memory_limit 128M
+php_value max_execution_time 300
+php_value max_input_time 300
+php_value session.gc_maxlifetime 21600
+</ifmodule>
+
+AddDefaultCharset utf-8
+ServerSignature Off
+SetEnv TZ Asia/Jakarta
+
+<FilesMatch "\.(ico|pdf|flv|jpg|jpeg|png|gif|js|css|swf|txt|html|x-html|php|css|xml|js|woff|ttf|svg|eot)(\.gz)?$">
+    <IfModule mod_expires.c>
+        ExpiresActive On
+    </IfModule>
+    <IfModule mod_headers.c>
+        Header set Cache-Control "max-age=1800"
+        Header unset ETag
+    </IfModule>
+    FileETag None
+</FilesMatch>
+
+#harus mempunyai index
+#Options -Indexes
+
+
+# php_value upload_max_filesize 500M
+# php_value post_max_size 500M
