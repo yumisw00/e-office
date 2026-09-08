@@ -124,7 +124,7 @@ class MockSuratRepository implements SuratRepository {
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 1));
 
-    return [
+    final mockData = [
       SuratModel(
         id: '1',
         nomorSurat: '001/ADM/VI/2024',
@@ -190,7 +190,7 @@ class MockSuratRepository implements SuratRepository {
       ),
       SuratModel(
         id: '8',
-        nomorSurat: '119/SKR/2024',
+        nomorSurat: '120/SKR/2024',
         asalSurat: 'Politeknik Negeri Madiun',
         perihal: 'Pembaruan Kontrak Sewa Server',
         tanggalDiterima: DateTime.now().subtract(const Duration(days: 7)),
@@ -198,6 +198,32 @@ class MockSuratRepository implements SuratRepository {
         ringkasan: 'Dokumen rincian biaya seva server cloud dari langganan google cloud.',
       ),
     ];
+
+    return PaginatedResponse(
+      data: mockData,
+      currentPage: page,
+      pageSize: limit,
+      totalPage: 1,
+      totalRecords: mockData.length,
+    );
+  }
+
+  @override
+  Future<PaginatedResponse<SuratModel>> getSuratKeluar({int page = 1, int limit = 20}) async {
+    await Future.delayed(const Duration(seconds: 1));
+    return PaginatedResponse(
+      data: [],
+      currentPage: page,
+      pageSize: limit,
+      totalPage: 0,
+      totalRecords: 0,
+    );
+  }
+
+  @override
+  Future<SuratModel?> getSuratDetail(String id) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    return null;
   }
 
   @override
