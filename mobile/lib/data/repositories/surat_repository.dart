@@ -2,38 +2,9 @@ import 'package:dio/dio.dart';
 import '../models/surat_model.dart';
 import '../../core/constants/app_config.dart';
 
-/// Response wrapper for paginated API responses
-class PaginatedResponse<T> {
-  final List<T> data;
-  final int currentPage;
-  final int pageSize;
-  final int totalPage;
-  final int totalRecords;
-
-  PaginatedResponse({
-    required this.data,
-    required this.currentPage,
-    required this.pageSize,
-    required this.totalPage,
-    required this.totalRecords,
-  });
-
-  factory PaginatedResponse.fromJson(Map<String, dynamic> json, T Function(Map<String, dynamic>) fromJson) {
-    final dataList = (json['data'] as List?)?.map((e) => fromJson(e)).toList() ?? [];
-    
-    return PaginatedResponse(
-      data: dataList,
-      currentPage: json['page'] as int? ?? 1,
-      pageSize: json['page_size'] as int? ?? 20,
-      totalPage: json['total_page'] as int? ?? 1,
-      totalRecords: json['total_records'] as int? ?? json['total'] as int? ?? dataList.length,
-    );
-  }
-}
-
 abstract class SuratRepository {
-  Future<PaginatedResponse<SuratModel>> getSuratMasuk({int page = 1, int limit = 20});
-  Future<PaginatedResponse<SuratModel>> getSuratKeluar({int page = 1, int limit = 20});
+  Future<List<SuratModel>> getSuratMasuk({int page = 1, int limit = 20});
+  Future<List<SuratModel>> getSuratKeluar({int page = 1, int limit = 20});
   Future<SuratModel?> getSuratDetail(String id);
 }
 
@@ -43,41 +14,42 @@ class ApiSuratRepository implements SuratRepository {
   ApiSuratRepository(this._dio);
 
   @override
-  Future<PaginatedResponse<SuratModel>> getSuratMasuk({int page = 1, int limit = 20}) async {
+  Future<List<SuratModel>> getSuratMasuk({int page = 1, int limit = 20}) async {
     try {
-      if (AppConfig.enableLogging) {
-        print('📡 Fetching surat masuk: page=$page, limit=$limit');
-      }
-
       final response = await _dio.get(
         '/surat_masuk',
         queryParameters: {
           'page': page,
-          'per_page': limit, // Backend uses per_page or pagesize
+          'limit': limit,
         },
       );
 
       if (response.statusCode == 200) {
-        final data = response.data as Map<String, dynamic>;
+        final data = response.data;
         
-        return PaginatedResponse<SuratModel>.fromJson(
-          data,
-          (json) => SuratModel.fromJsonApi(json),
-        );
+        // Handle different response structures
+        List<dynamic> suratList;
+        if (data is Map && data.containsKey('data')) {
+          suratList = data['data'] as List;
+        } else if (data is List) {
+          suratList = data;
+        } else {
+          suratList = [];
+        }
+
+        return suratList
+            .map((json) => SuratModel.fromJsonApi(json))
+            .toList();
       }
       
       throw DioException(
         requestOptions: response.requestOptions,
         response: response,
         type: DioExceptionType.badResponse,
-        statusCode: response.statusCode,
       );
     } on DioException catch (e) {
       if (AppConfig.enableLogging) {
         print('❌ Error getting surat masuk: ${e.message}');
-        if (e.response != null) {
-          print('Response: ${e.response?.data}');
-        }
       }
       
       // Handle 403 Forbidden - User tidak punya akses
@@ -92,41 +64,41 @@ class ApiSuratRepository implements SuratRepository {
   }
 
   @override
-  Future<PaginatedResponse<SuratModel>> getSuratKeluar({int page = 1, int limit = 20}) async {
+  Future<List<SuratModel>> getSuratKeluar({int page = 1, int limit = 20}) async {
     try {
-      if (AppConfig.enableLogging) {
-        print('📡 Fetching surat keluar: page=$page, limit=$limit');
-      }
-
       final response = await _dio.get(
         '/surat_keluar',
         queryParameters: {
           'page': page,
-          'per_page': limit,
+          'limit': limit,
         },
       );
 
       if (response.statusCode == 200) {
-        final data = response.data as Map<String, dynamic>;
+        final data = response.data;
         
-        return PaginatedResponse<SuratModel>.fromJson(
-          data,
-          (json) => SuratModel.fromJsonApi(json),
-        );
+        List<dynamic> suratList;
+        if (data is Map && data.containsKey('data')) {
+          suratList = data['data'] as List;
+        } else if (data is List) {
+          suratList = data;
+        } else {
+          suratList = [];
+        }
+
+        return suratList
+            .map((json) => SuratModel.fromJsonApi(json))
+            .toList();
       }
       
       throw DioException(
         requestOptions: response.requestOptions,
         response: response,
         type: DioExceptionType.badResponse,
-        statusCode: response.statusCode,
       );
     } on DioException catch (e) {
       if (AppConfig.enableLogging) {
         print('❌ Error getting surat keluar: ${e.message}');
-        if (e.response != null) {
-          print('Response: ${e.response?.data}');
-        }
       }
       rethrow;
     }
@@ -135,17 +107,11 @@ class ApiSuratRepository implements SuratRepository {
   @override
   Future<SuratModel?> getSuratDetail(String id) async {
     try {
-      if (AppConfig.enableLogging) {
-        print('📡 Fetching surat detail: id=$id');
-      }
-
       final response = await _dio.get('/surat_masuk/$id');
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data is Map<String, dynamic> && data.containsKey('data')) {
-          return SuratModel.fromJsonApi(data['data']);
-        } else if (data is Map<String, dynamic>) {
+        if (data != null) {
           return SuratModel.fromJsonApi(data);
         }
       }
@@ -153,9 +119,6 @@ class ApiSuratRepository implements SuratRepository {
     } on DioException catch (e) {
       if (AppConfig.enableLogging) {
         print('❌ Error getting surat detail: ${e.message}');
-        if (e.response != null) {
-          print('Response: ${e.response?.data}');
-        }
       }
       rethrow;
     }
@@ -165,7 +128,7 @@ class ApiSuratRepository implements SuratRepository {
 // Keep MockSuratRepository for development/testing
 class MockSuratRepository implements SuratRepository {
   @override
-  Future<PaginatedResponse<SuratModel>> getSuratMasuk({int page = 1, int limit = 20}) async {
+  Future<List<SuratModel>> getSuratMasuk({int page = 1, int limit = 20}) async {
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 1));
 
@@ -244,25 +207,13 @@ class MockSuratRepository implements SuratRepository {
       ),
     ];
 
-    return PaginatedResponse(
-      data: mockData,
-      currentPage: page,
-      pageSize: limit,
-      totalPage: 1,
-      totalRecords: mockData.length,
-    );
+    return mockData;
   }
 
   @override
-  Future<PaginatedResponse<SuratModel>> getSuratKeluar({int page = 1, int limit = 20}) async {
+  Future<List<SuratModel>> getSuratKeluar({int page = 1, int limit = 20}) async {
     await Future.delayed(const Duration(seconds: 1));
-    return PaginatedResponse(
-      data: [],
-      currentPage: page,
-      pageSize: limit,
-      totalPage: 0,
-      totalRecords: 0,
-    );
+    return [];
   }
 
   @override
