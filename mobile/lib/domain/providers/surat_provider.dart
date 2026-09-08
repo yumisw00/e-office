@@ -3,6 +3,7 @@ import '../../core/constants/app_config.dart';
 import '../../data/models/surat_model.dart';
 import '../../data/repositories/surat_repository.dart';
 import '../../core/network/dio_client.dart';
+import '../../core/constants/app_config.dart';
 
 part 'surat_provider.g.dart';
 
@@ -22,6 +23,7 @@ class SuratMasuk extends _$SuratMasuk {
     final repository = ref.watch(suratRepositoryProvider);
     final response = await repository.getSuratMasuk(page: 1, limit: 20);
     return response.data;
+    return repository.getSuratMasuk(page: 1, limit: 20);
   }
 
   /// Refresh surat masuk list from API
@@ -31,6 +33,8 @@ class SuratMasuk extends _$SuratMasuk {
       final repository = ref.read(suratRepositoryProvider);
       final response = await repository.getSuratMasuk(page: 1, limit: 20);
       state = AsyncValue.data(response.data);
+      final result = await repository.getSuratMasuk(page: 1, limit: 20);
+      state = AsyncValue.data(result);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -47,6 +51,10 @@ class SuratMasuk extends _$SuratMasuk {
       
       // Combine with existing data
       final combined = [...currentList, ...response.data];
+      final newItems = await repository.getSuratMasuk(page: page, limit: 20);
+      
+      // Combine with existing data
+      final combined = [...currentList, ...newItems];
       state = AsyncValue.data(combined);
     } catch (e) {
       // Keep existing data on error

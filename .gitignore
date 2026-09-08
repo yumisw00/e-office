@@ -41,4 +41,44 @@ htmlcov/
 # Cache
 .mypy_cache/
 .pytest_cache/
+# Build artifacts
+build/
+*.apk
+*.aab
+*.ipa
+*.app
+
+# Dependencies
+.dart_tool/
+.pub/
+pubspec.lock
+
+# Logs
+*.log
+**/logs
+
+# Environment variables
+.env
+.env.local
+.env.*
+!.env.example
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+*.coverage
+
+# Temporary files
+*.tmp
+**/temp/
+**/tmp/
 ```
