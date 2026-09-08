@@ -124,7 +124,7 @@ class MockSuratRepository implements SuratRepository {
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 1));
 
-    final mockData = [
+    return [
       SuratModel(
         id: '1',
         nomorSurat: '001/ADM/VI/2024',
@@ -190,7 +190,7 @@ class MockSuratRepository implements SuratRepository {
       ),
       SuratModel(
         id: '8',
-        nomorSurat: '120/SKR/2024',
+        nomorSurat: '119/SKR/2024',
         asalSurat: 'Politeknik Negeri Madiun',
         perihal: 'Pembaruan Kontrak Sewa Server',
         tanggalDiterima: DateTime.now().subtract(const Duration(days: 7)),
