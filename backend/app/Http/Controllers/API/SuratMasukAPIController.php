@@ -87,6 +87,12 @@ class SuratMasukAPIController extends BaseResourceController
             || $user?->is_admin === true
             || $user?->is_admin === 1;
 
+        // Pimpinan can view all incoming letters (read-only dashboard role)
+        $isPimpinan = in_array('pimpinan', $groupNames, true);
+        if ($isPimpinan) {
+            return SuratMasuk::query()->withCount('disposisi');
+        }
+
         $query = SuratMasuk::query()->withCount('disposisi');
         if ($isAdmin) {
             return $query;

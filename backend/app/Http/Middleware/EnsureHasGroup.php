@@ -83,7 +83,9 @@ class EnsureHasGroup
             'surat_distribusi', 'surat_disposisi', 'surat_approval',
             'surat_arsip', 'agenda', 'pengumuman',
         ];
-        $matchesReadOnlyUrl = array_intersect(explode('|', $url), $readOnlyPimpinanUrls);
+        // Check if any of the requested URLs match the read-only list
+        $requestedUrls = array_filter(explode('|', $url));
+        $matchesReadOnlyUrl = array_intersect($requestedUrls, $readOnlyPimpinanUrls);
         if ($isPimpinan && $request->isMethod('GET') && in_array($action, [null, 'index'], true) && !empty($matchesReadOnlyUrl)) {
             return $next($request);
         }
