@@ -79,6 +79,14 @@ class ApiSuratRepository implements SuratRepository {
           print('Response: ${e.response?.data}');
         }
       }
+      
+      // Handle 403 Forbidden - User tidak punya akses
+      if (e.response?.statusCode == 403) {
+        print('⚠️ Error 403: User tidak memiliki akses ke surat_masuk');
+        print('💡 Solusi Backend: Tambahkan group "surat_masuk" atau "surat_masuk_pegawai" ke user');
+        return PaginatedResponse.empty();
+      }
+      
       rethrow;
     }
   }

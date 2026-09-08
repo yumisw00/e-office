@@ -1,76 +1,18 @@
 ```
-# Dependencies
-.pub/
-.buildlog
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-
-# Generated plugin build files
-**/android/build/**
-**/ios/Flutter/.last_build_id
-**/linux/flutter/ephemeral/**
-**/macos/Flutter/ephemeral/**
-**/windows/flutter/ephemeral/**
-
-# Android
-**/android/**/gradle-wrapper.properties
-**/android/captures/**
-**/android/gradle/**
-**/android/gradlew
-**/android/gradlew.bat
-**/android/local.properties
-**/android/key.properties
-
-# iOS
-**/ios/Pods/**
-**/ios/Runner/Assets.xcassets/**
-**/ios/Flutter/.symlinks/**
-**/ios/Flutter/app.dill
-**/ios/Flutter/app.so
-**/ios/Flutter/flutter_assets/**
-**/ios/Flutter/Flutter.framework/**
-**/ios/Flutter/Flutter.podspec
-**/ios/Runner.xcodeproj/**
-**/ios/Runner.xcworkspace/**
-**/ios/Podfile.lock
-
-# Web
-**/web/**
-
-# Linux
-**/linux/flutter/ephemeral/**
-**/linux/out/**
-
-# macOS
-**/macos/Flutter/ephemeral/**
-**/macos/Build/**
-
-# Windows
-**/windows/flutter/ephemeral/**
-**/windows/Build/**
-
-# Build outputs
-build/
-**/build/
+# Logs and temp files
+*.log
+*.tmp
+*.swp
 
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
-# Logs
-*.log
-**/logs/
-
-# IDE
+# Editors
 .vscode/
 .idea/
-*.swp
-*.swo
-*.tmp
 
-# OS
-.DS_Store
-Thumbs.db
+# Original rules preserved
+*.log
 ```
