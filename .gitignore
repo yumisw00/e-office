@@ -1,18 +1,42 @@
 ```
-# Logs and temp files
-*.log
-*.tmp
-*.swp
+# Build artifacts
+build/
+*.apk
+*.aab
+*.ipa
+*.app
 
-# Environment
+# Dependencies
+.dart_tool/
+.pub/
+pubspec.lock
+
+# Logs
+*.log
+**/logs
+
+# Environment variables
 .env
 .env.local
 .env.*
+!.env.example
 
-# Editors
-.vscode/
+# IDE files
 .idea/
+.vscode/
+*.swp
+*.swo
 
-# Original rules preserved
-*.log
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+*.coverage
+
+# Temporary files
+*.tmp
+**/temp/
+**/tmp/
 ```
