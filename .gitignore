@@ -1,42 +1,44 @@
 ```
-# Build artifacts
-build/
-*.apk
-*.aab
-*.ipa
-*.app
+# Flutter/Dart specific
+.dart_tool/
+.build/
+packages/
+*.nib
+local.properties
+.project
+
+# Mobile build artifacts
+ios/Pods/
+ios/.symlinks/
+android/.gradle/
+android/local.properties
+**/android/build/
+**/android/app/build/
 
 # Dependencies
-.dart_tool/
-.pub/
 pubspec.lock
 
-# Logs
-*.log
-**/logs
-
-# Environment variables
-.env
-.env.local
-.env.*
-!.env.example
-
-# IDE files
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# OS generated files
-.DS_Store
-Thumbs.db
+# Logs
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+*.env.*
 
 # Coverage
 coverage/
-*.coverage
+htmlcov/
+.coverage
 
-# Temporary files
-*.tmp
-**/temp/
-**/tmp/
+# Cache
+.mypy_cache/
+.pytest_cache/
 ```
