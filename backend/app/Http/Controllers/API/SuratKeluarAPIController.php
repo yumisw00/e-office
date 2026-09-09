@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\BaseResourceController;
 use App\Http\Controllers\API\Concerns\RespondsWithFrontendFormat;
 use App\Services\EOffice\MicrosoftGraphService;
+use App\Services\EOfficeNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,9 +31,8 @@ class SuratKeluarAPIController extends BaseResourceController
 
     /**
      * List outgoing letters using the active server session as the source of
-     * truth for visibility.  Older records may not have a creator, so an
-     * administrator must never be restricted by a client-supplied
-     * `created_by` query parameter.
+     * truth. Every role has a personal outbox, so a client-supplied creator
+     * filter can never expose a letter created by another user.
      */
     public function index(Request $request): JsonResponse
     {
@@ -44,20 +44,48 @@ class SuratKeluarAPIController extends BaseResourceController
             ?? $user?->id
             ?? data_get($request->session()->get('user'), 'id_user')
             ?? $request->session()->get('id_user');
-        $activeGroupId = $request->session()->get('id_group');
-        $isAdmin = $activeGroupId
-            ? DB::table('sys_group')
-                ->where('id_group', $activeGroupId)
-                ->whereNull('deleted_at')
-                ->whereIn(DB::raw('LOWER(nama)'), ['admin sistem', 'admin konten', 'admin_sistem', 'admin_konten'])
-                ->exists()
-            : false;
-
+        $isAdmin = $this->isAdminSession();
         $applyVisibilityScope = function ($query) use ($isAdmin, $userId) {
             if (!$isAdmin) {
-                // Non-admin: see only their own created letters.
+                // Internal letters are private to their explicit recipients
+                // (including copies and designated approvers). A creator or
+                // administrator gains no visibility merely from their role.
+                // External correspondence remains the sender's own record.
                 if ($userId) {
-                    $query->where('created_by', $userId);
+                    $query->where(function ($visibilityQuery) use ($userId) {
+                        $visibilityQuery
+                            ->where(function ($internalQuery) use ($userId) {
+                                $internalQuery->where('jenis_pengiriman', 'internal')
+                                    ->where(function ($recipientQuery) use ($userId) {
+                                        $recipientQuery->where('created_by', $userId)
+                                            ->orWhereExists(function ($query) use ($userId) {
+                                                $query->select(DB::raw(1))
+                                                    ->from('surat_keluar_penerima')
+                                                    ->whereColumn('surat_keluar_penerima.id_surat_keluar', 'surat_keluar.id_surat_keluar')
+                                                    ->where('surat_keluar_penerima.id_user', $userId);
+                                            })
+                                            ->orWhereExists(function ($query) use ($userId) {
+                                                $query->select(DB::raw(1))
+                                                    ->from('surat_keluar_tembusan')
+                                                    ->whereColumn('surat_keluar_tembusan.id_surat_keluar', 'surat_keluar.id_surat_keluar')
+                                                    ->where('surat_keluar_tembusan.id_user', $userId);
+                                            })
+                                            ->orWhereExists(function ($query) use ($userId) {
+                                                $query->select(DB::raw(1))
+                                                    ->from('surat_approval')
+                                                    ->whereColumn('surat_approval.id_surat_keluar', 'surat_keluar.id_surat_keluar')
+                                                    ->where('surat_approval.id_approver', $userId)
+                                                    ->whereNull('surat_approval.deleted_at');
+                                            });
+                                    });
+                            })
+                            ->orWhere(function ($externalQuery) use ($userId) {
+                                $externalQuery->where(function ($typeQuery) {
+                                    $typeQuery->whereNull('jenis_pengiriman')
+                                        ->orWhere('jenis_pengiriman', '!=', 'internal');
+                                })->where('created_by', $userId);
+                            });
+                        });
                 } else {
                     $query->whereRaw('1 = 0');
                 }
@@ -138,13 +166,26 @@ class SuratKeluarAPIController extends BaseResourceController
     public function recipients()
     {
         $recipients = DB::table('sys_user')
-            ->whereNull('deleted_at')
+            ->whereNull('sys_user.deleted_at')
             ->where(function ($query) {
-                $query->whereNull('is_active')->orWhere('is_active', true);
+                $query->whereNull('sys_user.is_active')->orWhere('sys_user.is_active', true);
             })
-            ->select('id_user', 'name')
-            ->orderBy('name')
+            ->select('sys_user.id_user', 'sys_user.name', 'sys_user.email')
+            ->orderBy('sys_user.name')
             ->get();
+
+        $groupsByUser = DB::table('sys_user_group')
+            ->join('sys_group', 'sys_group.id_group', '=', 'sys_user_group.id_group')
+            ->whereIn('sys_user_group.id_user', $recipients->pluck('id_user'))
+            ->whereNull('sys_group.deleted_at')
+            ->orderBy('sys_group.nama')
+            ->get(['sys_user_group.id_user', 'sys_group.nama'])
+            ->groupBy('id_user')
+            ->map(fn ($groups) => $groups->pluck('nama')->filter()->unique()->implode(', '));
+
+        $recipients->each(function ($recipient) use ($groupsByUser) {
+            $recipient->nama_group = $groupsByUser->get($recipient->id_user, '');
+        });
 
         return response()->json(['data' => $recipients]);
     }
@@ -157,13 +198,14 @@ class SuratKeluarAPIController extends BaseResourceController
         }
 
         $userId = (int) (auth()->user()?->id_user ?? 0);
-        $canView = $this->isAdminSession()
-            || (int) $surat->created_by === $userId
-            || (int) $surat->id_penandatangan === $userId
-            || (int) $surat->id_pemeriksa === $userId
-            || DB::table('surat_keluar_penerima')->where('id_surat_keluar', $id)->where('id_user', $userId)->exists()
+        $isInternal = strtolower((string) $surat->jenis_pengiriman) === 'internal';
+        $isCreator = (int) $surat->created_by === $userId;
+        $isExplicitRecipient = DB::table('surat_keluar_penerima')->where('id_surat_keluar', $id)->where('id_user', $userId)->exists()
             || DB::table('surat_keluar_tembusan')->where('id_surat_keluar', $id)->where('id_user', $userId)->exists()
             || DB::table('surat_approval')->where('id_surat_keluar', $id)->where('id_approver', $userId)->whereNull('deleted_at')->exists();
+        $canView = $isInternal
+            ? ($isCreator || $isExplicitRecipient)
+            : $isCreator;
 
         if (!$canView) {
             return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses ke surat keluar ini.'], 403);
@@ -181,6 +223,11 @@ class SuratKeluarAPIController extends BaseResourceController
     {
         $rules = $this->model->rules;
         $uniqueNomorSurat = Rule::unique('surat_keluar', 'nomor_surat');
+
+        // Surat keluar must be created from a template. The selected template
+        // determines the letter type on the server, so clients cannot submit a
+        // free-form `jenis` value.
+        $rules['id_surat_template'] = ['required', 'integer'];
 
         if ($mode === 'update') {
             $id = request()->route('surat_keluar') ?? request()->route('id');
@@ -211,6 +258,9 @@ class SuratKeluarAPIController extends BaseResourceController
             $payload['perihal'] = $payload['nomor_surat'] ?? 'Surat Keluar';
         }
 
+        $payload = $this->resolveTemplateJenisSuratPayload($payload);
+        $payload = $this->resolveJenisSuratPayload($payload);
+
         // Workflow status and Office links are set only by their dedicated
         // server-side workflows. A client may only attach a file stored by the
         // outgoing-letter upload endpoint.
@@ -234,6 +284,85 @@ class SuratKeluarAPIController extends BaseResourceController
 
             $payload[$field] = $this->validatedOutgoingStoragePath($payload[$field]);
         }
+
+        return $payload;
+    }
+
+    private function resolveJenisSuratPayload(array $payload): array
+    {
+        if (!array_key_exists('jenis', $payload) && !array_key_exists('id_jenis_surat', $payload)) {
+            return $payload;
+        }
+
+        $query = DB::table('master_jenis_surat')
+            ->where('is_active', true)
+            ->whereNull('deleted_at');
+
+        if (!empty($payload['id_jenis_surat'])) {
+            $jenis = $query->where('id_jenis_surat', $payload['id_jenis_surat'])->first();
+        } else {
+            $nama = trim((string) ($payload['jenis'] ?? ''));
+            $jenis = $nama === '' ? null : $query->whereRaw('LOWER(nama) = ?', [mb_strtolower($nama)])->first();
+        }
+
+        if (!$jenis) {
+            throw ValidationException::withMessages(['jenis' => 'Jenis surat harus dipilih dari Master Jenis Surat yang aktif.']);
+        }
+
+        $payload['id_jenis_surat'] = $jenis->id_jenis_surat;
+        $payload['jenis'] = $jenis->nama;
+
+        return $payload;
+    }
+
+    /**
+     * A selected template is the source of truth for the letter type. This
+     * prevents a browser request from saving a type that differs from the
+     * template selected by the user.
+     */
+    private function resolveTemplateJenisSuratPayload(array $payload): array
+    {
+        $templateId = $payload['id_surat_template'] ?? null;
+        if (!$templateId) {
+            throw ValidationException::withMessages([
+                'id_surat_template' => 'Template surat wajib dipilih.',
+            ]);
+        }
+
+        $template = DB::table('surat_template')
+            ->where('id_surat_template', $templateId)
+            ->whereNull('deleted_at')
+            ->where(function ($query) {
+                $query->whereNull('is_active')->orWhere('is_active', true);
+            })
+            ->first(['jenis_surat', 'nama']);
+
+        if (!$template) {
+            throw ValidationException::withMessages([
+                'id_surat_template' => 'Template surat tidak ditemukan atau tidak aktif.',
+            ]);
+        }
+
+        $templateJenis = trim((string) $template->jenis_surat);
+
+        // Older templates may not yet have jenis_surat. Their name is the
+        // fallback mapping (e.g. "surat permohonan" -> "Surat Permohonan").
+        if ($templateJenis === '' && !empty($template?->nama)) {
+            $templateJenis = trim((string) DB::table('master_jenis_surat')
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->whereRaw('LOWER(nama) = ?', [mb_strtolower(trim($template->nama))])
+                ->value('nama'));
+        }
+
+        if ($templateJenis === '') {
+            throw ValidationException::withMessages([
+                'id_surat_template' => 'Template surat belum memiliki jenis surat.',
+            ]);
+        }
+
+        $payload['jenis'] = $templateJenis;
+        unset($payload['id_jenis_surat']);
 
         return $payload;
     }
@@ -314,6 +443,12 @@ class SuratKeluarAPIController extends BaseResourceController
             if ($suratId) {
                 $this->syncRecipientRelations((int) $suratId, $request);
                 $autoSubmitted = $this->autoSubmitForApproval((int) $suratId);
+                if (!$autoSubmitted) {
+                    DB::table('surat_keluar')->where('id_surat_keluar', $suratId)->update([
+                        'status' => 'diproses',
+                        'updated_at' => now(),
+                    ]);
+                }
             }
 
             if ($autoSubmitted) {
@@ -330,13 +465,6 @@ class SuratKeluarAPIController extends BaseResourceController
 
         // Step 2: Route internal letter AFTER transaction commits (non-blocking)
         // This is a secondary feature — surat_keluar is already saved successfully
-        $suratId = $result['suratId'] ?? null;
-        if ($suratId) {
-            foreach ($result['penerima_ids'] ?? [] as $recipientId) {
-                $this->routeInternalLetterToRecipient((int) $suratId, $result['jenis_pengiriman'] ?? null, $recipientId);
-            }
-        }
-
         return $result['response'];
     }
 
@@ -349,7 +477,7 @@ class SuratKeluarAPIController extends BaseResourceController
      * Approach: insert into surat_distribusi with id_user_tujuan so the recipient
      * sees the letter in their surat masuk list.
      */
-    private function routeInternalLetterToRecipient(int $suratId, ?string $jenisPengiriman, int $tujuanId): void
+    public function routeInternalLetterToRecipient(int $suratId, ?string $jenisPengiriman, int $tujuanId): void
     {
         if ($jenisPengiriman !== 'internal' || !$tujuanId) {
             return;
@@ -374,14 +502,13 @@ class SuratKeluarAPIController extends BaseResourceController
 
         // Map surat_keluar status to surat_masuk status
         $statusMap = [
-            'draft' => 'manual_input',
-            'submitted' => 'manual_input',
-            'approved' => 'manual_input',
-            'signed' => 'diproses',
-            'sent' => 'diproses',
-            'archived' => 'selesai',
+            'signed' => 'dikirim',
+            'sent' => 'dikirim',
+            'dikirim' => 'dikirim',
+            'selesai' => 'selesai',
+            'archived' => 'diarsipkan',
         ];
-        $suratMasukStatus = $statusMap[$surat->status] ?? 'manual_input';
+        $suratMasukStatus = $statusMap[$surat->status] ?? 'dikirim';
 
         // An update/retry must amend the same incoming letter, never create a
         // second inbox item for the recipient.
@@ -391,8 +518,13 @@ class SuratKeluarAPIController extends BaseResourceController
             : null;
 
         $insertData = [
+            // Keep the incoming record faithful to its internal outgoing
+            // source so these fields are available on the Surat Masuk detail.
+            'nomor_agenda' => $surat->nomor_agenda,
             'nomor_surat' => $surat->nomor_surat,
-            'jenis' => 'internal',
+            'jenis' => $surat->jenis,
+            'jenis_pengiriman' => 'internal',
+            'id_jenis_surat' => $surat->id_jenis_surat ?? null,
             'tanggal_surat' => $surat->tanggal_surat ?? $nowDate,
             'tanggal_terima' => $nowDate,
             'asal_surat' => $senderName ?? 'Internal',
@@ -429,10 +561,14 @@ class SuratKeluarAPIController extends BaseResourceController
             return;
         }
 
-        // Create distribusi record so the recipient sees it in their surat masuk
+        // Create distribusi record so the recipient sees it in their surat masuk.
+        // Scope the lookup to the recipient: one internal letter may be routed
+        // to several users and each needs their own distribution record.
+        $isNewDistribution = false;
         try {
             $distribution = DB::table('surat_distribusi')
                 ->where('id_surat_masuk', $idSuratMasuk)
+                ->where('id_user_tujuan', $tujuanId)
                 ->first();
 
             $distributionData = [
@@ -448,6 +584,7 @@ class SuratKeluarAPIController extends BaseResourceController
                     ->update($distributionData);
                 $idDistribusi = (int) $distribution->id_surat_distribusi;
             } else {
+                $isNewDistribution = true;
                 $idDistribusi = DB::table('surat_distribusi')->insertGetId($distributionData + [
                     'id_surat_masuk' => $idSuratMasuk,
                     'created_by' => $surat->created_by,
@@ -459,16 +596,18 @@ class SuratKeluarAPIController extends BaseResourceController
             return;
         }
 
-        // Notify the recipient
-        DB::afterCommit(function () use ($tujuanId, $idSuratMasuk, $idDistribusi, $surat, $senderName) {
+        // Notify only for a new route, so editing a letter does not repeatedly
+        // add the same notification to the recipient's inbox.
+        if ($isNewDistribution) {
             $this->createInternalLetterNotification(
                 (int) $tujuanId,
                 (int) $idSuratMasuk,
                 $idDistribusi,
                 $surat->perihal ?? 'Surat Internal Baru',
-                $senderName ?? 'Pegawai'
+                $senderName ?? 'Pegawai',
+                (int) $surat->id_surat_keluar
             );
-        });
+        }
     }
 
     /**
@@ -514,22 +653,22 @@ class SuratKeluarAPIController extends BaseResourceController
         int $idSuratMasuk,
         int $idDistribusi,
         string $perihal,
-        string $senderName
+        string $senderName,
+        int $suratId
     ): void {
         try {
-            DB::table('notifications')->insert([
-                'type' => 'internal_letter',
-                'notifiable_type' => 'App\\Models\\SysUser',
-                'notifiable_id' => $recipientUserId,
-                'data' => json_encode([
-                    'title' => 'Surat Internal Baru',
-                    'body' => "Surat dari {$senderName}: {$perihal}",
+            app(EOfficeNotificationService::class)->send(
+                $recipientUserId,
+                'Surat Internal Baru',
+                "Surat dari {$senderName}: {$perihal}",
+                '/surat_masuk_pegawai?surat_id=' . $idSuratMasuk,
+                [
                     'id_surat_masuk' => $idSuratMasuk,
                     'id_surat_distribusi' => $idDistribusi,
-                ]),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+                    'id_surat_keluar' => $suratId,
+                    'type' => 'internal_letter',
+                ]
+            );
         } catch (\Throwable $e) {
             \Log::warning('Gagal membuat notifikasi surat internal: ' . $e->getMessage());
         }
@@ -669,13 +808,6 @@ class SuratKeluarAPIController extends BaseResourceController
             ]);
         }
 
-        $senderId = auth()->user()?->id_user ?? auth()->user()?->id;
-        if ($senderId && in_array((int) $senderId, $recipientIds, true)) {
-            throw ValidationException::withMessages([
-                'penerima_ids' => 'Surat internal tidak dapat dikirim kepada pembuat surat sendiri.',
-            ]);
-        }
-
         $primaryRecipient = $recipients->first();
         $request->merge([
             'jenis_pengiriman' => $type,
@@ -794,7 +926,8 @@ class SuratKeluarAPIController extends BaseResourceController
             return false;
         }
 
-        DB::transaction(function () use ($surat, $approvers) {
+        $queued = false;
+        DB::transaction(function () use ($surat, $approvers, &$queued) {
             $alreadyQueued = DB::table('surat_approval')
                 ->where('id_surat_keluar', $surat->id_surat_keluar)
                 ->whereNull('deleted_at')
@@ -804,10 +937,12 @@ class SuratKeluarAPIController extends BaseResourceController
                 return;
             }
 
+            $queued = true;
+
             DB::table('surat_keluar')
                 ->where('id_surat_keluar', $surat->id_surat_keluar)
                 ->update([
-                    'status' => 'submitted',
+                    'status' => 'diproses',
                     'updated_at' => now(),
                 ]);
 
@@ -822,7 +957,18 @@ class SuratKeluarAPIController extends BaseResourceController
             ])->all());
         });
 
-        return true;
+        if ($queued) {
+            $firstApproverId = (int) $approvers->first();
+            app(EOfficeNotificationService::class)->send(
+                $firstApproverId,
+                'Persetujuan surat menunggu Anda',
+                'Surat keluar "' . ($surat->perihal ?? $surat->nomor_surat ?? 'Tanpa Perihal') . '" menunggu persetujuan Anda.',
+                '/surat_keluar/detail/' . $surat->id_surat_keluar,
+                ['id_surat_keluar' => $surat->id_surat_keluar, 'type' => 'approval_request']
+            );
+        }
+
+        return $queued;
     }
 
     private function isPimpinanUser(int $userId): bool
@@ -994,26 +1140,71 @@ class SuratKeluarAPIController extends BaseResourceController
     {
         return DB::table($pivotTable)
             ->join('sys_user', 'sys_user.id_user', '=', $pivotTable . '.id_user')
+            ->leftJoin('sys_user_group', 'sys_user_group.id_user', '=', 'sys_user.id_user')
+            ->leftJoin('sys_group', function ($join) {
+                $join->on('sys_group.id_group', '=', 'sys_user_group.id_group')
+                    ->whereNull('sys_group.deleted_at');
+            })
             ->where($pivotTable . '.id_surat_keluar', $suratId)
             ->whereNull('sys_user.deleted_at')
             ->orderBy('sys_user.name')
-            ->get(['sys_user.id_user', 'sys_user.name', 'sys_user.email'])
+            ->groupBy('sys_user.id_user', 'sys_user.name', 'sys_user.email')
+            ->get([
+                'sys_user.id_user',
+                'sys_user.name',
+                'sys_user.email',
+                DB::raw("STRING_AGG(DISTINCT sys_group.nama, ', ') as nama_group"),
+            ])
             ->map(fn ($user) => (array) $user)
             ->all();
     }
 
     private function isAdminSession(): bool
     {
-        $groupId = session('id_group');
+        // Surat Keluar is private to its creator for every role. This method
+        // is also used by show(), so an administrator cannot bypass the same
+        // ownership rule by opening another user's letter directly.
+        return false;
+    }
+
+    private function activeGroupName(Request $request): string
+    {
+        $groupName = trim((string) $request->session()->get('nama_group', ''));
+        if ($groupName !== '') {
+            return $groupName;
+        }
+
+        $groupId = $request->session()->get('id_group');
         if (!$groupId) {
+            return '';
+        }
+
+        return trim((string) DB::table('sys_group')
+            ->where('id_group', $groupId)
+            ->whereNull('deleted_at')
+            ->value('nama'));
+    }
+
+    private function isLegacyGroupRecipient($surat, Request $request): bool
+    {
+        if (!$surat || empty($surat->tujuan_nama)) {
             return false;
         }
 
-        return DB::table('sys_group')
-            ->where('id_group', $groupId)
-            ->whereNull('deleted_at')
-            ->whereRaw("LOWER(REPLACE(nama, '_', ' ')) IN ('admin sistem', 'admin konten')")
+        $hasExplicitRecipients = DB::table('surat_keluar_penerima')
+            ->where('id_surat_keluar', $surat->id_surat_keluar)
             ->exists();
+        if ($hasExplicitRecipients) {
+            return false;
+        }
+
+        $activeGroupName = mb_strtolower($this->activeGroupName($request));
+        $legacyTargets = collect(preg_split('/[,;]+/', mb_strtolower((string) $surat->tujuan_nama)))
+            ->map(fn ($target) => trim(str_replace('_', ' ', $target)))
+            ->filter();
+
+        return $activeGroupName !== ''
+            && $legacyTargets->contains(trim(str_replace('_', ' ', $activeGroupName)));
     }
 
     private function isEditableWordPath(?string $path): bool

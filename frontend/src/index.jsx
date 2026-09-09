@@ -13,6 +13,19 @@ Modal.defaultProps = {
   keyboard: false,
 };
 
+document.documentElement.lang = 'id'
+
+document.addEventListener('invalid', event => {
+  const field = event.target
+  if (field?.validity?.valueMissing) {
+    field.setCustomValidity('Harap isi kolom ini.')
+  }
+}, true)
+
+document.addEventListener('input', event => {
+  event.target?.setCustomValidity?.('')
+})
+
 const root = createRoot(document.getElementById('root'));
 
 root.render(

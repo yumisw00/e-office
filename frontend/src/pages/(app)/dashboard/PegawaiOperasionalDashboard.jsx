@@ -263,6 +263,8 @@ class PegawaiOperasionalDashboard extends Component {
       labels: buildDayBuckets().map(b => b.label),
       masuk: Array(7).fill(0),
       keluar: Array(7).fill(0),
+      totalMasuk: 0,
+      totalKeluar: 0,
     },
     disposisiStats: { draft: 0, proses: 0, selesai: 0 },
     disposisiSummary: { aktif: 0, selesai: 0, draft: 0, produktivitas: 0 },
@@ -422,7 +424,7 @@ class PegawaiOperasionalDashboard extends Component {
     else if (period === "monthly") buckets = buildMonthBuckets()
     else buckets = buildDayBuckets()
 
-    const stats = { labels: buckets.map(b => b.label), masuk: buckets.map(() => 0), keluar: buckets.map(() => 0) }
+    const stats = { labels: buckets.map(b => b.label), masuk: buckets.map(() => 0), keluar: buckets.map(() => 0), totalMasuk: 0, totalKeluar: 0 }
 
     try {
       const [inResp, outResp] = await Promise.all([
@@ -443,6 +445,8 @@ class PegawaiOperasionalDashboard extends Component {
       const dateFn = period === "weekly" ? getWeekKey : period === "monthly" ? getMonthKey : d => d.toISOString().slice(0, 10)
       add(this.getPayload(inResp), "masuk", ["tanggal_distribusi", "tanggal_terima", "tanggal_terima_surat", "created_at"], dateFn)
       add(this.getPayload(outResp), "keluar", ["tanggal_surat", "created_at"], dateFn)
+      stats.totalMasuk = this.getCount(inResp)
+      stats.totalKeluar = this.getCount(outResp)
     } catch (error) { /* ignore */ }
 
     return { ...stats, period }
@@ -558,8 +562,8 @@ class PegawaiOperasionalDashboard extends Component {
   render() {
     const { counts, mailStats, disposisiStats, disposisiSummary, suratMasukList, suratKeluarList, disposisiList, agendaList, pengumumanList, agendaHariIni, aktivitasTerbaru, is_loading } = this.state
 
-    const totalMasuk = mailStats.masuk.reduce((a, b) => a + b, 0)
-    const totalKeluar = mailStats.keluar.reduce((a, b) => a + b, 0)
+    const totalMasuk = mailStats.totalMasuk ?? mailStats.masuk.reduce((a, b) => a + b, 0)
+    const totalKeluar = mailStats.totalKeluar ?? mailStats.keluar.reduce((a, b) => a + b, 0)
 
     const periodeButtons = [
       { label: "Hari", value: "daily" },
@@ -591,11 +595,11 @@ class PegawaiOperasionalDashboard extends Component {
 
           {/* ── Statistic Cards ── */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
-            <StatCard icon="move_to_inbox" label="Surat Masuk Saya" value={counts.surat_masuk_saya} href="/surat_masuk_pegawai" loading={is_loading} />
-            <StatCard icon="edit_document" label="Draft Surat Saya" value={counts.draft_surat_saya} href="/surat_keluar" loading={is_loading} />
-            <StatCard icon="assignment_turned_in" label="Disposisi Saya" value={counts.disposisi_saya} href="/disposisi" loading={is_loading} />
+            <StatCard icon="move_to_inbox" label="Surat Masuk" value={counts.surat_masuk_saya} href="/surat_masuk_pegawai" loading={is_loading} />
+            <StatCard icon="edit_document" label="Draft Surat" value={counts.draft_surat_saya} href="/surat_keluar" loading={is_loading} />
+            <StatCard icon="assignment_turned_in" label="Disposisi" value={counts.disposisi_saya} href="/disposisi" loading={is_loading} />
             <StatCard icon="task_alt" label="Tugas Selesai" value={counts.tugas_selesai} href="/disposisi" loading={is_loading} />
-            <StatCard icon="archive" label="Arsip Saya" value={counts.arsip_saya} href="/surat_arsip" loading={is_loading} />
+            <StatCard icon="archive" label="Arsip" value={counts.arsip_saya} href="/surat_arsip" loading={is_loading} />
           </div>
 
           {/* ── Charts Row ── */}

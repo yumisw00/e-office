@@ -81,6 +81,7 @@ class Disposisi extends IndexPage {
         jenisPengirimanTab: 'semua',
         allList: [],
         summary: { total: 0, berjalan: 0, selesai: 0 },
+        categorySummary: { total: 0, internal: 0, eksternal: 0 },
     }
 
     // Override get to also fetch all data for accurate summary counts
@@ -115,6 +116,7 @@ class Disposisi extends IndexPage {
             list: response.data,
             allList: response.data,
             summary: response.summary || { total: 0, berjalan: 0, selesai: 0 },
+            categorySummary: response.category_summary || this.state.categorySummary,
             datafilter: {
                 ...datafilter,
                 paginate: {
@@ -346,6 +348,7 @@ class Disposisi extends IndexPage {
     render() {
         const list = this.getVisibleList()
         const summary = this.getReportSummary(list)
+        const suratCounts = { semua: this.state.categorySummary.total, internal: this.state.categorySummary.internal, eksternal: this.state.categorySummary.eksternal }
 
         return (
             <>
@@ -353,7 +356,7 @@ class Disposisi extends IndexPage {
                     title={this.titlePage}
                     is_loading={this.state.is_loading}
                     data_btn={[]}
-                    filterTabs={<div style={{ marginTop: 16, marginBottom: 0 }}>{[['semua', 'Semua Disposisi'], ['internal', 'Internal'], ['eksternal', 'Eksternal']].map(([value, label]) => <button key={value} type="button" className={`btn btn-sm ${this.state.jenisPengirimanTab === value ? 'btn-info' : 'btn-outline-secondary'}`} onClick={() => this.setState(state => ({ jenisPengirimanTab: value, datafilter: { ...state.datafilter, paginate: { ...state.datafilter.paginate, page: 1 } } }), this.get)}>{label}</button>)}</div>}
+                    filterTabs={<div style={{ marginTop: 16, marginBottom: 0 }}>{[['semua', 'Semua Disposisi'], ['internal', 'Internal'], ['eksternal', 'Eksternal']].map(([value, label]) => <button key={value} type="button" className={`btn btn-sm ${this.state.jenisPengirimanTab === value ? 'btn-info' : 'btn-outline-secondary'}`} onClick={() => this.setState(state => ({ jenisPengirimanTab: value, datafilter: { ...state.datafilter, paginate: { ...state.datafilter.paginate, page: 1 } } }), this.get)}>{label} ({suratCounts[value] || 0})</button>)}</div>}
                     btnCustom={
                         <div style={{ marginTop: 16, marginBottom: 0 }}>
                         <EofficeToolbar>
@@ -372,12 +375,6 @@ class Disposisi extends IndexPage {
                 />
 
                 <div className="container pl-4 pr-4">
-                    <div className="row mb-2">
-                        {this.renderSummaryCard('Total', summary.total, 'assignment')}
-                        {this.renderSummaryCard('Berjalan', summary.berjalan, 'pending_actions')}
-                        {this.renderSummaryCard('Selesai', summary.selesai, 'task_alt', '#22a06b')}
-                    </div>
-
                     <EofficeCard className="p-3 mb-3">
                         {list.length > 0 ? this.renderDisposisiTable(list) : (
                             <EofficeEmptyState

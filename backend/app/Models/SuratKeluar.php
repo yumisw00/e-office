@@ -14,6 +14,7 @@ class SuratKeluar extends BaseModel
         'id_surat_template',
         'jenis',
         'jenis_pengiriman',
+        'id_jenis_surat',
         'perihal',
         'tujuan_id',
         'tujuan_nama',
@@ -55,6 +56,8 @@ class SuratKeluar extends BaseModel
         'id_surat_template' => 'nullable',
         'jenis' => 'nullable|string|max:100',
         'jenis_pengiriman' => 'required|in:internal,eksternal',
+        'id_jenis_surat' => 'required|integer|exists:master_jenis_surat,id_jenis_surat',
+        'jenis' => 'required|string|max:150',
         'perihal' => 'required|string|max:255',
         'tujuan_id' => 'nullable|integer',
         'tujuan_nama' => 'nullable|string|max:200',
@@ -95,5 +98,10 @@ class SuratKeluar extends BaseModel
     public function tembusanInternal(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(SysUser::class, 'surat_keluar_tembusan', 'id_surat_keluar', 'id_user')->withTimestamps();
+    }
+
+    public function jenisSurat(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(MasterJenisSurat::class, 'id_jenis_surat', 'id_jenis_surat');
     }
 }

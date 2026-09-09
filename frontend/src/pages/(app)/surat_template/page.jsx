@@ -15,13 +15,13 @@ import {
 
 const emptyForm = {
     nama_template: "",
-    jenis_surat: "surat_undangan",
+    jenis_surat: "",
     file_template: "",
     file_path: "",
     drive_document_url: "",
 }
 
-const jenisTemplateOptions = [
+/* const jenisTemplateOptions = [
     // Kategori: Surat Undangan
     { value: "surat_undangan", label: "Surat Undangan" },
     { value: "surat_undangan_rapat", label: "Surat Undangan Rapat" },
@@ -85,9 +85,10 @@ const jenisTemplateOptions = [
     { value: "surat_peringatan", label: "Surat Peringatan" },
     { value: "laporan", label: "Laporan" },
 ]
+*/
 
-const jenisTemplateLabel = value => {
-    const option = jenisTemplateOptions.find(item => item.value === value || item.label === value)
+const jenisTemplateLabel = (value, options = []) => {
+    const option = options.find(item => item.value === value || item.label === value)
     if (option) return option.label
     return String(value || "-").replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase())
 }
@@ -111,6 +112,7 @@ const SuratTemplate = () => {
     const [showDriveModal, setShowDriveModal] = useState(false)
     const [driveUrlInput, setDriveUrlInput] = useState("")
     const [connectingDrive, setConnectingDrive] = useState(false)
+    const [jenisTemplateOptions, setJenisTemplateOptions] = useState([])
 
     const service = useMemo(() => api_services({ api_path: "/surat_template" }), [])
 
@@ -135,6 +137,15 @@ const SuratTemplate = () => {
         loadData()
     }, [])
 
+    useEffect(() => {
+        axios.get('/api/master_jenis_surat/options', { withCredentials: true })
+            .then(response => setJenisTemplateOptions(normalizeList(response.data)))
+            .catch(() => {
+                setJenisTemplateOptions([])
+                showToastr('error', 'Data Master Jenis Surat gagal dimuat.')
+            })
+    }, [])
+
     const [inlineFilterValues, setInlineFilterValues] = useState({})
 
     const tableHeaders = [
@@ -148,14 +159,14 @@ const SuratTemplate = () => {
     const tableColgroup = tableHeaders.map(h => h.width)
 
     const getCellValue = (item, name) => {
-        if (name === 'jenis_surat') return jenisTemplateLabel(item?.jenis_surat) || '-'
+        if (name === 'jenis_surat') return jenisTemplateLabel(item?.jenis_surat, jenisTemplateOptions) || '-'
         return item?.[name] || '-'
     }
 
     const filteredList = list.filter(item => {
         const filters = inlineFilterValues
         if (filters.nama_template && !String(item?.nama_template || '').toLowerCase().includes(String(filters.nama_template).toLowerCase())) return false
-        if (filters.jenis_surat && !String(jenisTemplateLabel(item?.jenis_surat) || '').toLowerCase().includes(String(filters.jenis_surat).toLowerCase())) return false
+        if (filters.jenis_surat && !String(jenisTemplateLabel(item?.jenis_surat, jenisTemplateOptions) || '').toLowerCase().includes(String(filters.jenis_surat).toLowerCase())) return false
         if (filters.dokumen) {
             const doc = item?.drive_document_url || item?.file_path || ''
             if (!String(doc).toLowerCase().includes(String(filters.dokumen).toLowerCase())) return false
@@ -175,7 +186,7 @@ const SuratTemplate = () => {
             ...emptyForm,
             ...item,
             // Auto-fill nama_template from jenis_surat when creating new
-            nama_template: isEdit ? (item?.nama_template || '') : (jenisTemplateLabel(item?.jenis_surat || 'surat_undangan') || ''),
+            nama_template: isEdit ? (item?.nama_template || '') : '',
         })
         setShowModal(true)
     }
@@ -218,6 +229,10 @@ const SuratTemplate = () => {
 
     const saveData = async event => {
         event?.preventDefault()
+        if (!form.jenis_surat) {
+            showToastr('error', 'Jenis surat wajib dipilih dari Master Jenis Surat.')
+            return
+        }
         try {
             const body = {
                 nama: form.nama_template,
@@ -265,7 +280,7 @@ const SuratTemplate = () => {
                 <div className="d-flex justify-content-end mb-3">
                     <Button className="btn-default-app btn-info" onClick={() => openForm({})}>
                         <span className="material-icons mr-1" style={{ fontSize: 16 }}>upload_file</span>
-                        Upload Template
+                        Tambah Template
                     </Button>
                 </div>
                 <div className="table-responsive table-responsive-x">
@@ -293,7 +308,7 @@ const SuratTemplate = () => {
                                         if (header.name === 'jenis_surat') {
                                             return (
                                                 <EofficeTableCell key={header.name} width={header.width} align="start" wrap>
-                                                    <div className="text-gray-900">{jenisTemplateLabel(item?.jenis_surat) || "-"}</div>
+                                                    <div className="text-gray-900">{jenisTemplateLabel(item?.jenis_surat, jenisTemplateOptions) || "-"}</div>
                                                 </EofficeTableCell>
                                             )
                                         }
@@ -379,15 +394,16 @@ const SuratTemplate = () => {
                         <div className="row g-3">
                             <div className="col-md-6">
                                 <label className="font-semibold">Jenis Surat</label>
-                                <select className="form-control" value={form.jenis_surat || ""} onChange={e => {
+                                <select className="form-control" value={form.jenis_surat || ""} required onChange={e => {
                                     const selectedJenis = e.target.value
-                                    const label = jenisTemplateLabel(selectedJenis)
+                                    const label = jenisTemplateLabel(selectedJenis, jenisTemplateOptions)
                                     setForm(prev => ({
                                         ...prev,
                                         jenis_surat: selectedJenis,
                                         nama_template: label,
                                     }))
                                 }}>
+                                    <option value="">Pilih jenis surat</option>
                                     {jenisTemplateOptions.map(option => (
                                         <option key={option.value} value={option.value}>{option.label}</option>
                                     ))}

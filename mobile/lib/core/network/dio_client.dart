@@ -2,8 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../constants/app_config.dart';
-
 part 'dio_client.g.dart';
 
 const _storage = FlutterSecureStorage();
@@ -12,13 +10,10 @@ const _storage = FlutterSecureStorage();
 Dio dio(Ref ref) {
   final dio = Dio(
     BaseOptions(
-      baseUrl: AppConfig.baseUrl,
-      connectTimeout: AppConfig.connectTimeout,
-      receiveTimeout: AppConfig.receiveTimeout,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
+      baseUrl: 'https://192.168.0.46:8001/api',
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+      headers: {'Accept': 'application/json'},
       validateStatus: (status) {
         return status != null && status < 500;
       },
@@ -28,31 +23,11 @@ Dio dio(Ref ref) {
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final token = await _storage.read(key: AppConfig.authTokenKey);
+        final token = await _storage.read(key: 'auth_token');
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
-        // Optional: Add logging for debugging
-        if (AppConfig.enableLogging) {
-          print('🌐 REQUEST[${options.method}] => ${options.uri}');
-          print('   Headers: ${options.headers}');
-          if (options.data != null) {
-            print('   Data: ${options.data}');
-          }
-        }
         handler.next(options);
-      },
-      onResponse: (response, handler) async {
-        if (AppConfig.enableLogging) {
-          print('✅ RESPONSE[${response.statusCode}] <= ${response.requestOptions.uri}');
-        }
-        handler.next(response);
-      },
-      onError: (error, handler) async {
-        if (AppConfig.enableLogging) {
-          print('❌ ERROR[${error.error}] => ${error.requestOptions.uri}');
-        }
-        handler.next(error);
       },
     ),
   );

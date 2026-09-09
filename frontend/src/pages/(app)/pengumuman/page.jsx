@@ -6,7 +6,6 @@ import Button from "components/Button"
 import EofficeStatusBadge from "components/EofficeStatusBadge"
 import { api_services } from "hooks/api_services"
 import { formatDateApp } from "pages/Utils"
-import EditDelete from "components/EditDelete"
 
 const emptyForm = {
     judul: "",
@@ -74,6 +73,14 @@ const getKategori = value => kategoriOptions.find(k => k.value === value) || kat
 const formatDateShort = value => {
     if (!value) return "-"
     return formatDateApp(value, "DD MMM YYYY")
+}
+
+const cardActionButtonStyle = {
+    minWidth: 78,
+    height: 34,
+    padding: "0 10px",
+    justifyContent: "center",
+    gap: 4,
 }
 
 const Pengumuman = () => {
@@ -336,17 +343,20 @@ const Pengumuman = () => {
                                     {/* Card Footer */}
                                     <div className="px-4 pb-4 pt-2 d-flex justify-content-between align-items-center">
                                         <div className="d-flex" style={{ gap: 6 }}>
-                                            <Button className="btn-default-app btn-light btn-sm" onClick={() => { setPreviewItem(item); setShowPreview(true) }}>
-                                                <span className="material-icons" style={{ fontSize: 14 }}>visibility</span>
+                                            <Button className="btn-default-app btn-light btn-sm" style={cardActionButtonStyle} onClick={() => { setPreviewItem(item); setShowPreview(true) }}>
+                                                <span className="material-icons" style={{ fontSize: 16 }}>visibility</span>
+                                                Lihat
                                             </Button>
-                                            <EditDelete
-                                                data={[
-                                                    { label: "Edit", icon: "edit" },
-                                                    { label: "Hapus", icon: "delete" },
-                                                ]}
-                                                onEdit={() => openForm(item)}
-                                                onDelete={() => deleteData(item)}
-                                            />
+                                            <Button className="btn-default-app btn-warning btn-sm" style={cardActionButtonStyle} onClick={() => openForm(item)}>
+                                                <span className="material-icons" style={{ fontSize: 16 }}>edit</span>
+                                                Edit
+                                            </Button>
+                                            <Button className="btn-default-app btn-danger btn-sm" style={cardActionButtonStyle} onClick={() => {
+                                                if (window.confirm("Anda yakin menghapus pengumuman ini?")) deleteData(item)
+                                            }}>
+                                                <span className="material-icons" style={{ fontSize: 16 }}>delete</span>
+                                                Hapus
+                                            </Button>
                                         </div>
                                         <Button
                                             className={`btn-default-app btn-sm ${isPublished ? "btn-warning" : "btn-success"}`}

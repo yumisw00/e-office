@@ -362,9 +362,6 @@ class SuratArsip extends IndexPage {
 
     render() {
         const list = this.getFilteredArsipList()
-        const allArsip = Array.isArray(this.state.list) ? this.state.list : []
-        const suratMasukCount = allArsip.filter(item => item.jenis_surat === 'surat_masuk').length
-        const suratKeluarCount = allArsip.filter(item => item.jenis_surat === 'surat_keluar').length
         const hasFilters = Boolean(this.state.quickSearch || Object.values(this.state.inlineFilterValues).some(Boolean))
 
         return (
@@ -377,27 +374,6 @@ class SuratArsip extends IndexPage {
                 />
 
                 <div className="container pl-4 pr-4 pb-4">
-                    <div className="row g-3 mb-1">
-                        <div className="col-md-4">
-                            <div className="arsip-summary-card">
-                                <span className="material-icons arsip-summary-icon">archive</span>
-                                <div><div className="arsip-summary-value">{allArsip.length}</div><div className="arsip-summary-label">Arsip pada halaman ini</div></div>
-                            </div>
-                        </div>
-                        <div className="col-md-4">
-                            <div className="arsip-summary-card">
-                                <span className="material-icons arsip-summary-icon">inbox</span>
-                                <div><div className="arsip-summary-value">{suratMasukCount}</div><div className="arsip-summary-label">Surat masuk</div></div>
-                            </div>
-                        </div>
-                        <div className="col-md-4">
-                            <div className="arsip-summary-card">
-                                <span className="material-icons arsip-summary-icon">outgoing_mail</span>
-                                <div><div className="arsip-summary-value">{suratKeluarCount}</div><div className="arsip-summary-label">Surat keluar</div></div>
-                            </div>
-                        </div>
-                    </div>
-
                     <EofficeCard className="p-3 mb-3">
                         {list.length > 0 ? this.renderArsipTable(list) : (
                             <EofficeEmptyState
@@ -442,10 +418,6 @@ class SuratArsip extends IndexPage {
                 )}
 
                 <style>{`
-                    .arsip-summary-card { display: flex; align-items: center; gap: 12px; min-height: 82px; padding: 16px; border: 1px solid #d9e5e8; border-radius: 10px; background: #fff; box-shadow: 0 2px 5px rgba(15, 116, 128, .06); }
-                    .arsip-summary-icon { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 9px; color: #0f7480; background: #e6f5f6; }
-                    .arsip-summary-value { color: #164e63; font-size: 24px; font-weight: 700; line-height: 1; }
-                    .arsip-summary-label { margin-top: 4px; color: #64748b; font-size: 13px; }
                     .arsip-search-wrap { min-width: min(100%, 410px); }
                     .arsip-search-wrap .form-control { min-width: 220px; }
                     .arsip-jenis { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }

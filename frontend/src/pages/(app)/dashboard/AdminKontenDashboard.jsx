@@ -140,6 +140,8 @@ class AdminKontenDashboard extends Component {
       labels: buildDayBuckets().map(b => b.label),
       masuk: Array(7).fill(0),
       keluar: Array(7).fill(0),
+      totalMasuk: 0,
+      totalKeluar: 0,
     },
     suratMasukList: [],
     distribusiList: [],
@@ -225,7 +227,7 @@ class AdminKontenDashboard extends Component {
     else if (period === "monthly") buckets = buildMonthBuckets()
     else buckets = buildDayBuckets()
 
-    const stats = { labels: buckets.map(b => b.label), masuk: buckets.map(() => 0), keluar: buckets.map(() => 0) }
+    const stats = { labels: buckets.map(b => b.label), masuk: buckets.map(() => 0), keluar: buckets.map(() => 0), totalMasuk: 0, totalKeluar: 0 }
 
     try {
       const [inResp, outResp] = await Promise.all([
@@ -246,6 +248,8 @@ class AdminKontenDashboard extends Component {
       const dateFn = period === "weekly" ? getWeekKey : period === "monthly" ? getMonthKey : d => d.toISOString().slice(0, 10)
       add(this.getPayload(inResp), "masuk", ["tanggal_terima", "tanggal_surat", "created_at"], dateFn)
       add(this.getPayload(outResp), "keluar", ["tanggal_surat", "created_at"], dateFn)
+      stats.totalMasuk = this.getCount(inResp)
+      stats.totalKeluar = this.getCount(outResp)
     } catch (error) { /* ignore */ }
 
     return { ...stats, period }
@@ -274,8 +278,8 @@ class AdminKontenDashboard extends Component {
   render() {
     const { counts, mailStats, suratMasukList, distribusiList, disposisiList, agendaList, loadError, is_loading } = this.state
 
-    const totalMasuk = mailStats.masuk.reduce((a, b) => a + b, 0)
-    const totalKeluar = mailStats.keluar.reduce((a, b) => a + b, 0)
+    const totalMasuk = mailStats.totalMasuk ?? mailStats.masuk.reduce((a, b) => a + b, 0)
+    const totalKeluar = mailStats.totalKeluar ?? mailStats.keluar.reduce((a, b) => a + b, 0)
 
     const periodeButtons = [
       { label: "Hari", value: "daily" },

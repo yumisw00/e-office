@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../../core/network/firebase_messaging_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/network/dio_client.dart';
@@ -18,6 +19,7 @@ class AuthNotifier extends _$AuthNotifier {
 
     try {
       final dio = ref.read(dioProvider);
+      final fcmToken = await FirebaseMessagingService().getFCMToken();
 
       if (kDebugMode) {
         print('Attempting login for: $email');
@@ -28,6 +30,7 @@ class AuthNotifier extends _$AuthNotifier {
           'email': email,
           'password': password,
           'device_name': 'Xiaomi 12 - ${DateTime.now().millisecondsSinceEpoch}',
+          'fcm_token': fcmToken,
         },
       );
 

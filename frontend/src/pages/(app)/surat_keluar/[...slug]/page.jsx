@@ -46,19 +46,7 @@ class Surat_keluar_edit extends EditPage {
         nomorAgendaGenerated: false,
         nomorSuratGenerated: false,
         selectedKualifikasi: [],
-        selectedSifatMulti: [],
-        jenisSuratOptions: [
-            { label: 'Surat Undangan', value: 'Surat Undangan' },
-            { label: 'Surat Tugas', value: 'Surat Tugas' },
-            { label: 'Surat Keputusan', value: 'Surat Keputusan' },
-            { label: 'Surat Edaran', value: 'Surat Edaran' },
-            { label: 'Surat Pemberitahuan', value: 'Surat Pemberitahuan' },
-            { label: 'Surat Permohonan', value: 'Surat Permohonan' },
-            { label: 'Nota Dinas', value: 'Nota Dinas' },
-            { label: 'Memo Internal', value: 'Memo Internal' },
-            { label: 'Surat Pengantar', value: 'Surat Pengantar' },
-            { label: 'Surat Keterangan', value: 'Surat Keterangan' },
-        ],
+        jenisSuratOptions: [],
     }
 
     componentDidMount() {
@@ -142,7 +130,9 @@ class Surat_keluar_edit extends EditPage {
             const rows = Array.isArray(response?.data) ? response.data : []
             const userOptions = rows.map(item => ({
                 value: item.id_user || item.id,
-                label: item.nama || item.name || item.email || `User ${item.id_user || item.id}`,
+                label: [item.nama || item.name || item.email || `User ${item.id_user || item.id}`, item.nama_group]
+                    .filter(Boolean)
+                    .join(' - '),
                 email: item.email || '',
             }))
             this.setState({ userOptions })
@@ -167,71 +157,36 @@ class Surat_keluar_edit extends EditPage {
                 console.log('[loadTemplates] First item:', list[0])
             }
 
-            const defaults = this.getDefaultTemplates()
-            this.setState({ templates: list.length > 0 ? list : defaults })
+            this.setState({ templates: list })
         } catch (error) {
             console.error('[loadTemplates] Error:', error?.response?.status, error?.response?.data || error?.message)
-            // Fallback to defaults on error
-            this.setState({ templates: this.getDefaultTemplates() })
+            // Do not present hard-coded IDs: a template must be selected from
+            // the server because it is the source of truth for jenis surat.
+            this.setState({ templates: [] })
         }
     }
 
-    getDefaultTemplates = () => [
-        { id_surat_template: '1', nama: 'Surat Permohonan',           nama_template: 'Surat Permohonan' },
-        { id_surat_template: '2', nama: 'Surat Undangan',             nama_template: 'Surat Undangan' },
-        { id_surat_template: '3', nama: 'Surat Undangan Rapat',        nama_template: 'Surat Undangan Rapat' },
-        { id_surat_template: '4', nama: 'Surat Undangan Pelatihan',     nama_template: 'Surat Undangan Pelatihan' },
-        { id_surat_template: '5', nama: 'Surat MOU / MoU',             nama_template: 'Surat MOU / MoU' },
-        { id_surat_template: '6', nama: 'Surat Tugas',                 nama_template: 'Surat Tugas' },
-        { id_surat_template: '7', nama: 'Surat Keputusan',              nama_template: 'Surat Keputusan' },
-        { id_surat_template: '8', nama: 'Surat Edaran',                nama_template: 'Surat Edaran' },
-        { id_surat_template: '9', nama: 'Surat Pemberitahuan',          nama_template: 'Surat Pemberitahuan' },
-        { id_surat_template: '10', nama: 'Nota Dinas',                  nama_template: 'Nota Dinas' },
-        { id_surat_template: '11', nama: 'Memo Internal',               nama_template: 'Memo Internal' },
-        { id_surat_template: '12', nama: 'Surat Pengantar',            nama_template: 'Surat Pengantar' },
-        { id_surat_template: '13', nama: 'Surat Keterangan',           nama_template: 'Surat Keterangan' },
-    ]
-
     loadJenisSuratOptions = async () => {
-        const defaultOptions = [
-            { label: 'Surat Undangan', value: 'Surat Undangan' },
-            { label: 'Surat Tugas', value: 'Surat Tugas' },
-            { label: 'Surat Keputusan', value: 'Surat Keputusan' },
-            { label: 'Surat Edaran', value: 'Surat Edaran' },
-            { label: 'Surat Pemberitahuan', value: 'Surat Pemberitahuan' },
-            { label: 'Surat Permohonan', value: 'Surat Permohonan' },
-            { label: 'Nota Dinas', value: 'Nota Dinas' },
-            { label: 'Memo Internal', value: 'Memo Internal' },
-            { label: 'Surat Pengantar', value: 'Surat Pengantar' },
-            { label: 'Surat Keterangan', value: 'Surat Keterangan' },
-        ]
         try {
-            const { getapi_services } = api_services({ api_path: '/surat_template/jenis-options' })
+            const { getapi_services } = api_services({ api_path: '/surat_masuk/master-data' })
             const response = await getapi_services({})
             if (response?.error || response?.code) {
-                this.setState({ jenisSuratOptions: defaultOptions })
+                this.setState({ jenisSuratOptions: [] })
                 return
             }
-            const rows = Array.isArray(response?.data) ? response.data : []
-            // If API returns no data, keep defaults
-            if (rows.length === 0) {
-                this.setState({ jenisSuratOptions: defaultOptions })
-                return
-            }
-            // Merge API results with defaults, avoiding duplicates
-            const apiOptions = rows.map(item => ({
+            const rows = Array.isArray(response?.data?.jenis) ? response.data.jenis : []
+            const options = rows.map(item => ({
                 value: item.value || item.nama || item,
                 label: item.label || item.nama || item,
             }))
-            const existingValues = new Set(defaultOptions.map(o => o.value))
-            for (const opt of apiOptions) {
-                if (!existingValues.has(opt.value)) {
-                    defaultOptions.push(opt)
+            this.setState({ jenisSuratOptions: options }, () => {
+                const selectedTemplate = this.state.datainsert?.id_surat_template
+                if (selectedTemplate && !this.state.datainsert?.jenis) {
+                    this.applyTemplate(selectedTemplate)
                 }
-            }
-            this.setState({ jenisSuratOptions: defaultOptions })
+            })
         } catch (error) {
-            this.setState({ jenisSuratOptions: defaultOptions })
+            this.setState({ jenisSuratOptions: [] })
         }
     }
 
@@ -492,12 +447,15 @@ class Surat_keluar_edit extends EditPage {
         const templateKualifikasi = template?.kualifikasi || template?.kualifikasi_surat || ''
         const kualifikasiList = templateKualifikasi ? templateKualifikasi.split(',').map(k => k.trim()).filter(Boolean) : []
 
-        // Parse multi-value sifat from template
-        const templateSifat = template?.sifat || template?.sifat_surat || ''
-        const sifatList = templateSifat ? templateSifat.split(',').map(s => s.trim()).filter(Boolean) : []
-
-        // Extract google_drive_url from template
         const templateName = template?.nama_template || template?.nama || ''
+        const normalizeJenis = value => String(value || '').trim().toLocaleLowerCase('id')
+        const templateJenisSource = template?.jenis_surat || template?.jenis || templateName
+        const matchedJenis = this.state.jenisSuratOptions.find(option =>
+            normalizeJenis(option.value) === normalizeJenis(templateJenisSource)
+            || normalizeJenis(option.label) === normalizeJenis(templateJenisSource)
+            || normalizeJenis(option.value) === normalizeJenis(templateName)
+        )
+        const templateJenis = String(matchedJenis?.value || template?.jenis_surat || template?.jenis || '').trim()
         const templateGoogleDriveUrl = template?.drive_document_url || template?.google_drive_url || template?.drive_url || template?.google_drive_link || template?.office365_document_url || ''
 
         this.setState(state => ({
@@ -507,13 +465,13 @@ class Surat_keluar_edit extends EditPage {
                 template_nama: templateName,
                 isi_surat: template?.isi_template || template?.content || state.datainsert.isi_surat || '',
                 ringkasan: template?.deskripsi || state.datainsert.ringkasan || '',
-                jenis: templateName,
                 template_file_path: template?.file_path || template?.file_draft_path || '',
                 template_google_drive_url: templateGoogleDriveUrl,
+                // Jenis surat mengikuti jenis yang didefinisikan pada template.
+                jenis: templateJenis || state.datainsert.jenis,
                 klasifikasi: kualifikasiList.length ? kualifikasiList.join(', ') : state.datainsert.klasifikasi,
             },
             selectedKualifikasi: kualifikasiList.length ? kualifikasiList : state.selectedKualifikasi,
-            selectedSifatMulti: sifatList.length ? sifatList : state.selectedSifatMulti,
         }))
     }
 
@@ -528,22 +486,6 @@ class Surat_keluar_edit extends EditPage {
                 datainsert: {
                     ...state.datainsert,
                     klasifikasi: newSelected.join(', '),
-                }
-            }
-        })
-    }
-
-    handleSifatToggle = (value) => {
-        this.setState(state => {
-            const current = state.selectedSifatMulti
-            const newSelected = current.includes(value)
-                ? current.filter(v => v !== value)
-                : [...current, value]
-            return {
-                selectedSifatMulti: newSelected,
-                datainsert: {
-                    ...state.datainsert,
-                    sifat: newSelected.join(', '),
                 }
             }
         })
@@ -726,8 +668,9 @@ class Surat_keluar_edit extends EditPage {
                                 value={this.state.datainsert.id_surat_template || ''}
                                 onChange={event => this.applyTemplate(event.target.value)}
                                 disabled={this.state.is_disabled}
+                                required
                             >
-                                <option value="">Pilih template</option>
+                                <option value="">Pilih template surat</option>
                                 {this.state.templates.map(item => (
                                     <option key={item?.id_surat_template || item?.id} value={item?.id_surat_template || item?.id}>
                                         {item?.nama_template || item?.nama || item?.file_path}
@@ -991,32 +934,19 @@ class Surat_keluar_edit extends EditPage {
                 <div className="row g-3">
                     {this.renderTemplateSelector()}
 
-                    {/* Jenis surat otomatis mengikuti template yang dipilih. */}
+                    {/* Jenis Surat selalu mengikuti Template Surat yang dipilih. */}
                     <div className="col-12">
                         <div className="border rounded p-3" style={{ background: '#f8fbfc' }}>
                             <div className="row g-3">
                                 <div className="col-12">
                                     <FormGroup label="Jenis Surat" formCol noMb>
-                                        <select
+                                        <input
                                             className="form-control"
                                             value={this.state.datainsert.jenis || ''}
-                                            onChange={e => this.handleChange('jenis', e.target.value)}
-                                            disabled={this.state.is_disabled || Boolean(this.state.datainsert.id_surat_template)}
-                                        >
-                                            <option value="">-- Pilih Jenis --</option>
-                                            {this.state.jenisSuratOptions.map(opt => (
-                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                            ))}
-                                            {this.state.datainsert.template_nama && !this.state.jenisSuratOptions.some(opt => String(opt.value) === String(this.state.datainsert.template_nama)) ? (
-                                                <option value={this.state.datainsert.template_nama}>{this.state.datainsert.template_nama}</option>
-                                            ) : null}
-                                        </select>
-                                        {this.state.datainsert.template_nama && (
-                                            <small className="text-success" style={{ fontSize: 11 }}>
-                                                <span className="material-icons" style={{ fontSize: 11, verticalAlign: 'middle' }}>check_circle</span>
-                                                Otomatis dari template: {this.state.datainsert.template_nama}
-                                            </small>
-                                        )}
+                                            placeholder="Pilih Template Surat terlebih dahulu"
+                                            readOnly
+                                        />
+                                        <small className="text-muted d-block mt-1">Terisi otomatis dari Template Surat dan tidak perlu dipilih manual.</small>
                                     </FormGroup>
                                 </div>
                             </div>

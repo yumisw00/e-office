@@ -49,6 +49,7 @@ class Surat_masuk extends IndexPage {
         showDistribusiPopup: false,
         showTimelinePopup: false,
         summary: { total: 0, baru: 0, distribusi: 0, selesai: 0 },
+        categorySummary: { total: 0, internal: 0, eksternal: 0 },
         distribusiLoading: false,
         selectedSurat: null,
         selectedDetailSurat: null,
@@ -66,7 +67,7 @@ class Surat_masuk extends IndexPage {
             ...this.state.datafilter,
             paginate: {
                 ...this.state.datafilter.paginate,
-                pagesize: 10,
+                pagesize: 20,
             },
         },
         listreferensi: {
@@ -114,6 +115,7 @@ class Surat_masuk extends IndexPage {
         this.setState({
             list: response.data,
             summary: response.summary || { total: 0, baru: 0, distribusi: 0, selesai: 0 },
+            categorySummary: response.category_summary || this.state.categorySummary,
             datafilter: {
                 ...datafilter,
                 paginate: { ...datafilter.paginate, total_records: response.total_records },
@@ -721,7 +723,13 @@ class Surat_masuk extends IndexPage {
                     title={this.titlePage}
                     is_loading={this.state.is_loading}
                     data_btn={[]}
-                    filterTabs={<div style={{ marginTop: 16, marginBottom: 0 }}>{[['semua', 'Semua Surat'], ['internal', 'Internal'], ['eksternal', 'Eksternal']].map(([value, label]) => <button key={value} type="button" className={`btn btn-sm ${this.state.jenisPengirimanTab === value ? 'btn-info' : 'btn-outline-secondary'}`} onClick={() => this.setState(state => ({ jenisPengirimanTab: value, datafilter: { ...state.datafilter, paginate: { ...state.datafilter.paginate, page: 1 } } }), this.get)}>{label}</button>)}</div>}
+                    filterTabs={
+                        <div style={{ marginTop: 16, marginBottom: 0 }}>
+                            <button type="button" className="btn btn-sm btn-info">
+                                Semua Surat ({this.state.categorySummary.total || 0})
+                            </button>
+                        </div>
+                    }
                     btnCustom={
                         <div style={{ marginTop: 16, marginBottom: 0 }}>
                         <EofficeToolbar>
@@ -757,13 +765,6 @@ class Surat_masuk extends IndexPage {
                     }}
                 />
                 <div className="container pl-4 pr-4">
-                    <div className="row mb-2">
-                        {this.renderSummaryCard('Total', summary.total, 'move_to_inbox')}
-                        {this.renderSummaryCard('Baru', summary.baru, 'mark_email_unread')}
-                        {this.renderSummaryCard('Distribusi', summary.distribusi, 'pending_actions')}
-                        {this.renderSummaryCard('Selesai', summary.selesai, 'task_alt', '#22a06b')}
-                    </div>
-
                     <EofficeCard className="p-3 mb-3">
                         {list.length > 0 ? this.renderLetterTable(list) : (
                             <EofficeEmptyState
