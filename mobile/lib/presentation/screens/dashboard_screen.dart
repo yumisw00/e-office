@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:intl/intl.dart';
 import '../../domain/providers/surat_provider.dart';
 import '../../core/localization/app_localizations.dart';
-import '../widgets/surat_shimmer_list.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});

@@ -8,16 +8,23 @@ import '../../core/localization/app_localizations.dart';
 import '../widgets/surat_shimmer_list.dart';
 import '../widgets/empty_state_view.dart';
 
-class SuratMasukScreen extends ConsumerWidget {
+class SuratMasukScreen extends ConsumerStatefulWidget {
   const SuratMasukScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SuratMasukScreen> createState() => _SuratMasukScreenState();
+}
+
+class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
+  @override
+  Widget build(BuildContext context) {
     final suratMasukAsync = ref.watch(suratMasukProvider);
     final localizations = AppLocalizations.of(context);
 
     return RefreshIndicator(
-      onRefresh: () async => ref.refresh(suratMasukProvider.future),
+      onRefresh: () async {
+        await ref.read(suratMasukProvider.notifier).refresh();
+      },
       child: suratMasukAsync.when(
         loading: () => const SuratShimmerList(),
         error: (error, stackTrace) => SingleChildScrollView(
@@ -161,6 +168,9 @@ class SuratMasukScreen extends ConsumerWidget {
       case 'belum_dibaca':
       case 'unread':
         return Colors.blue;
+      case 'sudah_dibaca':
+      case 'read':
+        return Colors.green.shade700;
       case 'disposisi':
       case 'disposition':
         return Colors.orange;
@@ -177,6 +187,9 @@ class SuratMasukScreen extends ConsumerWidget {
       case 'belum_dibaca':
       case 'unread':
         return Icons.mark_email_unread_outlined;
+      case 'sudah_dibaca':
+      case 'read':
+        return Icons.mark_email_read_outlined;
       case 'disposisi':
       case 'disposition':
         return Icons.assignment_outlined;

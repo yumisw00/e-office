@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/custom_app_bar.dart';
 import 'dashboard_screen.dart';
 import 'surat_masuk_screen.dart';
-import 'surat_keluar_screen.dart';
+import 'approval_screen.dart';
 import 'profil_screen.dart';
 import '../widgets/floating_nav_bar.dart';
 import '../../core/localization/app_localizations.dart';
@@ -118,7 +118,6 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
-    final theme = Theme.of(context);
 
     // Dynamic Title based on selectedIndex
     final String titleText;
@@ -130,7 +129,7 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
         titleText = localizations.get('surat_masuk');
         break;
       case 2:
-        titleText = localizations.get('surat_keluar');
+        titleText = localizations.get('persetujuan');
         break;
       case 3:
         titleText = localizations.get('profile');
@@ -156,7 +155,7 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
         children: const [
           DashboardScreen(),
           SuratMasukScreen(),
-          SuratKeluarScreen(),
+          ApprovalScreen(),
           ProfilScreen(),
         ],
       ),

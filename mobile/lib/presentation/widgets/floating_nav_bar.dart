@@ -91,9 +91,9 @@ class FloatingNavBar extends StatelessWidget {
                       _buildTabItem(
                         context,
                         index: 2,
-                        label: localizations.get('surat_keluar'),
-                        activeIcon: Icons.send_rounded,
-                        inactiveIcon: Icons.send_outlined,
+                        label: localizations.get('persetujuan'),
+                        activeIcon: Icons.approval_rounded,
+                        inactiveIcon: Icons.approval_outlined,
                       ),
                       _buildTabItem(
                         context,
