@@ -2,34 +2,36 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:intl/intl.dart';
+import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/surat_provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../widgets/surat_shimmer_list.dart';
-
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final localizations = AppLocalizations.of(context);
+    final authState = ref.watch(authNotifierProvider);
     final suratMasukAsync = ref.watch(suratMasukProvider);
-
+    String userName = 'User';
+    String userJabatan = '-';
+    authState.whenData((user) {
+      if (user != null) {
+        userName = user.nama;
+        userJabatan = user.jabatan ?? '-';
+      }
+    });
     return suratMasukAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err')),
       data: (suratList) {
-        // Calculate Statistics
         final totalInbox = suratList.length;
         final needAction = suratList
             .where((s) => s.status == 'belum_dibaca' || s.status == 'disposisi')
             .length;
         final completed = suratList.where((s) => s.status == 'selesai').length;
-
-        // Take up to 3 recent items
         final recentList = suratList.take(3).toList();
-
         return RefreshIndicator(
           onRefresh: () async => ref.refresh(suratMasukProvider.future),
           child: SingleChildScrollView(
@@ -38,7 +40,6 @@ class DashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Welcome Banner
                 Card(
                       elevation: 0,
                       color: theme.colorScheme.primaryContainer.withValues(
@@ -73,7 +74,7 @@ class DashboardScreen extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Bpk. Budi Santoso',
+                                    userName, 
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
@@ -83,7 +84,7 @@ class DashboardScreen extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Direktur Utama',
+                                    userJabatan, 
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: theme
@@ -114,8 +115,6 @@ class DashboardScreen extends ConsumerWidget {
                       curve: Curves.easeOutCubic,
                     ),
                 const SizedBox(height: 24),
-
-                // Statistics Title
                 Text(
                   localizations.get('statistics'),
                   style: const TextStyle(
@@ -125,8 +124,6 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ).animate().fade(delay: 100.ms),
                 const SizedBox(height: 12),
-
-                // Stats Grid/Row
                 Row(
                       children: [
                         Expanded(
@@ -154,8 +151,6 @@ class DashboardScreen extends ConsumerWidget {
                     .fade(delay: 150.ms)
                     .slideY(begin: 0.1, end: 0, delay: 150.ms),
                 const SizedBox(height: 12),
-
-                // Completion Progress Card
                 Card(
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -239,8 +234,6 @@ class DashboardScreen extends ConsumerWidget {
                     .fade(delay: 200.ms)
                     .slideY(begin: 0.1, end: 0, delay: 200.ms),
                 const SizedBox(height: 24),
-
-                // Recent Letters Title
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -255,8 +248,6 @@ class DashboardScreen extends ConsumerWidget {
                   ],
                 ).animate().fade(delay: 250.ms),
                 const SizedBox(height: 12),
-
-                // Recent Letters List
                 ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -321,7 +312,6 @@ class DashboardScreen extends ConsumerWidget {
       },
     );
   }
-
   Widget _buildStatCard(
     BuildContext context, {
     required String title,
@@ -372,7 +362,6 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
-
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'belum_dibaca':
@@ -385,7 +374,6 @@ class DashboardScreen extends ConsumerWidget {
         return Colors.grey;
     }
   }
-
   IconData _getStatusIcon(String status) {
     switch (status.toLowerCase()) {
       case 'belum_dibaca':

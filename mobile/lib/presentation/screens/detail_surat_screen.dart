@@ -5,26 +5,18 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/surat_model.dart';
 import '../../domain/providers/surat_provider.dart';
-
 class DetailSuratScreen extends ConsumerWidget {
   final SuratModel surat;
-
   const DetailSuratScreen({super.key, required this.surat});
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch the provider to get the latest version of this specific surat
     final suratMasukAsync = ref.watch(suratMasukProvider);
-
-    // Find the specific surat from the list to reflect live updates
     final currentSurat = suratMasukAsync.maybeWhen(
       data: (list) =>
           list.firstWhere((s) => s.id == surat.id, orElse: () => surat),
       orElse: () => surat,
     );
-
     final isApproved = currentSurat.status == 'selesai';
-
     return Scaffold(
       appBar: AppBar(title: Text(currentSurat.nomorSurat)),
       body: SingleChildScrollView(
@@ -39,7 +31,7 @@ class DetailSuratScreen extends ConsumerWidget {
         ),
       ),
       bottomNavigationBar: isApproved
-          ? null // Hide button if already approved
+          ? null 
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -82,7 +74,6 @@ class DetailSuratScreen extends ConsumerWidget {
             ),
     );
   }
-
   void _showDisposisiSheet(
     BuildContext context,
     WidgetRef ref,
@@ -90,7 +81,6 @@ class DetailSuratScreen extends ConsumerWidget {
   ) {
     String? selectedTujuan;
     final instruksiController = TextEditingController();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -176,7 +166,6 @@ class DetailSuratScreen extends ConsumerWidget {
       },
     );
   }
-
   void _showApprovalModal(BuildContext context, SuratModel surat) {
     showModalBottomSheet(
       context: context,
@@ -240,7 +229,6 @@ class DetailSuratScreen extends ConsumerWidget {
       },
     );
   }
-
   Widget _buildMetadataCard(BuildContext context, SuratModel currentSurat) {
     return Card(
       elevation: 4,
@@ -287,7 +275,7 @@ class DetailSuratScreen extends ConsumerWidget {
                 context.push(
                   '/pdf',
                   extra:
-                      'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                      'https:
                 );
               },
               icon: const Icon(Icons.picture_as_pdf),
@@ -301,7 +289,6 @@ class DetailSuratScreen extends ConsumerWidget {
       ),
     );
   }
-
   Widget _buildInfoRow(
     String label,
     String value,
@@ -336,7 +323,6 @@ class DetailSuratScreen extends ConsumerWidget {
       ),
     );
   }
-
   Widget _buildTrackingCard(BuildContext context, SuratModel currentSurat) {
     return Card(
       elevation: 4,
@@ -357,7 +343,7 @@ class DetailSuratScreen extends ConsumerWidget {
               physics: const NeverScrollableScrollPhysics(),
               currentStep: currentSurat.status == 'selesai'
                   ? 2
-                  : 2, // Logic can be refined here
+                  : 2, 
               controlsBuilder: _nullControlsBuilder,
               steps: [
                 const Step(
@@ -394,14 +380,12 @@ class DetailSuratScreen extends ConsumerWidget {
       ),
     );
   }
-
   static Widget _nullControlsBuilder(
     BuildContext context,
     ControlsDetails details,
   ) {
     return const SizedBox.shrink();
   }
-
   Color _getStatusColor(String status) {
     switch (status.toUpperCase()) {
       case 'BELUM_DIBACA':

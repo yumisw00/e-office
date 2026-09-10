@@ -1,17 +1,6 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'app_router.dart';
-
-// **************************************************************************
-// RiverpodGenerator
-// **************************************************************************
-
-// GENERATED CODE - DO NOT MODIFY BY HAND
-// ignore_for_file: type=lint, type=warning
-
 @ProviderFor(appRouter)
 final appRouterProvider = AppRouterProvider._();
-
 final class AppRouterProvider
     extends $FunctionalProvider<GoRouter, GoRouter, GoRouter>
     with $Provider<GoRouter> {
@@ -25,21 +14,16 @@ final class AppRouterProvider
         dependencies: null,
         $allTransitiveDependencies: null,
       );
-
   @override
   String debugGetCreateSourceHash() => _$appRouterHash();
-
   @$internal
   @override
   $ProviderElement<GoRouter> $createElement($ProviderPointer pointer) =>
       $ProviderElement(pointer);
-
   @override
   GoRouter create(Ref ref) {
     return appRouter(ref);
   }
-
-  /// {@macro riverpod.override_with_value}
   Override overrideWithValue(GoRouter value) {
     return $ProviderOverride(
       origin: this,
@@ -47,5 +31,4 @@ final class AppRouterProvider
     );
   }
 }
-
 String _$appRouterHash() => r'0fa86841747489ae03ccaffb81121a3178f7ddc7';

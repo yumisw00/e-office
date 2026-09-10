@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-
 class EmptyStateView extends StatelessWidget {
   final IconData icon;
   final String title;
   final String message;
   final VoidCallback? onRetry;
-
   const EmptyStateView({
     super.key,
     required this.icon,
@@ -13,7 +11,6 @@ class EmptyStateView extends StatelessWidget {
     required this.message,
     this.onRetry,
   });
-
   @override
   Widget build(BuildContext context) {
     return Center(

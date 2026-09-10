@@ -1,13 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-
 import '../constants/app_config.dart';
-
 part 'dio_client.g.dart';
-
 const _storage = FlutterSecureStorage();
-
 @Riverpod(keepAlive: true)
 Dio dio(Ref ref) {
   final dio = Dio(
@@ -24,7 +20,6 @@ Dio dio(Ref ref) {
       },
     ),
   );
-
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {
@@ -32,7 +27,6 @@ Dio dio(Ref ref) {
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
-        // Optional: Add logging for debugging
         if (AppConfig.enableLogging) {
           print('🌐 REQUEST[${options.method}] => ${options.uri}');
           print('   Headers: ${options.headers}');
@@ -44,18 +38,17 @@ Dio dio(Ref ref) {
       },
       onResponse: (response, handler) async {
         if (AppConfig.enableLogging) {
-          print('✅ RESPONSE[${response.statusCode}] <= ${response.requestOptions.uri}');
+          print(' RESPONSE[${response.statusCode}] <= ${response.requestOptions.uri}');
         }
         handler.next(response);
       },
       onError: (error, handler) async {
         if (AppConfig.enableLogging) {
-          print('❌ ERROR[${error.error}] => ${error.requestOptions.uri}');
+          print(' ERROR[${error.error}] => ${error.requestOptions.uri}');
         }
         handler.next(error);
       },
     ),
   );
-
   return dio;
 }

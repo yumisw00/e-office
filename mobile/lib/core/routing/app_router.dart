@@ -5,9 +5,7 @@ import '../../presentation/screens/detail_surat_screen.dart';
 import '../../presentation/screens/pdf_viewer_screen.dart';
 import '../../presentation/screens/login_screen.dart';
 import '../../data/models/surat_model.dart';
-
 part 'app_router.g.dart';
-
 @riverpod
 GoRouter appRouter(Ref ref) {
   return GoRouter(

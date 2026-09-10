@@ -5,29 +5,25 @@ import '../../domain/providers/locale_provider.dart';
 import '../../domain/providers/liquid_glass_provider.dart';
 import '../../core/localization/app_localizations.dart';
 import 'liquid_glass_container.dart';
-
 class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final Widget? title;
   final Widget? leading;
   final bool centerTitle;
-
   const CustomAppBar({
     super.key,
     this.title,
     this.leading,
     this.centerTitle = true,
   });
-
   void _showSettingsBottomSheet(BuildContext context, WidgetRef ref) {
     final localizations = AppLocalizations.of(context);
-    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       elevation: 0,
       builder: (context) {
         return LiquidGlassContainer(
-          borderRadius: 32, // More rounded for bottom sheet
+          borderRadius: 32, 
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -49,7 +45,6 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
-              // Liquid Glass Toggle
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -71,7 +66,6 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                 ],
               ),
               const SizedBox(height: 24),
-              // Theme Selector
               Consumer(
                 builder: (context, ref, child) {
                   final themeMode = ref.watch(themeProvider);
@@ -106,20 +100,17 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
       },
     );
   }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
     final localizations = AppLocalizations.of(context);
-
     return AppBar(
       title: title,
       leading: leading,
       centerTitle: centerTitle,
       elevation: 0,
-      backgroundColor: Colors.transparent, // Required for global glass effect to bleed through
+      backgroundColor: Colors.transparent, 
       actions: [
-        // Language Picker
         PopupMenuButton<Locale>(
           icon: const Icon(Icons.translate),
           tooltip: localizations.get('select_language'),
@@ -170,7 +161,6 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
             ),
           ],
         ),
-        // Theme / Settings Picker
         IconButton(
           icon: const Icon(Icons.settings_outlined),
           tooltip: localizations.get('select_theme'),
@@ -180,7 +170,6 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
       ],
     );
   }
-
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

@@ -7,20 +7,16 @@ import '../../domain/providers/surat_provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../widgets/surat_shimmer_list.dart';
 import '../widgets/empty_state_view.dart';
-
 class SuratMasukScreen extends ConsumerStatefulWidget {
   const SuratMasukScreen({super.key});
-
   @override
   ConsumerState<SuratMasukScreen> createState() => _SuratMasukScreenState();
 }
-
 class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
   @override
   Widget build(BuildContext context) {
     final suratMasukAsync = ref.watch(suratMasukProvider);
     final localizations = AppLocalizations.of(context);
-
     return RefreshIndicator(
       onRefresh: () async {
         await ref.read(suratMasukProvider.notifier).refresh();
@@ -54,7 +50,6 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
               ),
             );
           }
-
           return ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -162,7 +157,6 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
       ),
     );
   }
-
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'belum_dibaca':
@@ -181,7 +175,6 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
         return Colors.grey;
     }
   }
-
   IconData _getStatusIcon(String status) {
     switch (status.toLowerCase()) {
       case 'belum_dibaca':
@@ -200,7 +193,6 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
         return Icons.email_outlined;
     }
   }
-
   String _getStatusLabel(AppLocalizations localizations, String status) {
     switch (status.toLowerCase()) {
       case 'belum_dibaca':

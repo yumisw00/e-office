@@ -1,17 +1,6 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'auth_provider.dart';
-
-// **************************************************************************
-// RiverpodGenerator
-// **************************************************************************
-
-// GENERATED CODE - DO NOT MODIFY BY HAND
-// ignore_for_file: type=lint, type=warning
-
 @ProviderFor(AuthNotifier)
 final authProvider = AuthNotifierProvider._();
-
 final class AuthNotifierProvider
     extends $NotifierProvider<AuthNotifier, AsyncValue<bool>> {
   AuthNotifierProvider._()
@@ -24,15 +13,11 @@ final class AuthNotifierProvider
         dependencies: null,
         $allTransitiveDependencies: null,
       );
-
   @override
   String debugGetCreateSourceHash() => _$authNotifierHash();
-
   @$internal
   @override
   AuthNotifier create() => AuthNotifier();
-
-  /// {@macro riverpod.override_with_value}
   Override overrideWithValue(AsyncValue<bool> value) {
     return $ProviderOverride(
       origin: this,
@@ -40,9 +25,7 @@ final class AuthNotifierProvider
     );
   }
 }
-
 String _$authNotifierHash() => r'730e20de8b58911114ade1fca52f22e6b79ee6a9';
-
 abstract class _$AuthNotifier extends $Notifier<AsyncValue<bool>> {
   AsyncValue<bool> build();
   @$mustCallSuper
