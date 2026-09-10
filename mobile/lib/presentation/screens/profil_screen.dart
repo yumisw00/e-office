@@ -14,6 +14,10 @@ class ProfilScreen extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
     final localizations = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final authState = ref.watch(authProvider);
+    final user = authState.value;
+    final userName = user?.nama ?? 'data User tidak dikirim';
+    final userJabatan = user?.jabatan ?? user?.unitKerja ?? 'data jabatan tidak dikirim';
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
@@ -49,30 +53,21 @@ class ProfilScreen extends ConsumerWidget {
                         right: 0,
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt_rounded,
-                            size: 16,
-                            color: Colors.white,
-                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Bpk. Budi Santoso',
-                    style: TextStyle(
+                  Text(
+                    '$userName',
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Direktur Utama',
+                    userJabatan,
                     style: TextStyle(
                       color: theme.colorScheme.onSurfaceVariant,
                       fontSize: 14,
@@ -178,7 +173,7 @@ class ProfilScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  localizations.get('select_theme'),
+                  localizations.get('pilih tema'),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
@@ -192,9 +187,9 @@ class ProfilScreen extends ConsumerWidget {
                   },
                   child: Column(
                     children: [
-                      _buildThemeRadioOption(context, ref, ThemeMode.light, localizations.get('light')),
-                      _buildThemeRadioOption(context, ref, ThemeMode.dark, localizations.get('dark')),
-                      _buildThemeRadioOption(context, ref, ThemeMode.system, localizations.get('system')),
+                      _buildThemeRadioOption(context, ref, ThemeMode.light, localizations.get('cerah')),
+                      _buildThemeRadioOption(context, ref, ThemeMode.dark, localizations.get('gelap')),
+                      _buildThemeRadioOption(context, ref, ThemeMode.system, localizations.get('sistem')),
                     ],
                   ),
                 ),
@@ -267,14 +262,14 @@ class ProfilScreen extends ConsumerWidget {
       builder: (dialogContext) {
         return AlertDialog(
           title: Text(localizations.get('logout')),
-          content: Text(localizations.get('logout_confirm')),
+          content: Text(localizations.get('Anda yakin?')),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: Text(localizations.get('cancel')),
+              child: Text(localizations.get('Tidak')),
             ),
             FilledButton(
               onPressed: () {
@@ -285,7 +280,7 @@ class ProfilScreen extends ConsumerWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.red,
               ),
-              child: Text(localizations.get('logout')),
+              child: Text(localizations.get('Ya')),
             ),
           ],
         );

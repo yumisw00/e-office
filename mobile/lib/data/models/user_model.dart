@@ -18,13 +18,16 @@ class UserModel {
     this.fotoProfil,
   });
   factory UserModel.fromJsonApi(Map<String, dynamic> json) {
+    final groupData = json['group'] as Map<String, dynamic>?;
+    final jabatanDariGroup = groupData?['nama_jabatan']?.toString();
+    final unitDariGroup = groupData?['nama_unit']?.toString() ?? groupData?['nama']?.toString();
     return UserModel(
-      id: (json['id'] ?? json['uuid'] ?? '').toString(),
+      id: (json['id_user'] ?? json['id'] ?? json['uuid'] ?? '').toString(),
       nama: json['nama'] ?? json['name'] ?? json['full_name'] ?? 'User',
       email: json['email'] ?? '',
       nip: json['nip']?.toString(),
-      jabatan: json['jabatan'] ?? json['position'] ?? json['role_name'],
-      unitKerja: json['unit_kerja'] ?? json['department'] ?? json['divisi'],
+      jabatan: json['jabatan'] ?? json['position'] ?? json['role_name'] ?? jabatanDariGroup,
+      unitKerja: json['unit_kerja'] ?? json['department'] ?? json['divisi'] ?? unitDariGroup,
       groups: _parseGroups(json['groups'] ?? json['roles'] ?? []),
       fotoProfil: json['foto_profil'] ?? json['avatar'] ?? json['profile_picture'],
     );
