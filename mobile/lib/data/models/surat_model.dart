@@ -4,9 +4,8 @@ class SuratModel {
   final String asalSurat;
   final String perihal;
   final DateTime tanggalDiterima;
-  final String status; // 'belum_dibaca', 'disposisi', 'selesai'
+  final String status; 
   final String ringkasan;
-
   SuratModel({
     required this.id,
     required this.nomorSurat,
@@ -16,8 +15,6 @@ class SuratModel {
     required this.status,
     required this.ringkasan,
   });
-
-  /// Parse from Laravel API response format
   factory SuratModel.fromJsonApi(Map<String, dynamic> json) {
     return SuratModel(
       id: (json['id'] ?? json['uuid'] ?? '').toString(),
@@ -29,8 +26,6 @@ class SuratModel {
       ringkasan: json['ringkasan'] ?? json['isi_ringkas'] ?? json['deskripsi'] ?? '',
     );
   }
-
-  /// Helper to parse various date formats from backend
   static DateTime _parseDate(dynamic dateValue) {
     if (dateValue is DateTime) return dateValue;
     if (dateValue is int) return DateTime.fromMillisecondsSinceEpoch(dateValue * 1000);
@@ -43,20 +38,14 @@ class SuratModel {
     }
     return DateTime.now();
   }
-
-  /// Map backend status to app status
   static String _mapStatus(dynamic status) {
     if (status == null) return 'belum_dibaca';
     final statusStr = status.toString().toLowerCase();
-    
-    // Map various backend status values
     if (statusStr.contains('selesai') || statusStr.contains('arsip')) return 'selesai';
     if (statusStr.contains('disposisi')) return 'disposisi';
     if (statusStr.contains('baca')) return 'sudah_dibaca';
-    
     return 'belum_dibaca';
   }
-
   factory SuratModel.fromJson(Map<String, dynamic> json) {
     return SuratModel(
       id: json['id'] as String,
@@ -68,7 +57,6 @@ class SuratModel {
       ringkasan: json['ringkasan'] as String,
     );
   }
-
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -80,7 +68,6 @@ class SuratModel {
       'ringkasan': ringkasan,
     };
   }
-
   SuratModel copyWith({
     String? id,
     String? nomorSurat,

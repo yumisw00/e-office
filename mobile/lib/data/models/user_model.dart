@@ -1,4 +1,3 @@
-/// Model untuk data pengguna dari backend Laravel
 class UserModel {
   final String id;
   final String nama;
@@ -8,7 +7,6 @@ class UserModel {
   final String? unitKerja;
   final List<String> groups;
   final String? fotoProfil;
-
   UserModel({
     required this.id,
     required this.nama,
@@ -19,8 +17,6 @@ class UserModel {
     this.groups = const [],
     this.fotoProfil,
   });
-
-  /// Parse dari response API Laravel
   factory UserModel.fromJsonApi(Map<String, dynamic> json) {
     return UserModel(
       id: (json['id'] ?? json['uuid'] ?? '').toString(),
@@ -33,11 +29,8 @@ class UserModel {
       fotoProfil: json['foto_profil'] ?? json['avatar'] ?? json['profile_picture'],
     );
   }
-
-  /// Helper untuk parse groups/roles dari berbagai format
   static List<String> _parseGroups(dynamic groupsData) {
     if (groupsData == null) return [];
-    
     if (groupsData is List) {
       return groupsData
           .map((g) => g is Map ? g['name']?.toString() : g.toString())
@@ -45,27 +38,19 @@ class UserModel {
           .cast<String>()
           .toList();
     }
-    
     if (groupsData is Map) {
-      // Handle format pivot table Laravel
       if (groupsData.containsKey('data')) {
         return _parseGroups(groupsData['data']);
       }
-      // Handle single group
       if (groupsData.containsKey('name')) {
         return [groupsData['name'].toString()];
       }
     }
-    
     return [];
   }
-
-  /// Cek apakah user memiliki group tertentu
   bool hasGroup(String groupName) {
     return groups.any((g) => g.toLowerCase() == groupName.toLowerCase());
   }
-
-  /// Cek apakah user adalah pimpinan (untuk fitur disposisi & approval)
   bool get isPimpinan {
     return groups.any((g) => 
       g.toLowerCase().contains('pimpinan') ||
@@ -75,15 +60,12 @@ class UserModel {
       g.toLowerCase().contains('kabag')
     );
   }
-
-  /// Cek apakah user adalah admin
   bool get isAdmin {
     return groups.any((g) => 
       g.toLowerCase().contains('admin') ||
       g.toLowerCase().contains('super')
     );
   }
-
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'] as String,
@@ -96,7 +78,6 @@ class UserModel {
       fotoProfil: json['foto_profil'] as String?,
     );
   }
-
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -109,7 +90,6 @@ class UserModel {
       'foto_profil': fotoProfil,
     };
   }
-
   UserModel copyWith({
     String? id,
     String? nama,
@@ -131,7 +111,6 @@ class UserModel {
       fotoProfil: fotoProfil ?? this.fotoProfil,
     );
   }
-
   @override
   String toString() {
     return 'UserModel(id: $id, nama: $nama, email: $email, jabatan: $jabatan)';

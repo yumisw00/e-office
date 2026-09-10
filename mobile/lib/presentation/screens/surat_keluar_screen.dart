@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../../core/localization/app_localizations.dart';
-
 class OutgoingSuratModel {
   final String id;
   final String nomorSurat;
   final String penerima;
   final String perihal;
   final DateTime tanggalKirim;
-  final String status; // 'terkirim', 'draft', 'pending'
-
+  final String status; 
   OutgoingSuratModel({
     required this.id,
     required this.nomorSurat,
@@ -20,15 +18,11 @@ class OutgoingSuratModel {
     required this.status,
   });
 }
-
 class SuratKeluarScreen extends StatelessWidget {
   const SuratKeluarScreen({super.key});
-
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
-
-    // Mock Outgoing Letters
     final mockOutgoingList = [
       OutgoingSuratModel(
         id: '101',
@@ -63,7 +57,6 @@ class SuratKeluarScreen extends StatelessWidget {
         status: 'draft',
       ),
     ];
-
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -82,7 +75,6 @@ class SuratKeluarScreen extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: () {
-              // Outgoing letter details popup or preview
               _showDetailDialog(context, surat, localizations);
             },
             child: Padding(
@@ -168,7 +160,6 @@ class SuratKeluarScreen extends StatelessWidget {
       },
     );
   }
-
   void _showDetailDialog(BuildContext context, OutgoingSuratModel surat, AppLocalizations localizations) {
     showDialog(
       context: context,
@@ -204,7 +195,6 @@ class SuratKeluarScreen extends StatelessWidget {
       },
     );
   }
-
   Widget _buildInfoField(String label, String value, BuildContext context, {bool isStatus = false, String? statusValue}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,7 +215,6 @@ class SuratKeluarScreen extends StatelessWidget {
       ],
     );
   }
-
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'terkirim':
@@ -237,7 +226,6 @@ class SuratKeluarScreen extends StatelessWidget {
         return Colors.grey;
     }
   }
-
   IconData _getStatusIcon(String status) {
     switch (status.toLowerCase()) {
       case 'terkirim':

@@ -1,20 +1,13 @@
 import 'package:flutter/material.dart';
-
 class AppLocalizations {
   final Locale locale;
-
   AppLocalizations(this.locale);
-
   static AppLocalizations of(BuildContext context) {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
-
   static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
-
   Map<String, String> _localizedStrings = {};
-
   Future<bool> load() async {
-    // Default to Indonesian only as per proposal
     _localizedStrings = {
       'title': 'E-Office',
       'dashboard': 'Dashboard',
@@ -54,32 +47,25 @@ class AppLocalizations {
       'nip': 'NIP',
       'jabatan': 'Jabatan',
       'unit_kerja': 'Unit Kerja',
-      'surat_keluar': 'Surat Keluar', // Keep for backward compatibility if needed
+      'surat_keluar': 'Surat Keluar', 
     };
     return true;
   }
-
   String get(String key) {
     return _localizedStrings[key] ?? key;
   }
 }
-
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
-  const _AppLocalizationsDelegate();
-
   @override
   bool isSupported(Locale locale) {
-    // Only support Indonesian (id)
     return locale.languageCode == 'id';
   }
-
   @override
   Future<AppLocalizations> load(Locale locale) async {
     final localizations = AppLocalizations(locale);
     await localizations.load();
     return localizations;
   }
-
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }

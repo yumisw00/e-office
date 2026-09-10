@@ -1,8 +1,6 @@
-
 import 'package:flutter/material.dart';
 import '../../core/localization/app_localizations.dart';
 import 'liquid_glass_container.dart';
-
 class FloatingNavBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onTabTapped;
@@ -10,7 +8,6 @@ class FloatingNavBar extends StatelessWidget {
   final ValueChanged<DragEndDetails>? onCapsuleDragEnd;
   final double? pageValue;
   final bool usePageSync;
-
   const FloatingNavBar({
     super.key,
     required this.selectedIndex,
@@ -20,13 +17,11 @@ class FloatingNavBar extends StatelessWidget {
     this.pageValue,
     this.usePageSync = false,
   });
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
     final localizations = AppLocalizations.of(context);
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       child: LiquidGlassContainer(
@@ -41,15 +36,11 @@ class FloatingNavBar extends StatelessWidget {
               builder: (context, constraints) {
                 final totalWidth = constraints.maxWidth;
                 final tabWidth = totalWidth / 4;
-
-                // Use fractional pageValue when page syncing (dragging/swiping), otherwise use selectedIndex
                 final double displayIndex = usePageSync ? (pageValue ?? selectedIndex.toDouble()) : selectedIndex.toDouble();
                 final Duration duration = usePageSync ? Duration.zero : const Duration(milliseconds: 350);
                 final Curve curve = usePageSync ? Curves.linear : Curves.easeOutBack;
-
                 return Stack(
                   children: [
-                    // Moving Capsule Indicator
                     AnimatedPositioned(
                       duration: duration,
                       curve: curve,
@@ -71,7 +62,6 @@ class FloatingNavBar extends StatelessWidget {
                         ),
                       ),
                     ),
-                  // Row of Interactive Tabs
                   Row(
                     children: [
                       _buildTabItem(
@@ -113,8 +103,6 @@ class FloatingNavBar extends StatelessWidget {
     ),
   );
 }
-
-
   Widget _buildTabItem(
     BuildContext context, {
     required int index,
@@ -126,7 +114,6 @@ class FloatingNavBar extends StatelessWidget {
     final theme = Theme.of(context);
     final activeColor = theme.colorScheme.primary;
     final inactiveColor = theme.colorScheme.onSurfaceVariant;
-
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,

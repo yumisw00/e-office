@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/custom_app_bar.dart';
 import 'dashboard_screen.dart';
@@ -8,20 +7,16 @@ import 'approval_screen.dart';
 import 'profil_screen.dart';
 import '../widgets/floating_nav_bar.dart';
 import '../../core/localization/app_localizations.dart';
-
 class MainLayoutScreen extends ConsumerStatefulWidget {
   const MainLayoutScreen({super.key});
-
   @override
   ConsumerState<MainLayoutScreen> createState() => _MainLayoutScreenState();
 }
-
 class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
   late final PageController _pageController;
   int _selectedIndex = 0;
   double _pageValue = 0.0;
   bool _usePageSync = false;
-
   @override
   void initState() {
     super.initState();
@@ -40,20 +35,17 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
       }
     });
   }
-
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
   }
-
   void _onPageChanged(int index) {
     setState(() {
       _selectedIndex = index;
       _usePageSync = false;
     });
   }
-
   void _onTabTapped(int index) {
     setState(() {
       _usePageSync = false;
@@ -64,18 +56,15 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
       curve: Curves.easeInOutCubic,
     );
   }
-
   void _handleCapsuleDrag(DragUpdateDetails details) {
     if (_pageController.hasClients) {
       final position = _pageController.position;
       final maxScroll = position.maxScrollExtent;
       final minScroll = position.minScrollExtent;
-
       final screenWidth = MediaQuery.of(context).size.width;
-      final navbarWidth = screenWidth - 48; // Left/Right margin sum
+      final navbarWidth = screenWidth - 48; 
       final activeDragRange =
-          navbarWidth * 0.75; // 4 tabs = 3 intervals of drag
-
+          navbarWidth * 0.75; 
       if (activeDragRange > 0) {
         setState(() {
           _usePageSync = true;
@@ -90,7 +79,6 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
       }
     }
   }
-
   void _handleCapsuleDragEnd(DragEndDetails details) {
     if (_pageController.hasClients) {
       final screenWidth = MediaQuery.of(context).size.width;
@@ -114,12 +102,10 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
           });
     }
   }
-
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
-
-    // Dynamic Title based on selectedIndex
+    final theme = Theme.of(context);
     final String titleText;
     switch (_selectedIndex) {
       case 0:
@@ -137,7 +123,6 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
       default:
         titleText = localizations.get('title');
     }
-
     return Scaffold(
       extendBody: true,
       appBar: CustomAppBar(
@@ -147,7 +132,6 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
         ),
         centerTitle: true,
       ),
-
       body: PageView(
         controller: _pageController,
         physics: const BouncingScrollPhysics(),

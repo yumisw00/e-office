@@ -3,14 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/localization/app_localizations.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/surat_shimmer_list.dart';
-
-// Provider untuk data approval (akan diisi dengan data dari backend nanti)
 final approvalProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  // TODO: Ganti dengan API call ke backend saat sudah siap
-  // Contoh: final response = await ref.watch(dioProvider).get('/api/mobile/approvals');
-  await Future.delayed(const Duration(seconds: 1)); // Simulasi loading
+  await Future.delayed(const Duration(seconds: 1)); 
   return [
-    // Data mock untuk development
     {
       'id': 1,
       'nomor_surat': '005/SK/V/2026',
@@ -33,29 +28,21 @@ final approvalProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async 
     },
   ];
 });
-
 class ApprovalScreen extends ConsumerWidget {
   const ApprovalScreen({super.key});
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final localizations = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    
     final approvalAsync = ref.watch(approvalProvider);
-
     return RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(approvalProvider);
-        await ref.read(approvalProvider.future);
-      },
+      onRefresh: () => ref.refresh(approvalProvider),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Section
             Card(
               elevation: 0,
               color: theme.colorScheme.primaryContainer,
@@ -84,7 +71,7 @@ class ApprovalScreen extends ConsumerWidget {
                           Text(
                             'Menunggu tindakan Anda',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
+                              color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
                             ),
                           ),
                         ],
@@ -94,25 +81,21 @@ class ApprovalScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            
             const SizedBox(height: 20),
-            
-            // List Section
             approvalAsync.when(
               data: (approvals) {
                 if (approvals.isEmpty) {
-                  return const EmptyStateView(
+                  return EmptyStateView(
                     icon: Icons.check_circle_outline,
                     title: 'Tidak Ada Persetujuan',
-                    message: 'Semua surat telah diproses',
+                    subtitle: 'Semua surat telah diproses',
                   );
                 }
-
                 return ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: approvals.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final item = approvals[index];
                     return _buildApprovalCard(context, item, theme);
@@ -123,7 +106,7 @@ class ApprovalScreen extends ConsumerWidget {
               error: (error, stack) => EmptyStateView(
                 icon: Icons.error_outline,
                 title: 'Gagal Memuat Data',
-                message: error.toString(),
+                subtitle: error.toString(),
                 onRetry: () => ref.refresh(approvalProvider),
               ),
             ),
@@ -132,7 +115,6 @@ class ApprovalScreen extends ConsumerWidget {
       ),
     );
   }
-
   Widget _buildApprovalCard(
     BuildContext context, 
     Map<String, dynamic> item, 
@@ -140,16 +122,13 @@ class ApprovalScreen extends ConsumerWidget {
   ) {
     final localizations = AppLocalizations.of(context);
     final isHighPriority = item['prioritas'] == 'Tinggi';
-
     return Card(
       elevation: 2,
       shadowColor: isHighPriority 
-          ? Colors.red.withValues(alpha: 0.3) 
-          : theme.colorScheme.shadow.withValues(alpha: 0.1),
+          ? Colors.red.withOpacity(0.3) 
+          : theme.colorScheme.shadow.withOpacity(0.1),
       child: InkWell(
         onTap: () {
-          // TODO: Navigasi ke detail approval
-          // Navigator.push(context, MaterialPageRoute(builder: (_) => DetailApprovalScreen(id: item['id'])));
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -157,7 +136,6 @@ class ApprovalScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header: Nomor Surat & Badge Prioritas
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -175,9 +153,9 @@ class ApprovalScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
+                        color: Colors.red.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                        border: Border.all(color: Colors.red.withOpacity(0.3)),
                       ),
                       child: Text(
                         'Prioritas',
@@ -189,22 +167,16 @@ class ApprovalScreen extends ConsumerWidget {
                     ),
                 ],
               ),
-              
               const SizedBox(height: 8),
-              
-              // Perihal
               Text(
                 item['perihal'],
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                  color: theme.colorScheme.onSurface.withOpacity(0.8),
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              
               const SizedBox(height: 12),
-              
-              // Info Grid
               Row(
                 children: [
                   Expanded(
@@ -224,10 +196,7 @@ class ApprovalScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              
               const SizedBox(height: 8),
-              
-              // Tanggal & Status
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -240,7 +209,7 @@ class ApprovalScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      color: theme.colorScheme.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -253,16 +222,12 @@ class ApprovalScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              
               const SizedBox(height: 16),
-              
-              // Action Buttons
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () {
-                        // TODO: Implementasi tolak
                       },
                       icon: const Icon(Icons.close, size: 18),
                       label: Text(localizations.get('tolak')),
@@ -277,7 +242,6 @@ class ApprovalScreen extends ConsumerWidget {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        // TODO: Implementasi setujui dengan biometrik/PIN
                       },
                       icon: const Icon(Icons.check, size: 18),
                       label: Text(localizations.get('approve')),
@@ -296,7 +260,6 @@ class ApprovalScreen extends ConsumerWidget {
       ),
     );
   }
-
   Widget _buildInfoChip(
     IconData icon, 
     String text, 
@@ -309,14 +272,14 @@ class ApprovalScreen extends ConsumerWidget {
         Icon(
           icon,
           size: 14,
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+          color: theme.colorScheme.onSurface.withOpacity(0.5),
         ),
         const SizedBox(width: 4),
         Flexible(
           child: Text(
             text,
             style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
               fontSize: isDate ? 11 : 12,
             ),
             maxLines: 1,

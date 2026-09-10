@@ -2,18 +2,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/surat_model.dart';
 import '../../core/constants/app_config.dart';
-
 abstract class SuratRepository {
   Future<List<SuratModel>> getSuratMasuk({int page = 1, int limit = 20});
   Future<List<SuratModel>> getSuratKeluar({int page = 1, int limit = 20});
   Future<SuratModel?> getSuratDetail(String id);
 }
-
 class ApiSuratRepository implements SuratRepository {
   final Dio _dio;
-
   ApiSuratRepository(this._dio);
-
   @override
   Future<List<SuratModel>> getSuratMasuk({int page = 1, int limit = 20}) async {
     try {
@@ -24,11 +20,8 @@ class ApiSuratRepository implements SuratRepository {
           'limit': limit,
         },
       );
-
       if (response.statusCode == 200) {
         final data = response.data;
-        
-        // Handle different response structures
         List<dynamic> suratList;
         if (data is Map && data.containsKey('data')) {
           suratList = data['data'] as List;
@@ -37,12 +30,10 @@ class ApiSuratRepository implements SuratRepository {
         } else {
           suratList = [];
         }
-
         return suratList
             .map((json) => SuratModel.fromJsonApi(json))
             .toList();
       }
-      
       throw DioException(
         requestOptions: response.requestOptions,
         response: response,
@@ -50,20 +41,16 @@ class ApiSuratRepository implements SuratRepository {
       );
     } on DioException catch (e) {
       if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting surat masuk: ${e.message}');
+        print(' Error getting surat masuk: ${e.message}');
       }
-      
-      // Handle 403 Forbidden - User tidak punya akses
       if (e.response?.statusCode == 403) {
-        debugPrint('⚠️ Error 403: User tidak memiliki akses ke surat_masuk');
-        debugPrint('💡 Solusi Backend: Tambahkan group "surat_masuk" atau "surat_masuk_pegawai" ke user');
-        return [];
+        print(' Error 403: User tidak memiliki akses ke surat_masuk');
+        print('💡 Solusi Backend: Tambahkan group "surat_masuk" atau "surat_masuk_pegawai" ke user');
+        return PaginatedResponse.empty();
       }
-      
       rethrow;
     }
   }
-
   @override
   Future<List<SuratModel>> getSuratKeluar({int page = 1, int limit = 20}) async {
     try {
@@ -74,10 +61,8 @@ class ApiSuratRepository implements SuratRepository {
           'limit': limit,
         },
       );
-
       if (response.statusCode == 200) {
         final data = response.data;
-        
         List<dynamic> suratList;
         if (data is Map && data.containsKey('data')) {
           suratList = data['data'] as List;
@@ -86,12 +71,10 @@ class ApiSuratRepository implements SuratRepository {
         } else {
           suratList = [];
         }
-
         return suratList
             .map((json) => SuratModel.fromJsonApi(json))
             .toList();
       }
-      
       throw DioException(
         requestOptions: response.requestOptions,
         response: response,
@@ -99,17 +82,15 @@ class ApiSuratRepository implements SuratRepository {
       );
     } on DioException catch (e) {
       if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting surat keluar: ${e.message}');
+        print(' Error getting surat keluar: ${e.message}');
       }
       rethrow;
     }
   }
-
   @override
   Future<SuratModel?> getSuratDetail(String id) async {
     try {
       final response = await _dio.get('/surat_masuk/$id');
-
       if (response.statusCode == 200) {
         final data = response.data;
         if (data != null) {
@@ -119,20 +100,16 @@ class ApiSuratRepository implements SuratRepository {
       return null;
     } on DioException catch (e) {
       if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting surat detail: ${e.message}');
+        print(' Error getting surat detail: ${e.message}');
       }
       rethrow;
     }
   }
 }
-
-// Keep MockSuratRepository for development/testing
 class MockSuratRepository implements SuratRepository {
   @override
   Future<List<SuratModel>> getSuratMasuk({int page = 1, int limit = 20}) async {
-    // Simulate network delay
     await Future.delayed(const Duration(seconds: 1));
-
     return [
       SuratModel(
         id: '1',
@@ -207,14 +184,13 @@ class MockSuratRepository implements SuratRepository {
         ringkasan: 'Dokumen rincian biaya seva server cloud dari langganan google cloud.',
       ),
     ];
+    return mockData;
   }
-
   @override
   Future<List<SuratModel>> getSuratKeluar({int page = 1, int limit = 20}) async {
     await Future.delayed(const Duration(seconds: 1));
     return [];
   }
-
   @override
   Future<SuratModel?> getSuratDetail(String id) async {
     await Future.delayed(const Duration(milliseconds: 500));

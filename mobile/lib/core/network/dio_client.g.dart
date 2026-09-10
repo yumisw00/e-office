@@ -1,17 +1,6 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'dio_client.dart';
-
-// **************************************************************************
-// RiverpodGenerator
-// **************************************************************************
-
-// GENERATED CODE - DO NOT MODIFY BY HAND
-// ignore_for_file: type=lint, type=warning
-
 @ProviderFor(dio)
 final dioProvider = DioProvider._();
-
 final class DioProvider extends $FunctionalProvider<Dio, Dio, Dio>
     with $Provider<Dio> {
   DioProvider._()
@@ -24,21 +13,16 @@ final class DioProvider extends $FunctionalProvider<Dio, Dio, Dio>
         dependencies: null,
         $allTransitiveDependencies: null,
       );
-
   @override
   String debugGetCreateSourceHash() => _$dioHash();
-
   @$internal
   @override
   $ProviderElement<Dio> $createElement($ProviderPointer pointer) =>
       $ProviderElement(pointer);
-
   @override
   Dio create(Ref ref) {
     return dio(ref);
   }
-
-  /// {@macro riverpod.override_with_value}
   Override overrideWithValue(Dio value) {
     return $ProviderOverride(
       origin: this,
@@ -46,5 +30,4 @@ final class DioProvider extends $FunctionalProvider<Dio, Dio, Dio>
     );
   }
 }
-
-String _$dioHash() => r'08f869bd004b33c8c8ac16e7584532347162c9d1';
+String _$dioHash() => r'e7a588112a00cb090cc9b565685b2adc7f0d6a8d';

@@ -6,24 +6,20 @@ import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/theme_provider.dart';
 import '../../domain/providers/locale_provider.dart';
 import '../../core/localization/app_localizations.dart';
-
 class ProfilScreen extends ConsumerWidget {
   const ProfilScreen({super.key});
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
     final locale = ref.watch(localeProvider);
     final localizations = AppLocalizations.of(context);
     final theme = Theme.of(context);
-
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Profile Header Card
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -91,8 +87,6 @@ class ProfilScreen extends ConsumerWidget {
               .fade(duration: 400.ms, curve: Curves.easeOutCubic)
               .scale(begin: const Offset(0.95, 0.95), end: const Offset(1, 1), duration: 400.ms, curve: Curves.easeOutCubic),
           const SizedBox(height: 24),
-
-          // Settings Section Title
           Text(
             localizations.get('account_settings'),
             style: TextStyle(
@@ -103,8 +97,6 @@ class ProfilScreen extends ConsumerWidget {
             ),
           ).animate().fade(delay: 100.ms),
           const SizedBox(height: 12),
-
-          // Settings Items
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -115,7 +107,6 @@ class ProfilScreen extends ConsumerWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                // Theme Setting Option
                 ListTile(
                   leading: Icon(
                     themeMode == ThemeMode.light
@@ -137,7 +128,6 @@ class ProfilScreen extends ConsumerWidget {
                   onTap: () => _showThemePicker(context, ref, localizations),
                 ),
                 const Divider(height: 1, indent: 56),
-                // Language Setting Option
                 ListTile(
                   leading: Icon(Icons.language_rounded, color: theme.colorScheme.primary),
                   title: Text(localizations.get('language')),
@@ -152,10 +142,7 @@ class ProfilScreen extends ConsumerWidget {
               ],
             ),
           ).animate().fade(delay: 150.ms).slideY(begin: 0.1, end: 0, delay: 150.ms),
-
           const SizedBox(height: 32),
-
-          // Logout Button
           FilledButton.tonalIcon(
             onPressed: () => _showLogoutConfirm(context, ref, localizations),
             icon: const Icon(Icons.logout_rounded, color: Colors.red),
@@ -175,7 +162,6 @@ class ProfilScreen extends ConsumerWidget {
       ),
     );
   }
-
   void _showThemePicker(BuildContext context, WidgetRef ref, AppLocalizations localizations) {
     showModalBottomSheet(
       context: context,
@@ -219,7 +205,6 @@ class ProfilScreen extends ConsumerWidget {
       },
     );
   }
-
   Widget _buildThemeRadioOption(
       BuildContext context, WidgetRef ref, ThemeMode mode, String label) {
     return RadioListTile<ThemeMode>(
@@ -227,7 +212,6 @@ class ProfilScreen extends ConsumerWidget {
       title: Text(label),
     );
   }
-
   void _showLanguagePicker(BuildContext context, WidgetRef ref, AppLocalizations localizations) {
     showModalBottomSheet(
       context: context,
@@ -270,7 +254,6 @@ class ProfilScreen extends ConsumerWidget {
       },
     );
   }
-
   Widget _buildLanguageRadioOption(
       BuildContext context, WidgetRef ref, Locale locale, String label) {
     return RadioListTile<Locale>(
@@ -278,7 +261,6 @@ class ProfilScreen extends ConsumerWidget {
       title: Text(label),
     );
   }
-
   void _showLogoutConfirm(BuildContext context, WidgetRef ref, AppLocalizations localizations) {
     showDialog(
       context: context,

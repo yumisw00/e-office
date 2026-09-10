@@ -1,4 +1,4 @@
-import 'package:device_info_plus/device_info_plus.dart';
+import 'package:device_info_plus/deviceInfoPlus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,14 +6,11 @@ import 'package:go_router/go_router.dart';
 import '../../core/network/firebase_messaging_service.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../widgets/liquid_glass_container.dart';
-
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
-
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
-
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -21,20 +18,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isCaptchaChecked = false;
   String? _deviceName;
   String? _fcmToken;
-
   @override
   void initState() {
     super.initState();
     _initializeDeviceInfo();
     _initializeFCM();
   }
-
-  /// Inisialisasi informasi device (nama perangkat)
   Future<void> _initializeDeviceInfo() async {
     try {
       final deviceInfo = DeviceInfoPlugin();
       String name = 'Unknown Device';
-
       if (defaultTargetPlatform == TargetPlatform.android) {
         final androidInfo = await deviceInfo.androidInfo;
         name = '${androidInfo.brand} ${androidInfo.model}';
@@ -42,52 +35,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         final iosInfo = await deviceInfo.iosInfo;
         name = 'iPhone ${iosInfo.model}';
       }
-
       setState(() {
         _deviceName = '$name - ${DateTime.now().millisecondsSinceEpoch}';
       });
-
       if (kDebugMode) {
-        print('📱 Device Info: $_deviceName');
+        print(' Device Info: $_deviceName');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error getting device info: $e');
+        print(' Error getting device info: $e');
       }
-      // Fallback ke nama generik
       setState(() {
         _deviceName = 'Mobile Device - ${DateTime.now().millisecondsSinceEpoch}';
       });
     }
   }
-
-  /// Inisialisasi FCM Token
   Future<void> _initializeFCM() async {
     try {
       final fcmService = FirebaseMessagingService();
       final token = await fcmService.getFCMToken();
-      
       setState(() {
         _fcmToken = token;
       });
-
       if (kDebugMode) {
-        print('🔔 FCM Token: ${token?.substring(0, 20)}...');
+        print(' FCM Token: ${token?.substring(0, 20)}...');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error getting FCM token: $e');
+        print(' Error getting FCM token: $e');
       }
     }
   }
-
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
-
   Future<void> _handleLogin() async {
     if (!_isCaptchaChecked) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -95,17 +79,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
       return;
     }
-
     if (_deviceName == null || _fcmToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Menginisialisasi perangkat... Silakan coba lagi')),
       );
-      // Re-initialize jika masih null
       await _initializeDeviceInfo();
       await _initializeFCM();
       return;
     }
-
     try {
       await ref.read(authProvider.notifier).login(
         _emailController.text,
@@ -114,20 +95,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _fcmToken!,
       );
     } catch (e) {
-      // Bersihkan teks error
       String errorMessage = e.toString();
-      
-      // Hapus awalan "Exception: " bawaan Dart
       if (errorMessage.startsWith('Exception: ')) {
         errorMessage = errorMessage.substring(11);
       }
-      
-      // Bersihkan karakter JSON jika backend masih mengirim string map
       errorMessage = errorMessage.replaceAll(RegExp(r'[{}]'), '');
       errorMessage = errorMessage.replaceAll('errors: ', '');
       errorMessage = errorMessage.replaceAll('message: ', '');
-      
-      // Tampilkan di SnackBar
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -139,30 +113,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     }
   }
-
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState.isLoading;
-
-    // Listen to auth state changes for navigation and error feedback
     ref.listen(authProvider, (previous, next) {
       next.whenOrNull(
         data: (user) {
           if (user != null) {
             if (kDebugMode) {
-              print('✅ User logged in: ${user.nama}');
+              print(' User logged in: ${user.nama}');
             }
             context.go('/dashboard');
           }
         },
       );
     });
-
     return Scaffold(
       body: Stack(
         children: [
-          // Vibrant Gradient Background for Glassmorphism
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -176,7 +145,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
-          // Form Content
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),

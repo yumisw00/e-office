@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 class ThemeNotifier extends StateNotifier<ThemeMode> {
   ThemeNotifier() : super(ThemeMode.system) {
     _loadTheme();
   }
-
   static const _key = 'theme_mode';
-
   Future<void> _loadTheme() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -20,10 +17,8 @@ class ThemeNotifier extends StateNotifier<ThemeMode> {
         );
       }
     } catch (_) {
-      // Fallback if preferences fail to load
     }
   }
-
   Future<void> setThemeMode(ThemeMode mode) async {
     state = mode;
     try {
@@ -32,7 +27,6 @@ class ThemeNotifier extends StateNotifier<ThemeMode> {
     } catch (_) {}
   }
 }
-
 final themeProvider = StateNotifierProvider<ThemeNotifier, ThemeMode>((ref) {
   return ThemeNotifier();
 });

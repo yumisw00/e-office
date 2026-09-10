@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
-
 class AppTheme {
   AppTheme._();
-
   static ThemeData get lightTheme {
     return FlexThemeData.light(
       scheme: FlexScheme.indigo,
@@ -25,7 +23,6 @@ class AppTheme {
       useMaterial3: true,
     );
   }
-
   static ThemeData get darkTheme {
     return FlexThemeData.dark(
       scheme: FlexScheme.indigo,
