@@ -2,7 +2,7 @@ part of 'auth_provider.dart';
 @ProviderFor(AuthNotifier)
 final authProvider = AuthNotifierProvider._();
 final class AuthNotifierProvider
-    extends $NotifierProvider<AuthNotifier, AsyncValue<bool>> {
+    extends $NotifierProvider<AuthNotifier, AsyncValue<UserModel?>> {
   AuthNotifierProvider._()
     : super(
         from: null,
@@ -21,7 +21,7 @@ final class AuthNotifierProvider
   Override overrideWithValue(AsyncValue<bool> value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<AsyncValue<bool>>(value),
+      providerOverride: $SyncValueProvider<AsyncValue<UserModel?>>(value),
     );
   }
 }
@@ -31,12 +31,13 @@ abstract class _$AuthNotifier extends $Notifier<AsyncValue<bool>> {
   @$mustCallSuper
   @override
   WhenComplete runBuild() {
-    final ref = this.ref as $Ref<AsyncValue<bool>, AsyncValue<bool>>;
+    final ref =
+        this.ref as $Ref<AsyncValue<UserModel?>, AsyncValue<UserModel?>>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<AsyncValue<bool>, AsyncValue<bool>>,
-              AsyncValue<bool>,
+              AnyNotifier<AsyncValue<UserModel?>, AsyncValue<UserModel?>>,
+              AsyncValue<UserModel?>,
               Object?,
               Object?
             >;

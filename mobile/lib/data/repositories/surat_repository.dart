@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../models/surat_model.dart';
 import '../../core/constants/app_config.dart';
 abstract class SuratRepository {

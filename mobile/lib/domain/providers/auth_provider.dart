@@ -25,6 +25,7 @@ class AuthNotifier extends _$AuthNotifier {
         print(' Device: $deviceName');
         print(' FCM Token: ${fcmToken.isNotEmpty ? '${fcmToken.substring(0, 10)}...' : 'none'}');
       }
+
       final response = await dio.post(
         '/mobile/login',
         data: {
@@ -124,7 +125,7 @@ class AuthNotifier extends _$AuthNotifier {
     }
   }
   Future<void> logout() async {
-    state = const AsyncLoading();
+    state = const AsyncValue.loading();
     try {
       final dio = ref.read(dioProvider);
       await dio.post('/mobile/logout');

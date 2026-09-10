@@ -6,7 +6,7 @@ class SuratShimmerList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       padding: const EdgeInsets.all(12),
-      itemCount: 6,
+      itemCount: itemCount,
       itemBuilder: (context, index) {
         return Card(
           elevation: 2,

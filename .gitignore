@@ -9,10 +9,10 @@ lib/**/*.g.dart
 android/**
 ios/**
 
-# Environment
-.env
-.env.local
-.env.*
+# Build outputs
+build/
+**/ios/.generated/
+**/android/.generated/
 
 # Logs
 *.log

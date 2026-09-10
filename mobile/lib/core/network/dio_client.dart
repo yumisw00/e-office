@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../constants/app_config.dart';
@@ -28,10 +29,10 @@ Dio dio(Ref ref) {
           options.headers['Authorization'] = 'Bearer $token';
         }
         if (AppConfig.enableLogging) {
-          print('🌐 REQUEST[${options.method}] => ${options.uri}');
-          print('   Headers: ${options.headers}');
+          debugPrint('🌐 REQUEST[${options.method}] => ${options.uri}');
+          debugPrint('   Headers: ${options.headers}');
           if (options.data != null) {
-            print('   Data: ${options.data}');
+            debugPrint('   Data: ${options.data}');
           }
         }
         handler.next(options);
