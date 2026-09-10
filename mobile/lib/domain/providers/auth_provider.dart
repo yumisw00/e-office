@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/network/dio_client.dart';
-import '../../data/models/user_model.dart';
+import '../models/user_model.dart';
 
 part 'auth_provider.g.dart';
 
@@ -11,7 +11,7 @@ part 'auth_provider.g.dart';
 class AuthNotifier extends _$AuthNotifier {
   @override
   AsyncValue<UserModel?> build() {
-    return const AsyncData<UserModel?>(null);
+    return const AsyncData(null);
   }
 
   /// Login dengan email, password, dan device info

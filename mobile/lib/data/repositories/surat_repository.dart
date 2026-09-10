@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../models/surat_model.dart';
 import '../../core/constants/app_config.dart';
@@ -50,14 +49,14 @@ class ApiSuratRepository implements SuratRepository {
       );
     } on DioException catch (e) {
       if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting surat masuk: ${e.message}');
+        print('❌ Error getting surat masuk: ${e.message}');
       }
       
       // Handle 403 Forbidden - User tidak punya akses
       if (e.response?.statusCode == 403) {
-        debugPrint('⚠️ Error 403: User tidak memiliki akses ke surat_masuk');
-        debugPrint('💡 Solusi Backend: Tambahkan group "surat_masuk" atau "surat_masuk_pegawai" ke user');
-        return [];
+        print('⚠️ Error 403: User tidak memiliki akses ke surat_masuk');
+        print('💡 Solusi Backend: Tambahkan group "surat_masuk" atau "surat_masuk_pegawai" ke user');
+        return PaginatedResponse.empty();
       }
       
       rethrow;
@@ -99,7 +98,7 @@ class ApiSuratRepository implements SuratRepository {
       );
     } on DioException catch (e) {
       if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting surat keluar: ${e.message}');
+        print('❌ Error getting surat keluar: ${e.message}');
       }
       rethrow;
     }
@@ -119,7 +118,7 @@ class ApiSuratRepository implements SuratRepository {
       return null;
     } on DioException catch (e) {
       if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting surat detail: ${e.message}');
+        print('❌ Error getting surat detail: ${e.message}');
       }
       rethrow;
     }
@@ -207,6 +206,8 @@ class MockSuratRepository implements SuratRepository {
         ringkasan: 'Dokumen rincian biaya seva server cloud dari langganan google cloud.',
       ),
     ];
+
+    return mockData;
   }
 
   @override

@@ -49,7 +49,7 @@ final class SuratRepositoryProvider
   }
 }
 
-String _$suratRepositoryHash() => r'5c1993a24e4fbd26f0618c1e84177ac65b623cbc';
+String _$suratRepositoryHash() => r'195821e2d7a6847e8f75ae9136be9ac93c7147ef';
 
 @ProviderFor(SuratMasuk)
 final suratMasukProvider = SuratMasukProvider._();
@@ -75,7 +75,7 @@ final class SuratMasukProvider
   SuratMasuk create() => SuratMasuk();
 }
 
-String _$suratMasukHash() => r'75e9fed78ef88bc9608aeef0966b28ed7205d99a';
+String _$suratMasukHash() => r'a390a818de6721f1dfbf015d16c42349c77a3c96';
 
 abstract class _$SuratMasuk extends $AsyncNotifier<List<SuratModel>> {
   FutureOr<List<SuratModel>> build();

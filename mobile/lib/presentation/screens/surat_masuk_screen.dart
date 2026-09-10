@@ -200,4 +200,23 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
         return Icons.email_outlined;
     }
   }
+
+  String _getStatusLabel(AppLocalizations localizations, String status) {
+    switch (status.toLowerCase()) {
+      case 'belum_dibaca':
+      case 'unread':
+        return localizations.get('unread');
+      case 'sudah_dibaca':
+      case 'read':
+        return localizations.get('read');
+      case 'disposisi':
+      case 'disposition':
+        return localizations.get('disposisi');
+      case 'selesai':
+      case 'completed':
+        return localizations.get('completed');
+      default:
+        return status;
+    }
+  }
 }

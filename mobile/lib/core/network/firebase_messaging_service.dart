@@ -13,9 +13,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
   
   // Kirim notifikasi lokal untuk pesan background
-  final service = FirebaseMessagingService();
-  await service._initLocalNotifications();
-  await service._showLocalNotification(
+  await _showLocalNotification(
     title: message.notification?.title ?? 'E-Office',
     body: message.notification?.body ?? 'Anda memiliki pesan baru',
     data: message.data,
@@ -116,7 +114,8 @@ class FirebaseMessagingService {
       title,
       body,
       const NotificationDetails(android: androidDetails, iOS: iosDetails),
-      payload: data?.entries.map((e) => '${e.key}=${e.value}').join('&'),
+      payload: data != null ? 
+          data.entries.map((e) => '${e.key}=${e.value}').join('&') : null,
     );
   }
 

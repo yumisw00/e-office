@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/surat_provider.dart';
 import '../../core/localization/app_localizations.dart';
+import '../widgets/surat_shimmer_list.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -12,7 +14,21 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final localizations = AppLocalizations.of(context);
+    
+    // Watch auth state untuk mendapatkan data user
+    final authState = ref.watch(authNotifierProvider);
     final suratMasukAsync = ref.watch(suratMasukProvider);
+
+    // Ambil nama dan jabatan dari user yang login (dengan safe access)
+    String userName = 'User';
+    String userJabatan = '-';
+    
+    authState.whenData((user) {
+      if (user != null) {
+        userName = user.nama;
+        userJabatan = user.jabatan ?? '-';
+      }
+    });
 
     return suratMasukAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -36,7 +52,7 @@ class DashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Welcome Banner
+                // Welcome Banner - Dynamic User Data
                 Card(
                       elevation: 0,
                       color: theme.colorScheme.primaryContainer.withValues(
@@ -71,7 +87,7 @@ class DashboardScreen extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Bpk. Budi Santoso',
+                                    userName, // Dynamic name from auth
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
@@ -81,7 +97,7 @@ class DashboardScreen extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Direktur Utama',
+                                    userJabatan, // Dynamic jabatan from auth
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: theme

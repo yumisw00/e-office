@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -35,23 +34,23 @@ Dio dio(Ref ref) {
         }
         // Optional: Add logging for debugging
         if (AppConfig.enableLogging) {
-          debugPrint('🌐 REQUEST[${options.method}] => ${options.uri}');
-          debugPrint('   Headers: ${options.headers}');
+          print('🌐 REQUEST[${options.method}] => ${options.uri}');
+          print('   Headers: ${options.headers}');
           if (options.data != null) {
-            debugPrint('   Data: ${options.data}');
+            print('   Data: ${options.data}');
           }
         }
         handler.next(options);
       },
       onResponse: (response, handler) async {
         if (AppConfig.enableLogging) {
-          debugPrint('✅ RESPONSE[${response.statusCode}] <= ${response.requestOptions.uri}');
+          print('✅ RESPONSE[${response.statusCode}] <= ${response.requestOptions.uri}');
         }
         handler.next(response);
       },
       onError: (error, handler) async {
         if (AppConfig.enableLogging) {
-          debugPrint('❌ ERROR[${error.error}] => ${error.requestOptions.uri}');
+          print('❌ ERROR[${error.error}] => ${error.requestOptions.uri}');
         }
         handler.next(error);
       },
