@@ -2,6 +2,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+final FlutterLocalNotificationsPlugin _localNotifications = 
+      FlutterLocalNotificationsPlugin();
+
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -15,9 +19,36 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     data: message.data,
   );
 }
+
+Future<void> _showLocalNotification({
+  required String title,
+  required String body,
+  Map<String, dynamic>? data,
+}) async {
+  const androidDetails = AndroidNotificationDetails(
+    'e_office_channel',
+    'E-Office Notifications',
+    channelDescription: 'Notifikasi surat masuk, disposisi, dan approval',
+    importance: Importance.high,
+    priority: Priority.high,
+    icon: '@mipmap/ic_launcher',
+  );
+  const iosDetails = DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+  );
+  await _localNotifications.show(
+    DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    title,
+    body,
+    const NotificationDetails(android: androidDetails, iOS: iosDetails),
+    payload: data != null ? 
+        data.entries.map((e) => '${e.key}=${e.value}').join('&') : null,
+  );
+}
+
 class FirebaseMessagingService {
-  final FlutterLocalNotificationsPlugin _localNotifications = 
-      FlutterLocalNotificationsPlugin();
   Future<void> init() async {
     await _initLocalNotifications();
     final messaging = FirebaseMessaging.instance;
@@ -47,7 +78,7 @@ class FirebaseMessagingService {
     });
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       if (kDebugMode) {
-        print('🖱 User membuka app dari notifikasi: ${message.data}');
+        print(' User membuka app dari notifikasi: ${message.data}');
       }
     });
   }
@@ -63,33 +94,6 @@ class FirebaseMessagingService {
         android: androidSettings,
         iOS: iosSettings,
       ),
-    );
-  }
-  Future<void> _showLocalNotification({
-    required String title,
-    required String body,
-    Map<String, dynamic>? data,
-  }) async {
-    const androidDetails = AndroidNotificationDetails(
-      'e_office_channel',
-      'E-Office Notifications',
-      channelDescription: 'Notifikasi surat masuk, disposisi, dan approval',
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-    );
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-    await _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title,
-      body,
-      const NotificationDetails(android: androidDetails, iOS: iosDetails),
-      payload: data != null ? 
-          data.entries.map((e) => '${e.key}=${e.value}').join('&') : null,
     );
   }
   Future<String?> getFCMToken() async {

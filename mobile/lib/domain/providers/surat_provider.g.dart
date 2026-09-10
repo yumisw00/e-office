@@ -1,6 +1,17 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
 part of 'surat_provider.dart';
+
+// **************************************************************************
+// RiverpodGenerator
+// **************************************************************************
+
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
 @ProviderFor(suratRepository)
 final suratRepositoryProvider = SuratRepositoryProvider._();
+
 final class SuratRepositoryProvider
     extends
         $FunctionalProvider<SuratRepository, SuratRepository, SuratRepository>
@@ -15,16 +26,21 @@ final class SuratRepositoryProvider
         dependencies: null,
         $allTransitiveDependencies: null,
       );
+
   @override
   String debugGetCreateSourceHash() => _$suratRepositoryHash();
+
   @$internal
   @override
   $ProviderElement<SuratRepository> $createElement($ProviderPointer pointer) =>
       $ProviderElement(pointer);
+
   @override
   SuratRepository create(Ref ref) {
     return suratRepository(ref);
   }
+
+  /// {@macro riverpod.override_with_value}
   Override overrideWithValue(SuratRepository value) {
     return $ProviderOverride(
       origin: this,
@@ -32,9 +48,12 @@ final class SuratRepositoryProvider
     );
   }
 }
-String _$suratRepositoryHash() => r'195821e2d7a6847e8f75ae9136be9ac93c7147ef';
+
+String _$suratRepositoryHash() => r'5c1993a24e4fbd26f0618c1e84177ac65b623cbc';
+
 @ProviderFor(SuratMasuk)
 final suratMasukProvider = SuratMasukProvider._();
+
 final class SuratMasukProvider
     extends $AsyncNotifierProvider<SuratMasuk, List<SuratModel>> {
   SuratMasukProvider._()
@@ -47,13 +66,17 @@ final class SuratMasukProvider
         dependencies: null,
         $allTransitiveDependencies: null,
       );
+
   @override
   String debugGetCreateSourceHash() => _$suratMasukHash();
+
   @$internal
   @override
   SuratMasuk create() => SuratMasuk();
 }
-String _$suratMasukHash() => r'a390a818de6721f1dfbf015d16c42349c77a3c96';
+
+String _$suratMasukHash() => r'75e9fed78ef88bc9608aeef0966b28ed7205d99a';
+
 abstract class _$SuratMasuk extends $AsyncNotifier<List<SuratModel>> {
   FutureOr<List<SuratModel>> build();
   @$mustCallSuper

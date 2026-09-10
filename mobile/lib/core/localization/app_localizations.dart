@@ -56,6 +56,7 @@ class AppLocalizations {
   }
 }
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
   @override
   bool isSupported(Locale locale) {
     return locale.languageCode == 'id';

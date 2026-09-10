@@ -275,7 +275,7 @@ class DetailSuratScreen extends ConsumerWidget {
                 context.push(
                   '/pdf',
                   extra:
-                      'https:
+                      'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
                 );
               },
               icon: const Icon(Icons.picture_as_pdf),

@@ -5,14 +5,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/surat_provider.dart';
 import '../../core/localization/app_localizations.dart';
-import '../widgets/surat_shimmer_list.dart';
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final localizations = AppLocalizations.of(context);
-    final authState = ref.watch(authNotifierProvider);
+    final authState = ref.watch(authProvider);
     final suratMasukAsync = ref.watch(suratMasukProvider);
     String userName = 'User';
     String userJabatan = '-';

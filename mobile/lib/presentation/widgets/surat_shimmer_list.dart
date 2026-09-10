@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 class SuratShimmerList extends StatelessWidget {
-  const SuratShimmerList({super.key});
+  final int itemCount;
+  const SuratShimmerList({super.key, this.itemCount = 6});
   @override
   Widget build(BuildContext context) {
     return ListView.builder(

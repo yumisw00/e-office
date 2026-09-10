@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import '../models/surat_model.dart';
 import '../../core/constants/app_config.dart';
 abstract class SuratRepository {
@@ -46,7 +45,7 @@ class ApiSuratRepository implements SuratRepository {
       if (e.response?.statusCode == 403) {
         print(' Error 403: User tidak memiliki akses ke surat_masuk');
         print('💡 Solusi Backend: Tambahkan group "surat_masuk" atau "surat_masuk_pegawai" ke user');
-        return PaginatedResponse.empty();
+        return [];
       }
       rethrow;
     }
@@ -184,7 +183,6 @@ class MockSuratRepository implements SuratRepository {
         ringkasan: 'Dokumen rincian biaya seva server cloud dari langganan google cloud.',
       ),
     ];
-    return mockData;
   }
   @override
   Future<List<SuratModel>> getSuratKeluar({int page = 1, int limit = 20}) async {

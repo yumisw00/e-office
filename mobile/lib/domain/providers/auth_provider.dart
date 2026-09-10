@@ -3,13 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/network/dio_client.dart';
-import '../models/user_model.dart';
+import '../../data/models/user_model.dart';
 part 'auth_provider.g.dart';
 @riverpod
 class AuthNotifier extends _$AuthNotifier {
   @override
   AsyncValue<UserModel?> build() {
-    return const AsyncData(null);
+    return const AsyncValue.data(null);
   }
   Future<void> login(
     String email, 
@@ -17,7 +17,7 @@ class AuthNotifier extends _$AuthNotifier {
     String deviceName,
     String fcmToken,
   ) async {
-    state = const AsyncLoading();
+    state = const AsyncValue.loading();
     try {
       final dio = ref.read(dioProvider);
       if (kDebugMode) {
@@ -55,7 +55,7 @@ class AuthNotifier extends _$AuthNotifier {
             value: user.toJson().toString(),
           );
         }
-        state = AsyncData(user);
+        state = AsyncValue.data(user);
         if (kDebugMode) {
           print(' Login berhasil! User: ${user?.nama ?? email}');
         }
@@ -137,7 +137,7 @@ class AuthNotifier extends _$AuthNotifier {
       const storage = FlutterSecureStorage();
       await storage.delete(key: 'auth_token');
       await storage.delete(key: 'user_data');
-      state = const AsyncData(null);
+      state = const AsyncValue.data(null);
     }
   }
   Future<void> loadUserFromStorage() async {
@@ -156,7 +156,7 @@ class AuthNotifier extends _$AuthNotifier {
           if (nameMatch != null) json['nama'] = nameMatch.group(1);
           if (emailMatch != null) json['email'] = emailMatch.group(1);
           if (json.isNotEmpty) {
-            state = AsyncData(UserModel.fromJsonApi(json));
+            state = AsyncValue.data(UserModel.fromJsonApi(json));
           }
         } catch (e) {
           if (kDebugMode) {

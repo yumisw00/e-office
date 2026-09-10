@@ -1,5 +1,5 @@
 class AppConfig {
-  static const String baseUrl = 'http:
+  static const String baseUrl = 'http://192.168.0.40:8000/api';
   static const Duration connectTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
   static const String authTokenKey = 'auth_token';
