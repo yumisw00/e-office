@@ -39,16 +39,4 @@ return [
         'timeout' => (int) env('GEMINI_TIMEOUT', 60),
     ],
 
-    'firebase' => [
-        'credentials' => env('FIREBASE_CREDENTIALS')
-            ? base_path(env('FIREBASE_CREDENTIALS'))
-            : null,
-    ],
-
-    'firebase' => [
-        'credentials' => env('FIREBASE_CREDENTIALS')
-            ? base_path(env('FIREBASE_CREDENTIALS'))
-            : null,
-    ],
-
 ];

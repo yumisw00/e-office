@@ -196,9 +196,22 @@ class ProfilScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                _buildThemeRadioOption(context, ref, ThemeMode.light, localizations.get('light'), currentMode),
-                _buildThemeRadioOption(context, ref, ThemeMode.dark, localizations.get('dark'), currentMode),
-                _buildThemeRadioOption(context, ref, ThemeMode.system, localizations.get('system'), currentMode),
+                RadioGroup<ThemeMode>(
+                  groupValue: currentMode,
+                  onChanged: (value) {
+                    if (value != null) {
+                      ref.read(themeProvider.notifier).setThemeMode(value);
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: Column(
+                    children: [
+                      _buildThemeRadioOption(context, ref, ThemeMode.light, localizations.get('light')),
+                      _buildThemeRadioOption(context, ref, ThemeMode.dark, localizations.get('dark')),
+                      _buildThemeRadioOption(context, ref, ThemeMode.system, localizations.get('system')),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -208,17 +221,10 @@ class ProfilScreen extends ConsumerWidget {
   }
 
   Widget _buildThemeRadioOption(
-      BuildContext context, WidgetRef ref, ThemeMode mode, String label, ThemeMode currentMode) {
+      BuildContext context, WidgetRef ref, ThemeMode mode, String label) {
     return RadioListTile<ThemeMode>(
       value: mode,
-      groupValue: currentMode,
       title: Text(label),
-      onChanged: (value) {
-        if (value != null) {
-          ref.read(themeProvider.notifier).setThemeMode(value);
-          Navigator.pop(context);
-        }
-      },
     );
   }
 
@@ -242,8 +248,21 @@ class ProfilScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                _buildLanguageRadioOption(context, ref, const Locale('en'), localizations.get('english'), currentLocale),
-                _buildLanguageRadioOption(context, ref, const Locale('id'), localizations.get('indonesia'), currentLocale),
+                RadioGroup<Locale>(
+                  groupValue: currentLocale,
+                  onChanged: (value) {
+                    if (value != null) {
+                      ref.read(localeProvider.notifier).setLocale(value);
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: Column(
+                    children: [
+                      _buildLanguageRadioOption(context, ref, const Locale('en'), localizations.get('english')),
+                      _buildLanguageRadioOption(context, ref, const Locale('id'), localizations.get('indonesia')),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -253,17 +272,10 @@ class ProfilScreen extends ConsumerWidget {
   }
 
   Widget _buildLanguageRadioOption(
-      BuildContext context, WidgetRef ref, Locale locale, String label, Locale currentLocale) {
+      BuildContext context, WidgetRef ref, Locale locale, String label) {
     return RadioListTile<Locale>(
       value: locale,
-      groupValue: currentLocale,
       title: Text(label),
-      onChanged: (value) {
-        if (value != null) {
-          ref.read(localeProvider.notifier).setLocale(value);
-          Navigator.pop(context);
-        }
-      },
     );
   }
 

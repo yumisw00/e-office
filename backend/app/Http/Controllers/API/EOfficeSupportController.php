@@ -13,23 +13,14 @@ class EOfficeSupportController extends Controller
 {
     public function suratMasukMasterData(): JsonResponse
     {
-        // Both incoming and outgoing letter forms use this same master list.
-        $jenisSurat = DB::table('master_jenis_surat')
-            ->where('is_active', true)
-            ->whereNull('deleted_at')
-            ->orderBy('nama')
-            ->get(['id_jenis_surat', 'kode', 'nama'])
-            ->map(fn ($item) => [
-                'value' => $item->nama,
-                'label' => $item->nama,
-                'id_jenis_surat' => $item->id_jenis_surat,
-                'kode' => $item->kode,
-            ])
-            ->values()
-            ->all();
-
         $data = [
-            'jenis' => $jenisSurat,
+            'jenis' => $this->options([
+                'Surat Pengumuman',
+                'Surat Undangan',
+                'Surat Permohonan',
+                'Surat Pemberitahuan',
+                'Surat Tugas',
+            ]),
             'sifat' => $this->options([
                 'Biasa',
                 'Penting',
@@ -45,11 +36,10 @@ class EOfficeSupportController extends Controller
                 'SDM',
             ]),
             'status' => $this->options([
-                'draft',
-                'dikirim',
-                'disposisi',
+                'baru',
+                'diproses',
+                'menunggu_disposisi',
                 'selesai',
-                'diarsipkan',
             ]),
             'source_type' => $this->options([
                 'AI',
@@ -80,18 +70,6 @@ class EOfficeSupportController extends Controller
         try {
             $templates = DB::table('surat_template')
                 ->whereNull('deleted_at')
-                ->where(function ($query) {
-                    $query->whereNull('is_active')->orWhere('is_active', true);
-                })
-                ->whereNotNull('jenis_surat')
-                ->whereRaw("TRIM(jenis_surat) <> ''")
-                ->whereExists(function ($query) {
-                    $query->select(DB::raw(1))
-                        ->from('master_jenis_surat')
-                        ->whereColumn('master_jenis_surat.nama', 'surat_template.jenis_surat')
-                        ->where('master_jenis_surat.is_active', true)
-                        ->whereNull('master_jenis_surat.deleted_at');
-                })
                 ->orderBy('nama', 'asc')
                 ->get();
 

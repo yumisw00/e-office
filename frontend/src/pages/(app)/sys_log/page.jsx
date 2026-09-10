@@ -81,7 +81,7 @@ const Sys_log = (props) => {
   const [datafilter, setdatafilter] = useState({
     paginate: {
       page: 1,
-      pagesize: 20,
+      pagesize: 50,
     },
   });
 

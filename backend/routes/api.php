@@ -37,11 +37,6 @@ Route::post('mobile/logout', [App\Http\Controllers\API\MobileLoginController::cl
 Route::get('mobile/user', [App\Http\Controllers\API\MobileLoginController::class, 'user'])->middleware('auth:sanctum');
 Route::post('mobile/groups', [App\Http\Controllers\API\MobileLoginController::class, 'groups'])->middleware('auth:sanctum');
 Route::post('mobile/switch-group', [App\Http\Controllers\API\MobileLoginController::class, 'switchGroup'])->middleware('auth:sanctum');
-Route::middleware('auth:sanctum')->prefix('pimpinan')->group(function () {
-    Route::get('dashboard', [App\Http\Controllers\API\PimpinanMobileController::class, 'dashboard']);
-    Route::get('my-actions', [App\Http\Controllers\API\PimpinanMobileController::class, 'myActions']);
-    Route::get('tracking/{id_surat}', [App\Http\Controllers\API\PimpinanMobileController::class, 'tracking']);
-});
 
 Route::get('health', HealthCheckController::class)
     ->withoutMiddleware(\App\Http\Middleware\AksesMenu::class);
@@ -174,46 +169,45 @@ Route::get('surat_masuk/master-data', [App\Http\Controllers\API\EOfficeSupportCo
 Route::get('surat_masuk/master_data', [App\Http\Controllers\API\EOfficeSupportController::class, 'suratMasukMasterData']);
 // Template list for dropdown — no middleware, accessible to all authenticated users
 Route::get('surat-template/list', [App\Http\Controllers\API\EOfficeSupportController::class, 'suratTemplateList']);
-Route::get('surat_masuk/{id}/timeline', [App\Http\Controllers\API\EOfficeSupportController::class, 'suratMasukTimeline'])->middleware('EnsureHasGroup:surat_masuk,index');
-Route::post('surat_masuk/{id}/distribute', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'distributeIncoming'])->middleware('EnsureHasGroup:surat_masuk,edit');
-Route::post('surat_masuk/{id}/read', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'markIncomingRead'])->middleware('EnsureHasGroup:surat_masuk,index');
-Route::post('surat_masuk/{id}/done', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'completeIncoming'])->middleware('EnsureHasGroup:disposisi,edit');
-Route::post('surat_masuk/{id}/archive', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'archiveIncoming'])->middleware('EnsureHasGroup:surat_arsip,add');
+Route::get('surat_masuk/{id}/timeline', [App\Http\Controllers\API\EOfficeSupportController::class, 'suratMasukTimeline'])->middleware('EnsureHasGroup:surat_masuk|pimpinan');
+Route::post('surat_masuk/{id}/distribute', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'distributeIncoming'])->middleware('EnsureHasGroup:surat_masuk|pimpinan');
+Route::post('surat_masuk/{id}/read', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'markIncomingRead'])->middleware('EnsureHasGroup:surat_masuk|pimpinan');
+Route::post('surat_masuk/{id}/done', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'completeIncoming'])->middleware('EnsureHasGroup:disposisi|pimpinan');
+Route::post('surat_masuk/{id}/archive', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'archiveIncoming'])->middleware('EnsureHasGroup:surat_arsip|pimpinan');
 Route::post('surat_masuk/ocr', [App\Http\Controllers\API\SuratMasukAPIController::class, 'ocr'])
-    ->middleware('EnsureHasGroup:surat_masuk,edit');
+    ->middleware('EnsureHasGroup:surat_masuk|pimpinan');
 Route::get('surat_masuk/nomor-agenda-preview', [App\Http\Controllers\API\SuratMasukAPIController::class, 'nomorAgendaPreview'])
-    ->middleware('EnsureHasGroup:surat_masuk,index');
+    ->middleware('EnsureHasGroup:surat_masuk|pimpinan');
 Route::get('surat_masuk/summary', [App\Http\Controllers\API\SuratMasukAPIController::class, 'summary'])
-    ->middleware('EnsureHasGroup:surat_masuk|surat_masuk_pegawai');
+    ->middleware('EnsureHasGroup:surat_masuk|surat_masuk_pegawai|pimpinan');
 Route::resource('surat_masuk', App\Http\Controllers\API\SuratMasukAPIController::class)
-    ->except(['create', 'edit'])->middleware('EnsureHasGroup:surat_masuk|surat_masuk_pegawai');
-Route::get('surat_keluar/{id}/timeline', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'outgoingTimeline'])->middleware('EnsureHasGroup:surat_keluar,index');
-Route::post('surat_keluar/{id}/submit', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'submitOutgoing'])->middleware('EnsureHasGroup:surat_keluar,edit');
-Route::post('surat_keluar/{id}/approve', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'approveOutgoing'])->middleware('EnsureHasGroup:surat_approval,approve');
-Route::post('surat_keluar/{id}/reject', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'rejectOutgoing'])->middleware('EnsureHasGroup:surat_approval,reject');
-Route::post('surat_keluar/{id}/sign', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'signOutgoing'])->middleware('EnsureHasGroup:surat_keluar,sign');
-Route::post('surat_keluar/{id}/send', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'sendOutgoing'])->middleware('EnsureHasGroup:surat_keluar,send');
-Route::post('surat_keluar/{id}/archive', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'archiveOutgoing'])->middleware('EnsureHasGroup:surat_keluar,archive');
-Route::post('surat_keluar/{id}/create-office-link', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'createOfficeLink'])->middleware('EnsureHasGroup:surat_keluar,edit');
-Route::post('surat_keluar/upload', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'uploadAttachment'])->middleware('EnsureHasGroup:surat_keluar,add');
-Route::get('surat_keluar/nomor-agenda-preview', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'nomorAgendaPreview'])->middleware('EnsureHasGroup:surat_keluar,index');
-Route::get('surat_keluar/recipients', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'recipients'])->middleware('EnsureHasGroup:surat_keluar,index');
+    ->except(['create', 'edit'])->middleware('EnsureHasGroup:surat_masuk|surat_masuk_pegawai|pimpinan');
+Route::get('surat_keluar/{id}/timeline', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'outgoingTimeline'])->middleware('EnsureHasGroup:surat_keluar|pimpinan');
+Route::post('surat_keluar/{id}/submit', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'submitOutgoing'])->middleware('EnsureHasGroup:surat_keluar|pimpinan');
+Route::post('surat_keluar/{id}/approve', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'approveOutgoing'])->middleware('EnsureHasGroup:surat_approval|pimpinan');
+Route::post('surat_keluar/{id}/reject', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'rejectOutgoing'])->middleware('EnsureHasGroup:surat_approval|pimpinan');
+Route::post('surat_keluar/{id}/sign', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'signOutgoing'])->middleware('EnsureHasGroup:surat_keluar|pimpinan');
+Route::post('surat_keluar/{id}/send', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'sendOutgoing'])->middleware('EnsureHasGroup:surat_keluar|pimpinan');
+Route::post('surat_keluar/{id}/archive', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'archiveOutgoing'])->middleware('EnsureHasGroup:surat_keluar|pimpinan');
+Route::post('surat_keluar/{id}/create-office-link', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'createOfficeLink'])->middleware('EnsureHasGroup:surat_keluar|pimpinan');
+Route::post('surat_keluar/upload', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'uploadAttachment'])->middleware('EnsureHasGroup:surat_keluar|pimpinan');
+Route::get('surat_keluar/nomor-agenda-preview', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'nomorAgendaPreview'])->middleware('EnsureHasGroup:surat_keluar|pimpinan');
+Route::get('surat_keluar/recipients', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'recipients'])->middleware('EnsureHasGroup:surat_keluar|pimpinan');
 Route::resource('surat_keluar', App\Http\Controllers\API\SuratKeluarAPIController::class)
-    ->except(['create', 'edit'])->middleware('EnsureHasGroup:surat_keluar');
+    ->except(['create', 'edit'])->middleware('EnsureHasGroup:surat_keluar|pimpinan');
 Route::resource('surat_distribusi', App\Http\Controllers\API\SuratDistribusiAPIController::class)
-    ->except(['create', 'edit'])->middleware('EnsureHasGroup:surat_masuk|surat_masuk_pegawai');
-Route::post('surat_disposisi/{id}/complete', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'completeDisposition'])->middleware('EnsureHasGroup:disposisi,edit');
-Route::post('surat_disposisi/{id}/upload-attachment', [App\Http\Controllers\API\SuratDisposisiAPIController::class, 'uploadAttachment'])->middleware('auth:sanctum');
-Route::get('surat_disposisi/{id}/timeline', [App\Http\Controllers\API\SuratDisposisiAPIController::class, 'timeline'])->middleware('EnsureHasGroup:disposisi,index');
+    ->except(['create', 'edit'])->middleware('EnsureHasGroup:surat_masuk|surat_masuk_pegawai|pimpinan');
+Route::post('surat_disposisi/{id}/complete', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'completeDisposition'])->middleware('EnsureHasGroup:disposisi|pimpinan');
+Route::get('surat_disposisi/{id}/timeline', [App\Http\Controllers\API\SuratDisposisiAPIController::class, 'timeline'])->middleware('EnsureHasGroup:disposisi|pimpinan');
 Route::resource('surat_disposisi', App\Http\Controllers\API\SuratDisposisiAPIController::class)
-    ->except(['create', 'edit'])->middleware('EnsureHasGroup:disposisi');
+    ->except(['create', 'edit'])->middleware('EnsureHasGroup:disposisi|pimpinan');
 Route::resource('surat_approval', App\Http\Controllers\API\SuratApprovalAPIController::class)
     ->except(['create', 'edit'])->middleware('EnsureHasGroup:surat_approval');
 Route::resource('surat_arsip', App\Http\Controllers\API\SuratArsipAPIController::class)
     ->except(['create', 'edit', 'destroy'])
-    ->middleware('EnsureHasGroup:surat_arsip');
+    ->middleware('EnsureHasGroup:surat_arsip|pimpinan');
 Route::delete('surat_arsip/{id}', [App\Http\Controllers\API\SuratArsipAPIController::class, 'destroy'])
-    ->middleware('EnsureHasGroup:surat_arsip,index');
+    ->middleware('EnsureHasGroup:surat_arsip|pimpinan');
 Route::get('eoffice/notifications', [App\Http\Controllers\API\EOfficeSupportController::class, 'notifications']);
 Route::get('eoffice/notification-recipients', [App\Http\Controllers\API\EOfficeSupportController::class, 'notificationRecipients']);
 Route::post('eoffice/notifications', [App\Http\Controllers\API\EOfficeSupportController::class, 'storeNotification']);
@@ -222,13 +216,13 @@ Route::get('notifikasi_eoffice', [App\Http\Controllers\API\EOfficeSupportControl
 Route::post('notifikasi_eoffice', [App\Http\Controllers\API\EOfficeSupportController::class, 'storeNotification']);
 Route::post('notifikasi_eoffice/{id}/read', [App\Http\Controllers\API\EOfficeSupportController::class, 'markNotificationRead']);
 Route::resource('sys_notification', App\Http\Controllers\API\SysNotificationAPIController::class)
-    ->except(['create', 'edit'])->middleware('EnsureHasGroup:sys_notification');
+    ->except(['create', 'edit'])->middleware('EnsureHasGroup:sys_notification|pimpinan');
 Route::resource('agenda_kegiatan', App\Http\Controllers\API\AgendaKegiatanAPIController::class)
-    ->except(['create', 'edit'])->middleware('EnsureHasGroup:agenda');
+    ->except(['create', 'edit'])->middleware('EnsureHasGroup:agenda|pimpinan');
 Route::get('pengumuman/roles', [App\Http\Controllers\API\PengumumanAPIController::class, 'roles'])
-    ->middleware('EnsureHasGroup:pengumuman');
+    ->middleware('EnsureHasGroup:pengumuman|pimpinan');
 Route::resource('pengumuman', App\Http\Controllers\API\PengumumanAPIController::class)
-    ->except(['create', 'edit'])->middleware('EnsureHasGroup:pengumuman');
+    ->except(['create', 'edit'])->middleware('EnsureHasGroup:pengumuman|pimpinan');
 Route::resource('ai_document_job', App\Http\Controllers\API\AiDocumentJobAPIController::class)
     ->except(['create', 'edit']);
 Route::resource('digital_signature', App\Http\Controllers\API\DigitalSignatureAPIController::class)

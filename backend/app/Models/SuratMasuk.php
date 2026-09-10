@@ -9,11 +9,10 @@ class SuratMasuk extends BaseModel
     protected $appends = ['id_surat_masuk'];
 
     public const STATUSES = [
-        'draft',
-        'dikirim',
-        'disposisi',
+        'baru',
+        'diproses',
+        'menunggu_disposisi',
         'selesai',
-        'diarsipkan',
         'ai_gagal',
         'manual_input',
     ];
@@ -25,7 +24,6 @@ class SuratMasuk extends BaseModel
         'id_surat_keluar',
         'id_penerima',
         'jenis_pengiriman',
-        'id_jenis_surat',
         'nomor_agenda',
         'nomor_surat',
         'jenis',
@@ -57,10 +55,9 @@ class SuratMasuk extends BaseModel
         'id_surat_keluar' => 'nullable|integer',
         'id_penerima' => 'nullable|integer|exists:sys_user,id_user',
         'jenis_pengiriman' => 'nullable|in:internal,eksternal',
-        'id_jenis_surat' => 'required|integer|exists:master_jenis_surat,id_jenis_surat',
         'nomor_agenda' => 'nullable|string|max:100',
         'nomor_surat' => 'nullable|string|max:100',
-        'jenis' => 'required|string|max:150',
+        'jenis' => 'nullable|string|max:100',
         'tanggal_surat' => 'nullable|date',
         'tenggat_waktu' => 'nullable|date',
         'asal_surat' => 'nullable|string|max:255',
@@ -73,7 +70,7 @@ class SuratMasuk extends BaseModel
         'isi_ringkasan' => 'nullable|string',
         'tembusan' => 'nullable|string',
         'file_surat' => 'nullable|string|max:255',
-        'status' => 'nullable|in:draft,dikirim,disposisi,selesai,diarsipkan,ai_gagal,manual_input',
+        'status' => 'nullable|in:baru,diproses,menunggu_disposisi,selesai,ai_gagal,manual_input',
         'source_type' => 'nullable|in:AI,Manual',
         'ai_status' => 'nullable|in:berhasil,gagal,belum_diproses',
         'catatan' => 'nullable|string',
@@ -103,11 +100,6 @@ class SuratMasuk extends BaseModel
     public function suratKeluar(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(\App\Models\SuratKeluar::class, 'id_surat_keluar', 'id_surat_keluar');
-    }
-
-    public function jenisSurat(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(\App\Models\MasterJenisSurat::class, 'id_jenis_surat', 'id_jenis_surat');
     }
 
     public function penerima(): \Illuminate\Database\Eloquent\Relations\BelongsTo

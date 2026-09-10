@@ -45,7 +45,10 @@ class ApprovalScreen extends ConsumerWidget {
     final approvalAsync = ref.watch(approvalProvider);
 
     return RefreshIndicator(
-      onRefresh: () => ref.refresh(approvalProvider),
+      onRefresh: () async {
+        ref.invalidate(approvalProvider);
+        await ref.read(approvalProvider.future);
+      },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -81,7 +84,7 @@ class ApprovalScreen extends ConsumerWidget {
                           Text(
                             'Menunggu tindakan Anda',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                              color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
                             ),
                           ),
                         ],
@@ -98,10 +101,10 @@ class ApprovalScreen extends ConsumerWidget {
             approvalAsync.when(
               data: (approvals) {
                 if (approvals.isEmpty) {
-                  return EmptyStateView(
+                  return const EmptyStateView(
                     icon: Icons.check_circle_outline,
                     title: 'Tidak Ada Persetujuan',
-                    subtitle: 'Semua surat telah diproses',
+                    message: 'Semua surat telah diproses',
                   );
                 }
 
@@ -109,7 +112,7 @@ class ApprovalScreen extends ConsumerWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: approvals.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final item = approvals[index];
                     return _buildApprovalCard(context, item, theme);
@@ -120,7 +123,7 @@ class ApprovalScreen extends ConsumerWidget {
               error: (error, stack) => EmptyStateView(
                 icon: Icons.error_outline,
                 title: 'Gagal Memuat Data',
-                subtitle: error.toString(),
+                message: error.toString(),
                 onRetry: () => ref.refresh(approvalProvider),
               ),
             ),
@@ -141,8 +144,8 @@ class ApprovalScreen extends ConsumerWidget {
     return Card(
       elevation: 2,
       shadowColor: isHighPriority 
-          ? Colors.red.withOpacity(0.3) 
-          : theme.colorScheme.shadow.withOpacity(0.1),
+          ? Colors.red.withValues(alpha: 0.3) 
+          : theme.colorScheme.shadow.withValues(alpha: 0.1),
       child: InkWell(
         onTap: () {
           // TODO: Navigasi ke detail approval
@@ -172,9 +175,9 @@ class ApprovalScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.withOpacity(0.3)),
+                        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                       ),
                       child: Text(
                         'Prioritas',
@@ -193,7 +196,7 @@ class ApprovalScreen extends ConsumerWidget {
               Text(
                 item['perihal'],
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.8),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -237,7 +240,7 @@ class ApprovalScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -306,14 +309,14 @@ class ApprovalScreen extends ConsumerWidget {
         Icon(
           icon,
           size: 14,
-          color: theme.colorScheme.onSurface.withOpacity(0.5),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
         ),
         const SizedBox(width: 4),
         Flexible(
           child: Text(
             text,
             style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               fontSize: isDate ? 11 : 12,
             ),
             maxLines: 1,

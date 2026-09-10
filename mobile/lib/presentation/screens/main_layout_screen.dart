@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/custom_app_bar.dart';
 import 'dashboard_screen.dart';
@@ -117,7 +118,6 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
-    final theme = Theme.of(context);
 
     // Dynamic Title based on selectedIndex
     final String titleText;

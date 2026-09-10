@@ -7,14 +7,12 @@ use App\Http\Controllers\BaseResourceController;
 use App\Mail\ApprovalEmail;
 use App\Models\SuratDisposisi;
 use App\Models\SuratMasuk;
-use App\Services\EOfficeNotificationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -30,7 +28,7 @@ class SuratDisposisiAPIController extends BaseResourceController
 
     public function index(Request $request): JsonResponse
     {
-        $pageSize = max(1, min((int) ($request->get('pagesize') ?? $request->get('per_page') ?? 20), 100));
+        $pageSize = max(1, min((int) ($request->get('pagesize') ?? $request->get('per_page') ?? 10), 100));
         $query = SuratDisposisi::query()->with(['suratMasuk', 'pemberi', 'penerima']);
 
         // Disposisi adalah pekerjaan personal. Admin Sistem dapat memantau
@@ -39,7 +37,6 @@ class SuratDisposisiAPIController extends BaseResourceController
             $query->where('id_penerima', $this->currentUserId($request));
         }
 
-        $categorySummary = $this->buildCategorySummary(clone $query);
         $this->applyFilters($query, $request);
         $summary = $this->buildSummary($query);
         $this->applyListOrdering($query, $request);
@@ -61,7 +58,6 @@ class SuratDisposisiAPIController extends BaseResourceController
             'total_records' => $paginator->total(),
             'total' => $paginator->total(),
             'summary' => $summary,
-            'category_summary' => $categorySummary,
         ]);
     }
 
@@ -75,19 +71,6 @@ class SuratDisposisiAPIController extends BaseResourceController
 
             return $summary;
         }, ['total' => 0, 'berjalan' => 0, 'selesai' => 0]);
-    }
-
-    private function buildCategorySummary(Builder $query): array
-    {
-        $countByType = fn ($type) => (clone $query)->whereHas('suratMasuk', function ($suratQuery) use ($type) {
-            $suratQuery->where('jenis_pengiriman', $type);
-        })->count();
-
-        return [
-            'total' => (clone $query)->count(),
-            'internal' => $countByType('internal'),
-            'eksternal' => $countByType('eksternal'),
-        ];
     }
 
     public function store(Request $request): JsonResponse
@@ -112,14 +95,13 @@ class SuratDisposisiAPIController extends BaseResourceController
                     SuratMasuk::query()
                         ->where('id', $payload['id_surat_masuk'])
                         ->where('status', '<>', 'selesai')
-                        ->update(['status' => 'disposisi', 'updated_at' => now()]);
+                        ->update(['status' => 'menunggu_disposisi', 'updated_at' => now()]);
                 }
 
                 return $id;
             });
 
             $record = SuratDisposisi::with(['suratMasuk', 'pemberi', 'penerima'])->find($id);
-            $this->notifyDispositionRecipient($record);
             $this->sendDispositionEmail($record);
 
             return response()->json([
@@ -174,7 +156,6 @@ class SuratDisposisiAPIController extends BaseResourceController
 
             $updatedRecord = SuratDisposisi::with(['suratMasuk', 'pemberi', 'penerima'])->find($id);
             if ($previousStatus !== 'selesai' && $updatedRecord?->status === 'selesai') {
-                $this->notifyDispositionCompleted($updatedRecord);
                 $this->sendDispositionCompletedEmail($updatedRecord);
             }
 
@@ -253,29 +234,6 @@ class SuratDisposisiAPIController extends BaseResourceController
         }
 
         return response()->json(['success' => true, 'data' => $events]);
-    }
-
-    public function uploadAttachment(Request $request, $id): JsonResponse
-    {
-        $request->validate([
-            'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
-        ]);
-
-        $record = SuratDisposisi::find($id);
-        if (!$record || (!$this->isSystemAdmin($request) && (int) $record->id_penerima !== $this->currentUserId($request))) {
-            return response()->json(['success' => false, 'message' => 'Disposisi tidak ditemukan atau bukan milik Anda.'], 404);
-        }
-
-        $path = $request->file('file')->store('surat_disposisi/' . $id, 'public');
-        if ($record->file_bukti_path && Storage::disk('public')->exists($record->file_bukti_path)) {
-            Storage::disk('public')->delete($record->file_bukti_path);
-        }
-        $record->update(['file_bukti_path' => $path]);
-
-        return response()->json(['success' => true, 'message' => 'Lampiran disposisi berhasil diunggah.', 'data' => [
-            'file_bukti_path' => $path,
-            'file_url' => Storage::disk('public')->url($path),
-        ]]);
     }
 
     public function destroy($id = null): JsonResponse
@@ -424,36 +382,6 @@ class SuratDisposisiAPIController extends BaseResourceController
                 'error' => $exception->getMessage(),
             ]);
         }
-    }
-
-    private function notifyDispositionRecipient(?SuratDisposisi $record): void
-    {
-        if (!$record || empty($record->id_penerima)) {
-            return;
-        }
-
-        app(EOfficeNotificationService::class)->send(
-            (int) $record->id_penerima,
-            'Disposisi baru',
-            'Anda menerima disposisi untuk ditindaklanjuti: ' . ($record->suratMasuk?->perihal ?? 'Surat Masuk') . '.',
-            '/disposisi/' . $record->id_surat_disposisi,
-            ['id_surat_disposisi' => $record->id_surat_disposisi, 'id_surat_masuk' => $record->id_surat_masuk]
-        );
-    }
-
-    private function notifyDispositionCompleted(SuratDisposisi $record): void
-    {
-        if (empty($record->id_pemberi)) {
-            return;
-        }
-
-        app(EOfficeNotificationService::class)->send(
-            (int) $record->id_pemberi,
-            'Disposisi telah diselesaikan',
-            'Disposisi untuk ' . ($record->suratMasuk?->perihal ?? 'surat') . ' telah diselesaikan oleh penerima.',
-            '/disposisi/' . $record->id_surat_disposisi,
-            ['id_surat_disposisi' => $record->id_surat_disposisi, 'id_surat_masuk' => $record->id_surat_masuk]
-        );
     }
 
     private function sendDispositionCompletedEmail(SuratDisposisi $record): void

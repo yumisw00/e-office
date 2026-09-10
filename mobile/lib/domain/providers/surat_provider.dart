@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/models/surat_model.dart';
 import '../../data/repositories/surat_repository.dart';
 import '../../core/network/dio_client.dart';
+import '../../core/constants/app_config.dart';
 
 part 'surat_provider.g.dart';
 
@@ -49,7 +51,7 @@ class SuratMasuk extends _$SuratMasuk {
     } catch (e) {
       // Keep existing data on error
       if (AppConfig.enableLogging) {
-        print('Error loading more: $e');
+        debugPrint('Error loading more: $e');
       }
     }
   }

@@ -18,29 +18,26 @@ class SuratMasukService
     public const SOURCE_TYPES = ['AI', 'Manual'];
     public const AI_STATUSES = ['berhasil', 'gagal', 'belum_diproses'];
     public const STATUSES = [
-        'draft',
-        'dikirim',
-        'disposisi',
+        'baru',
+        'diproses',
+        'menunggu_disposisi',
         'selesai',
-        'diarsipkan',
         'ai_gagal',
         'manual_input',
     ];
 
     private const LEGACY_STATUS_MAP = [
-        'new' => 'draft',
-        'baru' => 'draft',
-        'pending' => 'draft',
-        'masuk' => 'draft',
-        'distributed' => 'dikirim',
-        'didistribusikan' => 'dikirim',
-        'menunggu_disposisi' => 'disposisi',
-        'didisposisikan' => 'disposisi',
-        'diproses' => 'selesai',
-        'read' => 'selesai',
+        'new' => 'baru',
+        'draft' => 'baru',
+        'pending' => 'baru',
+        'masuk' => 'baru',
+        'distributed' => 'menunggu_disposisi',
+        'didistribusikan' => 'menunggu_disposisi',
+        'didisposisikan' => 'menunggu_disposisi',
+        'read' => 'diproses',
         'done' => 'selesai',
-        'archived' => 'diarsipkan',
-        'arsip' => 'diarsipkan',
+        'archived' => 'selesai',
+        'arsip' => 'selesai',
     ];
 
     private const ALLOWED_MIME_TYPES = [
@@ -104,7 +101,7 @@ class SuratMasukService
         if (array_key_exists('status', $payload)) {
             $payload['status'] = $this->normalizeStatus($payload['status']);
         } elseif ($mode === 'store') {
-            $payload['status'] = 'draft';
+            $payload['status'] = 'baru';
         }
 
         return $payload;
@@ -219,7 +216,7 @@ class SuratMasukService
         $payload['source_type'] = $payload['source_type'] ?? 'Manual';
         $payload['ai_status'] = 'gagal';
 
-        if (empty($payload['status']) || $payload['status'] === 'draft') {
+        if (empty($payload['status']) || $payload['status'] === 'baru') {
             $payload['status'] = 'ai_gagal';
         }
 
@@ -295,7 +292,7 @@ class SuratMasukService
 
     public function validateStatusTransition(?string $currentStatus, string $nextStatus): void
     {
-        $current = $currentStatus ? $this->normalizeStatus($currentStatus) : 'draft';
+        $current = $currentStatus ? $this->normalizeStatus($currentStatus) : 'baru';
         $next = $this->normalizeStatus($nextStatus);
 
         if ($current === $next) {
@@ -303,13 +300,12 @@ class SuratMasukService
         }
 
         $allowed = [
-            'draft' => ['dikirim', 'selesai', 'ai_gagal', 'manual_input'],
-            'ai_gagal' => ['manual_input', 'draft'],
-            'manual_input' => ['draft', 'dikirim', 'selesai'],
-            'dikirim' => ['selesai', 'disposisi', 'diarsipkan'],
-            'selesai' => ['disposisi', 'diarsipkan'],
-            'disposisi' => ['selesai', 'diarsipkan'],
-            'diarsipkan' => [],
+            'baru' => ['diproses', 'menunggu_disposisi', 'selesai', 'ai_gagal', 'manual_input'],
+            'ai_gagal' => ['manual_input', 'diproses'],
+            'manual_input' => ['diproses', 'menunggu_disposisi', 'selesai'],
+            'diproses' => ['menunggu_disposisi', 'selesai'],
+            'menunggu_disposisi' => ['diproses', 'selesai'],
+            'selesai' => [],
         ];
 
         if (!in_array($next, $allowed[$current] ?? [], true)) {

@@ -67,8 +67,8 @@ const Pagination = (props) => {
         <div style={{ flex: 1 }}>
           <ReactPaginate
             // initialPage={props.is_page_saved ? ((JSON.parse(getStorage('filter')))[props.is_page_saved][this.typeRcm].page || 1) - 1 : null}
-            previousLabel="Sebelumnya"
-            nextLabel="Berikutnya"
+            previousLabel="prev"
+            nextLabel="next"
             breakClassName="break-me"
             // pageCount={Math.ceil(total_records / 10)}
             pageCount={Math.ceil(

@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/network/dio_client.dart';
-import '../models/user_model.dart';
+import '../../data/models/user_model.dart';
 
 part 'auth_provider.g.dart';
 
@@ -11,7 +11,7 @@ part 'auth_provider.g.dart';
 class AuthNotifier extends _$AuthNotifier {
   @override
   AsyncValue<UserModel?> build() {
-    return const AsyncData(null);
+    return const AsyncValue.data(null);
   }
 
   /// Login dengan email, password, dan device info
@@ -72,7 +72,7 @@ class AuthNotifier extends _$AuthNotifier {
         }
 
         // Sukses, update state dengan user data
-        state = AsyncData(user);
+        state = AsyncValue.data(user);
         
         if (kDebugMode) {
           print('✅ Login berhasil! User: ${user?.nama ?? email}');
@@ -149,7 +149,7 @@ class AuthNotifier extends _$AuthNotifier {
 
   /// Logout dan hapus data lokal
   Future<void> logout() async {
-    state = const AsyncLoading();
+    state = const AsyncValue.loading();
     try {
       final dio = ref.read(dioProvider);
       await dio.post('/mobile/logout');
@@ -161,7 +161,7 @@ class AuthNotifier extends _$AuthNotifier {
       const storage = FlutterSecureStorage();
       await storage.delete(key: 'auth_token');
       await storage.delete(key: 'user_data');
-      state = const AsyncData(null);
+      state = const AsyncValue.data(null);
     }
   }
 
@@ -189,7 +189,7 @@ class AuthNotifier extends _$AuthNotifier {
           if (emailMatch != null) json['email'] = emailMatch.group(1);
           
           if (json.isNotEmpty) {
-            state = AsyncData(UserModel.fromJsonApi(json));
+            state = AsyncValue.data(UserModel.fromJsonApi(json));
           }
         } catch (e) {
           if (kDebugMode) {

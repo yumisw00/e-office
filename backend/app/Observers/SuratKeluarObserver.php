@@ -19,11 +19,14 @@ class SuratKeluarObserver
     private function getSuratMasukStatus(string $suratKeluarStatus): ?string
     {
         $map = [
-            'signed' => 'dikirim',
-            'sent' => 'dikirim',
-            'dikirim' => 'dikirim',
-            'selesai' => 'selesai',
-            'archived' => 'diarsipkan',
+            'draft' => 'manual_input',
+            'submitted' => 'manual_input',
+            'review' => 'manual_input',
+            'approved' => 'manual_input',
+            'signed' => 'diproses',
+            'sent' => 'diproses',
+            'archived' => 'selesai',
+            'rejected' => 'selesai',
         ];
 
         return $map[$suratKeluarStatus] ?? null;

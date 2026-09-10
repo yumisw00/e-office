@@ -75,7 +75,6 @@ Page menu yang disinkronkan:
 - Admin Sistem: `dashboard`, `group`, `sys_menu`, `sys_setting`, `backup_database`, `sys_user`, `sys_log`
 - Admin Konten: `dashboard`, `surat_masuk`, `surat_keluar`, `surat_template`, `master_organisasi`, `disposisi`, `tracking_surat`, `surat_arsip`, `notifikasi`, `pengumuman`
 - Pegawai: `dashboard`, `surat_masuk_pegawai`, `surat_keluar`, `disposisi`, `tracking_surat`, `surat_arsip`, `notifikasi`
-- Pimpinan: 
 
 ### Master Data Organisasi
 

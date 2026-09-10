@@ -26,10 +26,9 @@ class SuratMasukAPIController extends BaseResourceController
     public function index(Request $request): JsonResponse
     {
         try {
-            $pageSize = max(1, min((int) ($request->get('pagesize') ?? $request->get('per_page') ?? 20), 100));
+            $pageSize = max(1, min((int) ($request->get('pagesize') ?? $request->get('per_page') ?? 10), 100));
 
             $query = $this->scopedQuery($request);
-            $categorySummary = $this->buildCategorySummary(clone $query);
             $this->applyFilters($query, $request);
             $summary = $this->buildSummary($query);
             $this->applyListOrdering($query, $request);
@@ -51,7 +50,6 @@ class SuratMasukAPIController extends BaseResourceController
                 'total_records' => $paginator->total(),
                 'total' => $paginator->total(),
                 'summary' => $summary,
-                'category_summary' => $categorySummary,
             ]);
         } catch (ValidationException $exception) {
             return $this->validationErrorResponse($exception);
@@ -81,15 +79,25 @@ class SuratMasukAPIController extends BaseResourceController
         }
 
         $groupNames = collect($groups)->map(fn ($group) => strtolower($group['name'] ?? $group['nama'] ?? ''))->all();
-        $isAdmin = collect($groupNames)->intersect([
-            'admin_sistem', 'admin sistem', 'admin konten', 'admin_konten', 'admin kontak', 'admin_kontak',
-        ])->isNotEmpty()
+        $isAdmin = in_array('admin_sistem', $groupNames, true)
+            || in_array('admin sistem', $groupNames, true)
+            || in_array('admin konten', $groupNames, true)
+            || in_array('admin kontak', $groupNames, true)
+            || in_array('admin_konten', $groupNames, true)
             || $user?->is_admin === true
             || $user?->is_admin === 1;
+
+        // Pimpinan can view all incoming letters (read-only dashboard role)
+        $isPimpinan = in_array('pimpinan', $groupNames, true);
+        if ($isPimpinan) {
+            return SuratMasuk::query()->withCount('disposisi');
+        }
+
         $query = SuratMasuk::query()->withCount('disposisi');
         if ($isAdmin) {
             return $query;
         }
+
         $userId = $user?->id_user ?? $user?->id;
         $userUnit = $this->getUserUnit($user);
         return $query->whereHas('distribusi', function ($distributionQuery) use ($userId, $userUnit) {
@@ -111,21 +119,9 @@ class SuratMasukAPIController extends BaseResourceController
     {
         return [
             'total' => (clone $query)->count(),
-            'baru' => (clone $query)->whereIn('status', ['draft', 'baru', 'pending', 'masuk'])->count(),
-            'distribusi' => (clone $query)->whereIn('status', ['dikirim', 'disposisi', 'didistribusikan', 'didisposisikan', 'diproses', 'proses', 'menunggu_disposisi'])->count(),
-            'selesai' => (clone $query)->whereIn('status', ['selesai', 'diarsipkan', 'arsip'])->count(),
-        ];
-    }
-
-    private function buildCategorySummary(Builder $query): array
-    {
-        return [
-            'total' => (clone $query)->count(),
-            'internal' => (clone $query)->where('jenis_pengiriman', 'internal')->count(),
-            'eksternal' => (clone $query)->where(function ($typeQuery) {
-                $typeQuery->where('jenis_pengiriman', 'eksternal')
-                    ->orWhereNull('jenis_pengiriman');
-            })->count(),
+            'baru' => (clone $query)->whereIn('status', ['baru', 'pending', 'masuk'])->count(),
+            'distribusi' => (clone $query)->whereIn('status', ['didistribusikan', 'didisposisikan', 'diproses', 'proses', 'menunggu_disposisi'])->count(),
+            'selesai' => (clone $query)->whereIn('status', ['selesai', 'arsip'])->count(),
         ];
     }
 
@@ -170,36 +166,33 @@ class SuratMasukAPIController extends BaseResourceController
             }
         }
 
-        $isAdmin = collect($groupNames)->intersect([
-            'admin_sistem', 'admin sistem', 'admin konten', 'admin_konten', 'admin kontak', 'admin_kontak',
-        ])->isNotEmpty()
+        $isAdmin = in_array('admin_sistem', $groupNames)
+            || in_array('admin sistem', $groupNames)
+            || in_array('admin konten', $groupNames)
+            || in_array('admin kontak', $groupNames)
+            || in_array('admin_konten', $groupNames)
             || $user?->is_admin === true
             || $user?->is_admin === 1;
 
-        if ($isAdmin) {
-            return response()->json([
-                'success' => true,
-                'data' => $this->transformFrontendRecord($record),
-            ]);
-        }
+        if (!$isAdmin) {
+            $isRecipient = DB::table('surat_distribusi')
+                ->where('id_surat_masuk', $id)
+                ->where(function ($q) use ($userId, $userUnit) {
+                    if ($userId) {
+                        $q->orWhere('id_user_tujuan', $userId);
+                    }
+                    if ($userUnit) {
+                        $q->orWhere('id_unit_tujuan', $userUnit);
+                    }
+                })
+                ->exists();
 
-        $isRecipient = DB::table('surat_distribusi')
-            ->where('id_surat_masuk', $id)
-            ->where(function ($q) use ($userId, $userUnit) {
-                if ($userId) {
-                    $q->orWhere('id_user_tujuan', $userId);
-                }
-                if ($userUnit) {
-                    $q->orWhere('id_unit_tujuan', $userUnit);
-                }
-            })
-            ->exists();
-
-        if (!$isRecipient) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Anda tidak memiliki akses ke surat masuk ini.',
-            ], 403);
+            if (!$isRecipient) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses ke surat masuk ini.',
+                ], 403);
+            }
         }
 
         return response()->json([
@@ -262,7 +255,6 @@ class SuratMasukAPIController extends BaseResourceController
             }
 
             $payload = $this->resolveRecipientPayload($payload);
-            $payload = $this->resolveJenisSuratPayload($payload);
 
             $payload = $this->suratMasukService->filterFillable($payload, $this->model->fillable);
             $this->validatePayload($payload, true);
@@ -325,7 +317,6 @@ class SuratMasukAPIController extends BaseResourceController
             }
 
             $payload = $this->resolveRecipientPayload($payload, $record);
-            $payload = $this->resolveJenisSuratPayload($payload);
 
             $payload = $this->suratMasukService->filterFillable($payload, $this->model->fillable);
             $this->validatePayload($payload);
@@ -533,33 +524,6 @@ class SuratMasukAPIController extends BaseResourceController
         $payload['id_penerima'] = $recipient->id_user;
         $payload['kepada_tujuan'] = $recipient->name;
         $payload['jenis_pengiriman'] = $payload['jenis_pengiriman'] ?? 'eksternal';
-
-        return $payload;
-    }
-
-    private function resolveJenisSuratPayload(array $payload): array
-    {
-        if (!array_key_exists('jenis', $payload) && !array_key_exists('id_jenis_surat', $payload)) {
-            return $payload;
-        }
-
-        $query = DB::table('master_jenis_surat')
-            ->where('is_active', true)
-            ->whereNull('deleted_at');
-
-        if (!empty($payload['id_jenis_surat'])) {
-            $jenis = $query->where('id_jenis_surat', $payload['id_jenis_surat'])->first();
-        } else {
-            $nama = trim((string) ($payload['jenis'] ?? ''));
-            $jenis = $nama === '' ? null : $query->whereRaw('LOWER(nama) = ?', [mb_strtolower($nama)])->first();
-        }
-
-        if (!$jenis) {
-            throw ValidationException::withMessages(['jenis' => 'Jenis surat harus dipilih dari Master Jenis Surat yang aktif.']);
-        }
-
-        $payload['id_jenis_surat'] = $jenis->id_jenis_surat;
-        $payload['jenis'] = $jenis->nama;
 
         return $payload;
     }

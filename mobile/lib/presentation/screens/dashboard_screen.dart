@@ -5,7 +5,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/surat_provider.dart';
 import '../../core/localization/app_localizations.dart';
-import '../widgets/surat_shimmer_list.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -16,7 +15,7 @@ class DashboardScreen extends ConsumerWidget {
     final localizations = AppLocalizations.of(context);
     
     // Watch auth state untuk mendapatkan data user
-    final authState = ref.watch(authNotifierProvider);
+    final authState = ref.watch(authProvider);
     final suratMasukAsync = ref.watch(suratMasukProvider);
 
     // Ambil nama dan jabatan dari user yang login (dengan safe access)

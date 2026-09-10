@@ -11,8 +11,6 @@ class IndexPage extends Component {
             datafilter: {
                 paginate: {
                     page: 1,
-                    // Standar seluruh halaman indeks: tampilkan 20 baris,
-                    // lalu gunakan pagination untuk melihat data berikutnya.
                     pagesize: 20
                 }
             },

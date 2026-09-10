@@ -64,7 +64,6 @@ class SuratMasukPegawai extends IndexPage {
         },
         scopeWarning: "",
         summary: { total: 0, baru: 0, distribusi: 0, selesai: 0 },
-        categorySummary: { total: 0, internal: 0, eksternal: 0 },
         showTimelinePopup: false,
         selectedTimelineSurat: null,
         showDetailPopup: false,
@@ -145,7 +144,6 @@ class SuratMasukPegawai extends IndexPage {
         this.setState({
             list: Array.isArray(response.data) ? response.data : [],
             summary: response.summary || this.state.summary,
-            categorySummary: response.category_summary || this.state.categorySummary,
             datafilter: {
                 ...datafilter,
                 paginate: {
@@ -785,7 +783,6 @@ class SuratMasukPegawai extends IndexPage {
     render() {
         const list = this.getVisibleList()
         const summary = this.state.summary
-        const suratCounts = { semua: this.state.categorySummary.total, internal: this.state.categorySummary.internal, eksternal: this.state.categorySummary.eksternal }
 
         return (
             <>
@@ -793,13 +790,20 @@ class SuratMasukPegawai extends IndexPage {
                     title={this.titlePage}
                     is_loading={this.state.is_loading}
                     data_btn={[]}
-                    filterTabs={<div style={{ marginTop: 16, marginBottom: 0 }}>{[["semua", "Semua Surat"], ["internal", "Internal"], ["eksternal", "Eksternal"]].map(([value, label]) => <button key={value} type="button" className={`btn btn-sm ${this.state.jenisPengirimanTab === value ? "btn-info" : "btn-outline-secondary"}`} onClick={() => this.setState({ jenisPengirimanTab: value })}>{label} ({suratCounts[value] || 0})</button>)}</div>}
+                    filterTabs={<div style={{ marginTop: 16, marginBottom: 0 }}>{[["semua", "Semua Surat"], ["internal", "Internal"], ["eksternal", "Eksternal"]].map(([value, label]) => <button key={value} type="button" className={`btn btn-sm ${this.state.jenisPengirimanTab === value ? "btn-info" : "btn-outline-secondary"}`} onClick={() => this.setState({ jenisPengirimanTab: value })}>{label}</button>)}</div>}
                 />
 
                 <div className="container pl-4 pr-4">
                     {this.state.scopeWarning ? (
                         <div className="alert alert-warning">{this.state.scopeWarning}</div>
                     ) : null}
+
+                    <div className="row mb-2">
+                        {this.renderSummaryCard("Total", summary.total, "move_to_inbox")}
+                        {this.renderSummaryCard("Baru", summary.baru, "mark_email_unread")}
+                        {this.renderSummaryCard("Distribusi", summary.distribusi, "pending_actions")}
+                        {this.renderSummaryCard("Selesai", summary.selesai, "task_alt", "#22a06b")}
+                    </div>
 
                     <EofficeCard className="p-3 mb-3">
                         {list.length > 0 ? this.renderLetterTable(list) : (

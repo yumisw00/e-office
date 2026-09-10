@@ -368,7 +368,7 @@ class PimpinanDashboard extends Component {
             <StatCard icon="pending_actions" label="Approval Menunggu" value={counts.approval_menunggu} href="/surat_approval" loading={is_loading} />
             <StatCard icon="check_circle" label="Approval Disetujui" value={counts.approval_disetujui} href="/surat_approval" loading={is_loading} />
             <StatCard icon="cancel" label="Approval Ditolak" value={counts.approval_ditolak} href="/surat_approval" loading={is_loading} />
-            <StatCard icon="move_to_inbox" label="Surat Masuk" value={counts.surat_masuk_saya} href="/surat_masuk_pegawai" loading={is_loading} />
+            <StatCard icon="move_to_inbox" label="Surat Masuk Saya" value={counts.surat_masuk_saya} href="/surat_masuk_pegawai" loading={is_loading} />
             <StatCard icon="assignment" label="Disposisi Aktif" value={counts.disposisi_aktif} href="/disposisi" loading={is_loading} />
           </div>
 
@@ -563,7 +563,7 @@ class PimpinanDashboard extends Component {
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
               <QuickActionCard icon="thumb_up" title="Approval Surat" href="/surat_approval" />
-              <QuickActionCard icon="move_to_inbox" title="Surat Masuk" href="/surat_masuk_pegawai" />
+              <QuickActionCard icon="move_to_inbox" title="Surat Masuk Saya" href="/surat_masuk_pegawai" />
               <QuickActionCard icon="outbox" title="Surat Keluar" href="/surat_keluar" />
               <QuickActionCard icon="assignment" title="Disposisi" href="/disposisi" />
               <QuickActionCard icon="event" title="Agenda" href="/agenda" />

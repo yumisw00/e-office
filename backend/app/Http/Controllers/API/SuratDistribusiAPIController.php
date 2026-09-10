@@ -46,8 +46,6 @@ class SuratDistribusiAPIController extends BaseResourceController
             });
         }
 
-        $categorySummary = $this->buildCategorySummary(clone $query);
-
         // Ringkasan harus menggunakan query yang sama dengan tabel, termasuk
         // filter dan scope penerima, agar total setiap user selalu konsisten.
         $summary = $this->buildSummary($query);
@@ -77,7 +75,6 @@ class SuratDistribusiAPIController extends BaseResourceController
             'total_page' => (int) ceil($data->total() / $pageSize),
             'total_records' => $data->total(),
             'summary' => $summary,
-            'category_summary' => $categorySummary,
         ]);
     }
 
@@ -102,18 +99,5 @@ class SuratDistribusiAPIController extends BaseResourceController
             'distribusi' => 0,
             'selesai' => 0,
         ]);
-    }
-
-    private function buildCategorySummary($query): array
-    {
-        $countByType = fn ($type) => (clone $query)->whereHas('suratMasuk', function ($suratQuery) use ($type) {
-            $suratQuery->where('jenis_pengiriman', $type);
-        })->count();
-
-        return [
-            'total' => (clone $query)->count(),
-            'internal' => $countByType('internal'),
-            'eksternal' => $countByType('eksternal'),
-        ];
     }
 }

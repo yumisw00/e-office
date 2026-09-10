@@ -42,6 +42,8 @@ dependencies:
   syncfusion_flutter_pdfviewer: ^33.2.10
   qr_flutter: ^4.1.0
   flex_color_scheme: ^8.4.0
+  flutter_animate: ^4.5.2
+  figma_squircle: ^0.6.3
   
   # Biometric Authentication (Digital Signature)
   local_auth: ^2.3.0
@@ -54,7 +56,7 @@ dependencies:
   printing: ^5.14.1
   
   # Device Info (untuk mendapatkan info perangkat saat login)
-  device_info_plus: ^11.3.0
+  device_info_plus: ^12.4.0
 
   cupertino_icons: ^1.0.8
 

@@ -19,9 +19,7 @@ export default function MasterJenisSuratPage() {
   const [showFormModal, setShowFormModal] = useState(false)
 
   const load = async () => {
-    // Resource API defaults to 10 rows. Request the complete master list so
-    // the management page matches the options used by Surat Masuk/Keluar.
-    const response = await axios.get('/api/master_jenis_surat?pagesize=1000', { withCredentials: true })
+    const response = await axios.get('/api/master_jenis_surat', { withCredentials: true })
     setItems(response.data?.data || response.data?.result || [])
     setLoadError('')
   }
@@ -66,9 +64,9 @@ export default function MasterJenisSuratPage() {
 
   const tableHeaders = [
     { name: 'nomor', label: 'No', width: 52, align: 'center', filterType: 'none' },
-    { name: 'kode', label: 'Kode', width: 150, align: 'center', filterType: 'text' },
-    { name: 'nama', label: 'Jenis Surat', width: 260, align: 'center', filterType: 'text' },
-    { name: 'deskripsi', label: 'Deskripsi', width: 'auto', align: 'center', filterType: 'none' },
+    { name: 'kode', label: 'Kode', width: 150, align: 'start', filterType: 'text' },
+    { name: 'nama', label: 'Jenis Surat', width: 260, align: 'start', filterType: 'text' },
+    { name: 'deskripsi', label: 'Deskripsi', width: 'auto', align: 'start', filterType: 'none' },
     { name: 'status', label: 'Status', width: 115, align: 'center', filterType: 'select', filterOptions: [{ value: 'true', label: 'Aktif' }, { value: 'false', label: 'Tidak Aktif' }] },
     { name: 'aksi', label: 'Aksi', width: 60, align: 'center', filterType: 'none' },
   ]

@@ -45,7 +45,7 @@ const Sys_user = (props) => {
   const [datafilter, setdatafilter] = useState({
     paginate: {
       page: 1,
-      pagesize: 20,
+      pagesize: 50,
     },
   });
 

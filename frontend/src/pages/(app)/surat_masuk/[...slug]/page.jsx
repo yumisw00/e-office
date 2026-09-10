@@ -145,7 +145,7 @@ class Surat_masukedit extends EditPage {
             // tetap akan membuat nomor agenda secara otomatis.
             nomor_agenda: this.state.datainsert.nomor_agenda?.trim() || null,
             // API menerima status internal `baru`, bukan label/status lama `pending`.
-            status: this.state.datainsert.status || 'draft'
+            status: this.state.datainsert.status || 'baru'
         }
 
         this.setState({ btn_loading: true })
@@ -1020,7 +1020,7 @@ class Surat_masukedit extends EditPage {
             return false
         }
 
-        mappedData.status = this.state.datainsert.status || 'draft'
+        mappedData.status = this.state.datainsert.status || 'baru'
 
         if (!mappedData.tanggal_terima) {
             mappedData.tanggal_terima = this.getTodayDate()

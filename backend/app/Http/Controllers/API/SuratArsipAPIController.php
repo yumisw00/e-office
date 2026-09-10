@@ -91,8 +91,6 @@ class SuratArsipAPIController extends BaseResourceController
             'created_by_desc' => auth()->user()?->name,
         ]);
 
-        $source->forceFill(['status' => 'diarsipkan'])->save();
-
         return response()->json([
             'success' => true,
             'message' => 'Arsip surat berhasil dibuat otomatis.',

@@ -162,10 +162,10 @@ const dashboardByRole = {
   // All pegawai roles use the same dashboard configuration
   pegawai_sdm: {
     metrics: [
-      { key: "surat_masuk_saya", label: "Surat Masuk", endpoint: "surat_distribusi", href: "/surat_masuk_pegawai", icon: "move_to_inbox" },
-      { key: "draft_surat_saya", label: "Draft Surat", endpoint: "surat_keluar", href: "/surat_keluar", icon: "edit_document", filter: { status: "draft" } },
-      { key: "disposisi_saya", label: "Disposisi", endpoint: "surat_disposisi", href: "/disposisi", icon: "assignment_turned_in" },
-      { key: "arsip_saya", label: "Arsip", endpoint: "surat_arsip", href: "/surat_arsip", icon: "archive" },
+      { key: "surat_masuk_saya", label: "Surat Masuk Saya", endpoint: "surat_distribusi", href: "/surat_masuk_pegawai", icon: "move_to_inbox" },
+      { key: "draft_surat_saya", label: "Draft Surat Saya", endpoint: "surat_keluar", href: "/surat_keluar", icon: "edit_document", filter: { status: "draft" } },
+      { key: "disposisi_saya", label: "Disposisi Saya", endpoint: "surat_disposisi", href: "/disposisi", icon: "assignment_turned_in" },
+      { key: "arsip_saya", label: "Arsip Saya", endpoint: "surat_arsip", href: "/surat_arsip", icon: "archive" },
       { key: "tugas_selesai", label: "Tugas Selesai", endpoint: "surat_disposisi", href: "/disposisi", icon: "task_alt", filter: { status: "selesai" } },
     ],
     charts: [
@@ -187,10 +187,10 @@ const dashboardByRole = {
   },
   pegawai_keuangan: {
     metrics: [
-      { key: "surat_masuk_saya", label: "Surat Masuk", endpoint: "surat_distribusi", href: "/surat_masuk_pegawai", icon: "move_to_inbox" },
-      { key: "draft_surat_saya", label: "Draft Surat", endpoint: "surat_keluar", href: "/surat_keluar", icon: "edit_document", filter: { status: "draft" } },
-      { key: "disposisi_saya", label: "Disposisi", endpoint: "surat_disposisi", href: "/disposisi", icon: "assignment_turned_in" },
-      { key: "arsip_saya", label: "Arsip", endpoint: "surat_arsip", href: "/surat_arsip", icon: "archive" },
+      { key: "surat_masuk_saya", label: "Surat Masuk Saya", endpoint: "surat_distribusi", href: "/surat_masuk_pegawai", icon: "move_to_inbox" },
+      { key: "draft_surat_saya", label: "Draft Surat Saya", endpoint: "surat_keluar", href: "/surat_keluar", icon: "edit_document", filter: { status: "draft" } },
+      { key: "disposisi_saya", label: "Disposisi Saya", endpoint: "surat_disposisi", href: "/disposisi", icon: "assignment_turned_in" },
+      { key: "arsip_saya", label: "Arsip Saya", endpoint: "surat_arsip", href: "/surat_arsip", icon: "archive" },
       { key: "tugas_selesai", label: "Tugas Selesai", endpoint: "surat_disposisi", href: "/disposisi", icon: "task_alt", filter: { status: "selesai" } },
     ],
     charts: [
@@ -212,10 +212,10 @@ const dashboardByRole = {
   },
   pegawai_pemasaran: {
     metrics: [
-      { key: "surat_masuk_saya", label: "Surat Masuk", endpoint: "surat_distribusi", href: "/surat_masuk_pegawai", icon: "move_to_inbox" },
-      { key: "draft_surat_saya", label: "Draft Surat", endpoint: "surat_keluar", href: "/surat_keluar", icon: "edit_document", filter: { status: "draft" } },
-      { key: "disposisi_saya", label: "Disposisi", endpoint: "surat_disposisi", href: "/disposisi", icon: "assignment_turned_in" },
-      { key: "arsip_saya", label: "Arsip", endpoint: "surat_arsip", href: "/surat_arsip", icon: "archive" },
+      { key: "surat_masuk_saya", label: "Surat Masuk Saya", endpoint: "surat_distribusi", href: "/surat_masuk_pegawai", icon: "move_to_inbox" },
+      { key: "draft_surat_saya", label: "Draft Surat Saya", endpoint: "surat_keluar", href: "/surat_keluar", icon: "edit_document", filter: { status: "draft" } },
+      { key: "disposisi_saya", label: "Disposisi Saya", endpoint: "surat_disposisi", href: "/disposisi", icon: "assignment_turned_in" },
+      { key: "arsip_saya", label: "Arsip Saya", endpoint: "surat_arsip", href: "/surat_arsip", icon: "archive" },
       { key: "tugas_selesai", label: "Tugas Selesai", endpoint: "surat_disposisi", href: "/disposisi", icon: "task_alt", filter: { status: "selesai" } },
     ],
     charts: [
@@ -237,10 +237,10 @@ const dashboardByRole = {
   },
   pegawai_operasional: {
     metrics: [
-      { key: "surat_masuk_saya", label: "Surat Masuk", endpoint: "surat_distribusi", href: "/surat_masuk_pegawai", icon: "move_to_inbox" },
-      { key: "draft_surat_saya", label: "Draft Surat", endpoint: "surat_keluar", href: "/surat_keluar", icon: "edit_document", filter: { status: "draft" } },
-      { key: "disposisi_saya", label: "Disposisi", endpoint: "surat_disposisi", href: "/disposisi", icon: "assignment_turned_in" },
-      { key: "arsip_saya", label: "Arsip", endpoint: "surat_arsip", href: "/surat_arsip", icon: "archive" },
+      { key: "surat_masuk_saya", label: "Surat Masuk Saya", endpoint: "surat_distribusi", href: "/surat_masuk_pegawai", icon: "move_to_inbox" },
+      { key: "draft_surat_saya", label: "Draft Surat Saya", endpoint: "surat_keluar", href: "/surat_keluar", icon: "edit_document", filter: { status: "draft" } },
+      { key: "disposisi_saya", label: "Disposisi Saya", endpoint: "surat_disposisi", href: "/disposisi", icon: "assignment_turned_in" },
+      { key: "arsip_saya", label: "Arsip Saya", endpoint: "surat_arsip", href: "/surat_arsip", icon: "archive" },
       { key: "tugas_selesai", label: "Tugas Selesai", endpoint: "surat_disposisi", href: "/disposisi", icon: "task_alt", filter: { status: "selesai" } },
     ],
     charts: [
@@ -262,10 +262,10 @@ const dashboardByRole = {
   },
   pegawai: {
     metrics: [
-      { key: "surat_masuk_saya", label: "Surat Masuk", endpoint: "surat_distribusi", href: "/surat_masuk_pegawai", icon: "move_to_inbox" },
-      { key: "draft_surat_saya", label: "Draft Surat", endpoint: "surat_keluar", href: "/surat_keluar", icon: "edit_document", filter: { status: "draft" } },
-      { key: "disposisi_saya", label: "Disposisi", endpoint: "surat_disposisi", href: "/disposisi", icon: "assignment_turned_in" },
-      { key: "arsip_saya", label: "Arsip", endpoint: "surat_arsip", href: "/surat_arsip", icon: "archive" },
+      { key: "surat_masuk_saya", label: "Surat Masuk Saya", endpoint: "surat_distribusi", href: "/surat_masuk_pegawai", icon: "move_to_inbox" },
+      { key: "draft_surat_saya", label: "Draft Surat Saya", endpoint: "surat_keluar", href: "/surat_keluar", icon: "edit_document", filter: { status: "draft" } },
+      { key: "disposisi_saya", label: "Disposisi Saya", endpoint: "surat_disposisi", href: "/disposisi", icon: "assignment_turned_in" },
+      { key: "arsip_saya", label: "Arsip Saya", endpoint: "surat_arsip", href: "/surat_arsip", icon: "archive" },
       { key: "tugas_selesai", label: "Tugas Selesai", endpoint: "surat_disposisi", href: "/disposisi", icon: "task_alt", filter: { status: "selesai" } },
     ],
     charts: [
@@ -376,8 +376,6 @@ class Dashboard extends Component {
       labels: buildMonthBuckets().map(item => item.label),
       masuk: Array(6).fill(0),
       keluar: Array(6).fill(0),
-      totalMasuk: 0,
-      totalKeluar: 0,
     },
     is_loading: false,
     user_login: {},
@@ -510,7 +508,7 @@ class Dashboard extends Component {
       addToStats(getPayloadData(incomingResponse), "masuk", ["tanggal_terima", "tanggal_surat", "created_at"])
       addToStats(getPayloadData(outgoingResponse), "keluar", ["tanggal_surat", "created_at"])
 
-      return { ...stats, totalMasuk: getCount(incomingResponse), totalKeluar: getCount(outgoingResponse) }
+      return stats
     } catch (error) {
       return stats
     }
@@ -749,8 +747,8 @@ class Dashboard extends Component {
   })
 
   renderMailStatsCard = () => {
-    const totalMasuk = this.state.mailStats.totalMasuk ?? this.state.mailStats.masuk.reduce((total, value) => total + value, 0)
-    const totalKeluar = this.state.mailStats.totalKeluar ?? this.state.mailStats.keluar.reduce((total, value) => total + value, 0)
+    const totalMasuk = this.state.mailStats.masuk.reduce((total, value) => total + value, 0)
+    const totalKeluar = this.state.mailStats.keluar.reduce((total, value) => total + value, 0)
 
     return (
       <div className="card card-dashboard h-100" style={{ borderRadius: 12 }}>

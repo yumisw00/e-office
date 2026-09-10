@@ -37,7 +37,6 @@ class MobileLoginController extends AppBaseController
             'email' => 'required|email',
             'password' => 'required|string',
             'device_name' => 'required|string',
-            'fcm_token' => 'nullable|string|max:4096',
         ]);
 
         RateLimiter::hit($throttleKey, 60);
@@ -79,12 +78,6 @@ class MobileLoginController extends AppBaseController
 
         // Update last login
         $this->updateLogin($user);
-        if ($request->filled('fcm_token')) {
-            $user->fcm_token = $request->input('fcm_token');
-            $user->device_name = $request->input('device_name');
-            $user->device_last_active = now();
-            $user->save();
-        }
 
         // Get first group for initial access
         $group = $groups[0];
