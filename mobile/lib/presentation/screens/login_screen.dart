@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/firebase_messaging_service.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../widgets/liquid_glass_container.dart';
 class LoginScreen extends ConsumerStatefulWidget {
@@ -73,15 +74,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
   Future<void> _handleLogin() async {
+    final localizations = AppLocalizations.of(context);
     if (!_isCaptchaChecked) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Silakan verifikasi Captcha terlebih dahulu')),
+        SnackBar(content: Text(localizations.get('captcha_required'))),
       );
       return;
     }
     if (_deviceName == null || _fcmToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Menginisialisasi perangkat... Silakan coba lagi')),
+        SnackBar(content: Text(localizations.get('device_initializing'))),
       );
       await _initializeDeviceInfo();
       await _initializeFCM();
@@ -117,6 +119,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState.isLoading;
+    final localizations = AppLocalizations.of(context);
     ref.listen(authProvider, (previous, next) {
       next.whenOrNull(
         data: (user) {
@@ -158,13 +161,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Icon(
-                      Icons.business,
+                      Icons.home,
                       size: 80,
                       color: Colors.blue,
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Login E-Office Dahana',
+                      localizations.get('login_title'),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
@@ -175,10 +178,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextFormField(
                       controller: _emailController,
                       enabled: !isLoading,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: localizations.get('email'),
+                        prefixIcon: const Icon(Icons.email_outlined),
+                        border: const OutlineInputBorder(),
                         filled: true,
                         fillColor: Colors.white12,
                       ),
@@ -190,7 +193,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       enabled: !isLoading,
                       obscureText: !_isPasswordVisible,
                       decoration: InputDecoration(
-                        labelText: 'Password',
+                        labelText: localizations.get('password'),
                         prefixIcon: const Icon(Icons.lock_outline),
                         filled: true,
                         fillColor: Colors.white12,
@@ -219,7 +222,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 _isCaptchaChecked = value ?? false;
                               });
                             },
-                      title: const Text('Saya bukan robot (Verification)'),
+                      title: Text(localizations.get('i_am_not_robot')),
                       controlAffinity: ListTileControlAffinity.leading,
                       contentPadding: EdgeInsets.zero,
                     ),
@@ -242,8 +245,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Text(
-                                'Masuk',
+                            : Text(
+                                localizations.get('login'),
                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                       ),
@@ -251,7 +254,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 16),
                       TextButton(
                         onPressed: isLoading ? null : () {},
-                        child: const Text('Lupa Password?'),
+                        child: Text(localizations.get('forgot_password')),
                       ),
                     ],
                   ),

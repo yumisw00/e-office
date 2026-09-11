@@ -7,7 +7,7 @@ class SuratModel {
   final String status; 
   final String ringkasan;
   SuratModel({
-    required this.id,
+    required this.idSurat,
     required this.nomorSurat,
     required this.asalSurat,
     required this.perihal,

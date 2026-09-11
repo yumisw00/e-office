@@ -15,13 +15,13 @@ class SuratMasuk extends _$SuratMasuk {
   @override
   FutureOr<List<SuratModel>> build() async {
     final repository = ref.watch(suratRepositoryProvider);
-    return repository.getSuratMasuk(page: 1, limit: 20);
+    return repository.getMyActions(page: 1, pagesize: 20);
   }
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     try {
       final repository = ref.read(suratRepositoryProvider);
-      final result = await repository.getSuratMasuk(page: 1, limit: 20);
+      final result = await repository.getMyActions(page: 1, pagesize: 20);
       state = AsyncValue.data(result);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -32,7 +32,7 @@ class SuratMasuk extends _$SuratMasuk {
     if (currentList == null) return;
     try {
       final repository = ref.read(suratRepositoryProvider);
-      final newItems = await repository.getSuratMasuk(page: page, limit: 20);
+      final newItems = await repository.getMyActions(page: page, pagesize: 20);
       final combined = [...currentList, ...newItems];
       state = AsyncValue.data(combined);
     } catch (e) {

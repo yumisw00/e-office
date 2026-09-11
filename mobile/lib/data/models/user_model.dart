@@ -21,13 +21,16 @@ class UserModel {
     final groupData = json['group'] as Map<String, dynamic>?;
     final jabatanDariGroup = groupData?['nama_jabatan']?.toString();
     final unitDariGroup = groupData?['nama_unit']?.toString() ?? groupData?['nama']?.toString();
+    final namaValue = json['nama'] ?? json['name'] ?? json['full_name'];
+    final jabatanValue = json['jabatan'] ?? json['position'] ?? json['role_name'] ?? jabatanDariGroup;
+    final unitKerjaValue = json['unit_kerja'] ?? json['department'] ?? json['divisi'] ?? unitDariGroup;
     return UserModel(
       id: (json['id_user'] ?? json['id'] ?? json['uuid'] ?? '').toString(),
-      nama: json['nama'] ?? json['name'] ?? json['full_name'] ?? 'User',
-      email: json['email'] ?? '',
+      nama: namaValue.toString() ?? 'User',
+      email: json['email']?.toString() ?? '',
       nip: json['nip']?.toString(),
-      jabatan: json['jabatan'] ?? json['position'] ?? json['role_name'] ?? jabatanDariGroup,
-      unitKerja: json['unit_kerja'] ?? json['department'] ?? json['divisi'] ?? unitDariGroup,
+      jabatan: jabatanValue.toString(),
+      unitKerja: unitKerjaValue?.toString(),
       groups: _parseGroups(json['groups'] ?? json['roles'] ?? []),
       fotoProfil: json['foto_profil'] ?? json['avatar'] ?? json['profile_picture'],
     );

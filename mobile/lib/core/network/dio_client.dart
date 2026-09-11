@@ -29,8 +29,8 @@ Dio dio(Ref ref) {
           options.headers['Authorization'] = 'Bearer $token';
         }
         if (AppConfig.enableLogging) {
-          debugPrint('🌐 REQUEST[${options.method}] => ${options.uri}');
-          debugPrint('   Headers: ${options.headers}');
+          debugPrint(' REQUEST[${options.method}] => ${options.uri}');
+          debugPrint(' Headers: ${options.headers}');
           if (options.data != null) {
             debugPrint('   Data: ${options.data}');
           }

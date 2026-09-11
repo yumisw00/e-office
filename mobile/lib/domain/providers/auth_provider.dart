@@ -21,7 +21,7 @@ class AuthNotifier extends _$AuthNotifier {
     try {
       final dio = ref.read(dioProvider);
       if (kDebugMode) {
-        print('🔐 Attempting login for: $email');
+        print(' Attempting login for: $email');
         print(' Device: $deviceName');
         print(' FCM Token: ${fcmToken.isNotEmpty ? '${fcmToken.substring(0, 10)}...' : 'none'}');
       }
@@ -81,7 +81,7 @@ class AuthNotifier extends _$AuthNotifier {
               'Koneksi ke server timeout. Pastikan server aktif dan IP benar.';
         } else {
           errorMessage =
-              'Tidak dapat terhubung ke server (Connection Refused). Periksa IP dan pastikan Laravel berjalan dengan --host=0.0.0.0.';
+              'Tidak dapat terhubung ke server. Periksa IP dan pastikan Laravel berjalan';
         }
       }
       String formatErrorValue(dynamic val) {

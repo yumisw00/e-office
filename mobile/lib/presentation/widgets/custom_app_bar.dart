@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/providers/theme_provider.dart';
-import '../../domain/providers/locale_provider.dart';
 import '../../domain/providers/liquid_glass_provider.dart';
 import '../../core/localization/app_localizations.dart';
 import 'liquid_glass_container.dart';
@@ -49,7 +48,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Efek Kaca Liquid',
+                    localizations.get('liquid_glass_effect'),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   Consumer(
@@ -102,7 +101,6 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   }
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final locale = ref.watch(localeProvider);
     final localizations = AppLocalizations.of(context);
     return AppBar(
       title: title,
@@ -111,56 +109,6 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
       elevation: 0,
       backgroundColor: Colors.transparent, 
       actions: [
-        PopupMenuButton<Locale>(
-          icon: const Icon(Icons.translate),
-          tooltip: localizations.get('select_language'),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          onSelected: (Locale newLocale) {
-            ref.read(localeProvider.notifier).setLocale(newLocale);
-          },
-          itemBuilder: (BuildContext context) => <PopupMenuEntry<Locale>>[
-            PopupMenuItem<Locale>(
-              value: const Locale('en'),
-              child: Row(
-                children: [
-                  const Text('🇺🇸 '),
-                  const SizedBox(width: 8),
-                  Text(
-                    localizations.get('english'),
-                    style: TextStyle(
-                      fontWeight: locale.languageCode == 'en' ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                  if (locale.languageCode == 'en') ...[
-                    const Spacer(),
-                    Icon(Icons.check, size: 16, color: Theme.of(context).colorScheme.primary),
-                  ]
-                ],
-              ),
-            ),
-            PopupMenuItem<Locale>(
-              value: const Locale('id'),
-              child: Row(
-                children: [
-                  const Text('🇮🇩 '),
-                  const SizedBox(width: 8),
-                  Text(
-                    localizations.get('indonesia'),
-                    style: TextStyle(
-                      fontWeight: locale.languageCode == 'id' ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                  if (locale.languageCode == 'id') ...[
-                    const Spacer(),
-                    Icon(Icons.check, size: 16, color: Theme.of(context).colorScheme.primary),
-                  ]
-                ],
-              ),
-            ),
-          ],
-        ),
         IconButton(
           icon: const Icon(Icons.settings_outlined),
           tooltip: localizations.get('select_theme'),

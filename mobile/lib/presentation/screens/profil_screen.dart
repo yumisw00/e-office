@@ -122,18 +122,6 @@ class ProfilScreen extends ConsumerWidget {
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => _showThemePicker(context, ref, localizations),
                 ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  leading: Icon(Icons.language_rounded, color: theme.colorScheme.primary),
-                  title: Text(localizations.get('language')),
-                  subtitle: Text(
-                    locale.languageCode == 'en'
-                        ? localizations.get('english')
-                        : localizations.get('indonesia'),
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => _showLanguagePicker(context, ref, localizations),
-                ),
               ],
             ),
           ).animate().fade(delay: 150.ms).slideY(begin: 0.1, end: 0, delay: 150.ms),
@@ -207,62 +195,13 @@ class ProfilScreen extends ConsumerWidget {
       title: Text(label),
     );
   }
-  void _showLanguagePicker(BuildContext context, WidgetRef ref, AppLocalizations localizations) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        final currentLocale = ref.watch(localeProvider);
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  localizations.get('select_language'),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                RadioGroup<Locale>(
-                  groupValue: currentLocale,
-                  onChanged: (value) {
-                    if (value != null) {
-                      ref.read(localeProvider.notifier).setLocale(value);
-                      Navigator.pop(context);
-                    }
-                  },
-                  child: Column(
-                    children: [
-                      _buildLanguageRadioOption(context, ref, const Locale('en'), localizations.get('english')),
-                      _buildLanguageRadioOption(context, ref, const Locale('id'), localizations.get('indonesia')),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-  Widget _buildLanguageRadioOption(
-      BuildContext context, WidgetRef ref, Locale locale, String label) {
-    return RadioListTile<Locale>(
-      value: locale,
-      title: Text(label),
-    );
-  }
   void _showLogoutConfirm(BuildContext context, WidgetRef ref, AppLocalizations localizations) {
     showDialog(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: Text(localizations.get('logout')),
-          content: Text(localizations.get('Anda yakin?')),
+          content: Text(localizations.get('logout_confirm')),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
