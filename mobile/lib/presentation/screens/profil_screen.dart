@@ -1,229 +1,124 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/theme_provider.dart';
-import '../../domain/providers/locale_provider.dart';
-import '../../core/localization/app_localizations.dart';
+import '../widgets/custom_app_bar.dart';
+
 class ProfilScreen extends ConsumerWidget {
   const ProfilScreen({super.key});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeProvider);
-    final locale = ref.watch(localeProvider);
-    final localizations = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final authState = ref.watch(authProvider);
-    final user = authState.value;
-    final userName = user?.nama ?? 'data User tidak dikirim';
-    final userJabatan = user?.jabatan ?? user?.unitKerja ?? 'data jabatan tidak dikirim';
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    final themeMode = ref.watch(themeProvider);
+    
+    String userName = 'Nama User';
+    String userEmail = 'email@contoh.com';
+    String userRole = 'User';
+
+    authState.whenData((user) {
+      if (user != null) {
+        userName = user.nama;
+        userEmail = user.email ?? 'email@contoh.com';
+        userRole = user.role;
+      }
+    });
+
+    return Scaffold(
+      appBar: CustomAppBar(
+        title: 'Profil Saya',
+        showLogout: true,
+        onLogoutPressed: () => _confirmLogout(context, ref),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
           Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4)),
-            ),
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
-                  Stack(
-                    children: [
-                      Hero(
-                        tag: 'profile_avatar',
-                        child: CircleAvatar(
-                          radius: 50,
-                          backgroundColor: theme.colorScheme.primaryContainer,
-                          child: Icon(
-                            Icons.person_rounded,
-                            size: 56,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                        ),
-                      ),
-                    ],
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    child: Icon(Icons.person, size: 50, color: Theme.of(context).colorScheme.primary),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    '$userName',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
+                    userName,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
-                  const SizedBox(height: 4),
                   Text(
-                    userJabatan,
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    userEmail,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Chip(
+                    label: Text(userRole),
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
                   ),
                 ],
               ),
             ),
-          )
-              .animate()
-              .fade(duration: 400.ms, curve: Curves.easeOutCubic)
-              .scale(begin: const Offset(0.95, 0.95), end: const Offset(1, 1), duration: 400.ms, curve: Curves.easeOutCubic),
+          ),
           const SizedBox(height: 24),
-          Text(
-            localizations.get('account_settings'),
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: theme.colorScheme.primary,
-              letterSpacing: 0.8,
-            ),
-          ).animate().fade(delay: 100.ms),
-          const SizedBox(height: 12),
           Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4)),
-            ),
-            child: ListView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
+            child: Column(
               children: [
                 ListTile(
-                  leading: Icon(
-                    themeMode == ThemeMode.light
-                        ? Icons.light_mode_outlined
-                        : themeMode == ThemeMode.dark
-                            ? Icons.dark_mode_outlined
-                            : Icons.settings_brightness_outlined,
-                    color: theme.colorScheme.primary,
+                  leading: const Icon(Icons.palette),
+                  title: const Text('Mode Gelap'),
+                  trailing: Switch(
+                    value: themeMode == ThemeMode.dark,
+                    onChanged: (val) {
+                      ref.read(themeProvider.notifier).toggleTheme();
+                    },
                   ),
-                  title: Text(localizations.get('theme')),
-                  subtitle: Text(
-                    themeMode == ThemeMode.light
-                        ? localizations.get('light')
-                        : themeMode == ThemeMode.dark
-                            ? localizations.get('dark')
-                            : localizations.get('system'),
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => _showThemePicker(context, ref, localizations),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text('Versi Aplikasi'),
+                  subtitle: const Text('1.0.0 (Beta)'),
+                  enabled: false,
                 ),
               ],
             ),
-          ).animate().fade(delay: 150.ms).slideY(begin: 0.1, end: 0, delay: 150.ms),
-          const SizedBox(height: 32),
-          FilledButton.tonalIcon(
-            onPressed: () => _showLogoutConfirm(context, ref, localizations),
-            icon: const Icon(Icons.logout_rounded, color: Colors.red),
-            label: Text(
-              localizations.get('logout'),
-              style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              backgroundColor: Colors.red.withValues(alpha: 0.05),
-            ),
-          ).animate().fade(delay: 200.ms),
+          ),
         ],
       ),
     );
   }
-  void _showThemePicker(BuildContext context, WidgetRef ref, AppLocalizations localizations) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        final currentMode = ref.watch(themeProvider);
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  localizations.get('pilih tema'),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                RadioGroup<ThemeMode>(
-                  groupValue: currentMode,
-                  onChanged: (value) {
-                    if (value != null) {
-                      ref.read(themeProvider.notifier).setThemeMode(value);
-                      Navigator.pop(context);
-                    }
-                  },
-                  child: Column(
-                    children: [
-                      _buildThemeRadioOption(context, ref, ThemeMode.light, localizations.get('cerah')),
-                      _buildThemeRadioOption(context, ref, ThemeMode.dark, localizations.get('gelap')),
-                      _buildThemeRadioOption(context, ref, ThemeMode.system, localizations.get('sistem')),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-  Widget _buildThemeRadioOption(
-      BuildContext context, WidgetRef ref, ThemeMode mode, String label) {
-    return RadioListTile<ThemeMode>(
-      value: mode,
-      title: Text(label),
-    );
-  }
-  void _showLogoutConfirm(BuildContext context, WidgetRef ref, AppLocalizations localizations) {
+
+  void _confirmLogout(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(localizations.get('logout')),
-          content: Text(localizations.get('logout_confirm')),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konfirmasi Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(localizations.get('Tidak')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Colors.white,
             ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                ref.read(authProvider.notifier).logout();
-                context.go('/login');
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              child: Text(localizations.get('Ya')),
-            ),
-          ],
-        );
-      },
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref.read(authProvider.notifier).logout();
+            },
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
     );
   }
 }

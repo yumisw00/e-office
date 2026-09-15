@@ -2,6 +2,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../constants/app_config.dart';
+import 'api_endpoints.dart';
 
 final FlutterLocalNotificationsPlugin _localNotifications = 
       FlutterLocalNotificationsPlugin();
@@ -49,6 +53,13 @@ Future<void> _showLocalNotification({
 }
 
 class FirebaseMessagingService {
+  final Dio? _dio;
+  final FlutterSecureStorage _storage;
+  
+  FirebaseMessagingService({Dio? dio}) 
+      : _dio = dio,
+        _storage = const FlutterSecureStorage();
+
   Future<void> init() async {
     await _initLocalNotifications();
     final messaging = FirebaseMessaging.instance;
@@ -62,6 +73,8 @@ class FirebaseMessagingService {
       print(' User granted permission: ${settings.authorizationStatus}');
     }
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    
+    // Handle foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (kDebugMode) {
         print(' [FOREGROUND] Pesan diterima!');
@@ -76,12 +89,40 @@ class FirebaseMessagingService {
         data: message.data,
       );
     });
+    
+    // Handle notification tap when app is in background
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       if (kDebugMode) {
         print(' User membuka app dari notifikasi: ${message.data}');
       }
+      _handleNotificationTap(message.data);
     });
+    
+    // Check if app was opened from notification
+    final initialMessage = await messaging.getInitialMessage();
+    if (initialMessage != null) {
+      if (kDebugMode) {
+        print(' App dibuka dari notifikasi: ${initialMessage.data}');
+      }
+      _handleNotificationTap(initialMessage.data);
+    }
   }
+  
+  /// Handle navigasi deep linking dari notifikasi
+  void _handleNotificationTap(Map<String, dynamic> data) {
+    // TODO: Implement navigation logic based on notification type
+    // Contoh: jika ada 'surat_id', navigate ke detail surat
+    final suratId = data['surat_id'];
+    final tipeNotif = data['tipe'];
+    
+    if (kDebugMode) {
+      print('🔔 Notification tap - Type: $tipeNotif, Surat ID: $suratId');
+    }
+    
+    // Navigasi akan di-handle oleh router di main.dart
+    // Bisa menggunakan callback atau event bus
+  }
+  
   Future<void> _initLocalNotifications() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
@@ -96,6 +137,7 @@ class FirebaseMessagingService {
       ),
     );
   }
+  
   Future<String?> getFCMToken() async {
     try {
       final token = await FirebaseMessaging.instance.getToken();
@@ -110,6 +152,27 @@ class FirebaseMessagingService {
       return null;
     }
   }
+  
+  /// Registrasikan FCM token ke backend setelah login
+  Future<void> registerFcmToken(String fcmToken) async {
+    try {
+      if (_dio == null || fcmToken.isEmpty) return;
+      
+      await _dio.post(
+        ApiEndpoints.registerFcm,
+        data: {'fcm_token': fcmToken},
+      );
+      
+      if (kDebugMode) {
+        print('✅ FCM token registered to backend');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error registering FCM token: $e');
+      }
+    }
+  }
+  
   Future<void> subscribeToTopic(String topic) async {
     try {
       await FirebaseMessaging.instance.subscribeToTopic(topic);
@@ -119,6 +182,19 @@ class FirebaseMessagingService {
     } catch (e) {
       if (kDebugMode) {
         print(" Error subscribing to topic: $e");
+      }
+    }
+  }
+  
+  Future<void> unsubscribeFromTopic(String topic) async {
+    try {
+      await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
+      if (kDebugMode) {
+        print(" Unsubscribed from topic: $topic");
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print(" Error unsubscribing from topic: $e");
       }
     }
   }

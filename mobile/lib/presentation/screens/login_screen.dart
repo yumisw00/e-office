@@ -1,17 +1,19 @@
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/firebase_messaging_service.dart';
-import '../../core/localization/app_localizations.dart';
 import '../../domain/providers/auth_provider.dart';
-import '../widgets/liquid_glass_container.dart';
+import '../widgets/empty_state_view.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart';
+
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
+
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
+
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -19,16 +21,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isCaptchaChecked = false;
   String? _deviceName;
   String? _fcmToken;
+
   @override
   void initState() {
     super.initState();
     _initializeDeviceInfo();
     _initializeFCM();
   }
+
   Future<void> _initializeDeviceInfo() async {
     try {
       final deviceInfo = DeviceInfoPlugin();
-      String name = 'Unknown Device';
+      String name = 'Mobile Device';
+      
       if (defaultTargetPlatform == TargetPlatform.android) {
         final androidInfo = await deviceInfo.androidInfo;
         name = '${androidInfo.brand} ${androidInfo.model}';
@@ -36,21 +41,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         final iosInfo = await deviceInfo.iosInfo;
         name = 'iPhone ${iosInfo.model}';
       }
+      
       setState(() {
         _deviceName = '$name - ${DateTime.now().millisecondsSinceEpoch}';
       });
+      
       if (kDebugMode) {
-        print(' Device Info: $_deviceName');
+        print('📱 Device Info: $_deviceName');
       }
     } catch (e) {
       if (kDebugMode) {
-        print(' Error getting device info: $e');
+        print('❌ Error getting device info: $e');
       }
       setState(() {
         _deviceName = 'Mobile Device - ${DateTime.now().millisecondsSinceEpoch}';
       });
     }
   }
+
   Future<void> _initializeFCM() async {
     try {
       final fcmService = FirebaseMessagingService();
@@ -59,36 +67,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _fcmToken = token;
       });
       if (kDebugMode) {
-        print(' FCM Token: ${token?.substring(0, 20)}...');
+        print('🔑 FCM Token: ${token?.substring(0, 20)}...');
       }
     } catch (e) {
       if (kDebugMode) {
-        print(' Error getting FCM token: $e');
+        print('❌ Error getting FCM token: $e');
       }
     }
   }
+
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
+
   Future<void> _handleLogin() async {
-    final localizations = AppLocalizations.of(context);
     if (!_isCaptchaChecked) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(localizations.get('captcha_required'))),
+        const SnackBar(
+          content: Text('Silakan verifikasi Captcha terlebih dahulu'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
+
     if (_deviceName == null || _fcmToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(localizations.get('device_initializing'))),
+        const SnackBar(
+          content: Text('Menginisialisasi perangkat... Silakan coba lagi'),
+          backgroundColor: Colors.orange,
+        ),
       );
       await _initializeDeviceInfo();
       await _initializeFCM();
       return;
     }
+
     try {
       await ref.read(authProvider.notifier).login(
         _emailController.text,
@@ -104,6 +121,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       errorMessage = errorMessage.replaceAll(RegExp(r'[{}]'), '');
       errorMessage = errorMessage.replaceAll('errors: ', '');
       errorMessage = errorMessage.replaceAll('message: ', '');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -115,59 +133,60 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState.isLoading;
-    final localizations = AppLocalizations.of(context);
+
     ref.listen(authProvider, (previous, next) {
       next.whenOrNull(
         data: (user) {
           if (user != null) {
             if (kDebugMode) {
-              print(' User logged in: ${user.nama}');
+              print('✅ User logged in: ${user.nama}');
             }
             context.go('/dashboard');
           }
         },
       );
     });
+
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.6),
-                  Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.6),
-                  Theme.of(context).colorScheme.surface,
-                ],
-              ),
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.6),
+              Theme.of(context).colorScheme.tertiaryContainer.withOpacity(0.6),
+              Theme.of(context).colorScheme.surface,
+            ],
           ),
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: LiquidGlassContainer(
-                borderRadius: 32,
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Card(
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
                 padding: const EdgeInsets.all(32),
-                child: Material(
-                  color: Colors.transparent,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Icon(
-                      Icons.home,
+                      Icons.home_work_outlined,
                       size: 80,
                       color: Colors.blue,
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      localizations.get('login_title'),
+                      'Masuk E-Office',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
@@ -178,12 +197,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextFormField(
                       controller: _emailController,
                       enabled: !isLoading,
-                      decoration: InputDecoration(
-                        labelText: localizations.get('email'),
-                        prefixIcon: const Icon(Icons.email_outlined),
-                        border: const OutlineInputBorder(),
-                        filled: true,
-                        fillColor: Colors.white12,
+                      decoration: const InputDecoration(
+                        labelText: 'Surel',
+                        prefixIcon: Icon(Icons.email_outlined),
+                        border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.emailAddress,
                     ),
@@ -193,10 +210,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       enabled: !isLoading,
                       obscureText: !_isPasswordVisible,
                       decoration: InputDecoration(
-                        labelText: localizations.get('password'),
+                        labelText: 'Kata Sandi',
                         prefixIcon: const Icon(Icons.lock_outline),
-                        filled: true,
-                        fillColor: Colors.white12,
                         suffixIcon: IconButton(
                           icon: Icon(
                             _isPasswordVisible
@@ -222,7 +237,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 _isCaptchaChecked = value ?? false;
                               });
                             },
-                      title: Text(localizations.get('i_am_not_robot')),
+                      title: const Text('Saya bukan robot'),
                       controlAffinity: ListTileControlAffinity.leading,
                       contentPadding: EdgeInsets.zero,
                     ),
@@ -245,24 +260,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : Text(
-                                localizations.get('login'),
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            : const Text(
+                                'Masuk',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                       ),
                     ),
                     const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: isLoading ? null : () {},
-                        child: Text(localizations.get('forgot_password')),
-                      ),
-                    ],
-                  ),
+                    TextButton(
+                      onPressed: isLoading ? null : () {},
+                      child: const Text('Lupa Kata Sandi?'),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

@@ -1,388 +1,267 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/surat_provider.dart';
-import '../../core/localization/app_localizations.dart';
-class DashboardScreen extends ConsumerWidget {
+import '../../domain/providers/theme_provider.dart';
+import '../widgets/custom_app_bar.dart';
+import '../widgets/empty_state_view.dart';
+
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final localizations = AppLocalizations.of(context);
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(suratSummaryProvider.notifier).refresh();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final suratMasukAsync = ref.watch(suratMasukProvider);
+    final summaryAsync = ref.watch(suratSummaryProvider);
+
     String userName = 'User';
-    String userJabatan = '-';
+    String userRole = '-';
     authState.whenData((user) {
       if (user != null) {
         userName = user.nama;
-        userJabatan = user.jabatan ?? '-';
+        userRole = user.role;
       }
     });
-    return suratMasukAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, stack) => Center(child: Text('Error: $err')),
-      data: (suratList) {
-        final totalInbox = suratList.length;
-        final needAction = suratList
-            .where((s) => s.status == 'belum_dibaca' || s.status == 'disposisi')
-            .length;
-        final completed = suratList.where((s) => s.status == 'selesai').length;
-        final recentList = suratList.take(3).toList();
-        return RefreshIndicator(
-          onRefresh: () async => ref.refresh(suratMasukProvider.future),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Card(
-                      elevation: 0,
-                      color: theme.colorScheme.primaryContainer.withValues(
-                        alpha: 0.5,
+
+    return Scaffold(
+      appBar: CustomAppBar(
+        title: 'Dashboard',
+        showLogout: true,
+        onLogoutPressed: () => _confirmLogout(context),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async => ref.read(suratSummaryProvider.notifier).refresh(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // User Card
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                        child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(
-                          color: theme.colorScheme.primary.withValues(
-                            alpha: 0.15,
-                          ),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Row(
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    localizations.get('welcome'),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: theme
-                                          .colorScheme
-                                          .onPrimaryContainer
-                                          .withValues(alpha: 0.8),
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    userName, 
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color:
-                                          theme.colorScheme.onPrimaryContainer,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    userJabatan, 
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: theme
-                                          .colorScheme
-                                          .onPrimaryContainer
-                                          .withValues(alpha: 0.7),
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            Text(
+                              'Selamat Datang,',
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
-                            Icon(
-                              Icons.insights_rounded,
-                              size: 48,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .animate()
-                    .fade(duration: 400.ms, curve: Curves.easeOutCubic)
-                    .slideX(
-                      begin: -0.1,
-                      end: 0,
-                      duration: 400.ms,
-                      curve: Curves.easeOutCubic,
-                    ),
-                const SizedBox(height: 24),
-                Text(
-                  localizations.get('statistics'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    letterSpacing: 0.5,
-                  ),
-                ).animate().fade(delay: 100.ms),
-                const SizedBox(height: 12),
-                Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            title: localizations.get('total_inbox'),
-                            value: '$totalInbox',
-                            icon: Icons.mark_email_read_outlined,
-                            color: Colors.blue,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            title: localizations.get('need_action'),
-                            value: '$needAction',
-                            icon: Icons.pending_actions_outlined,
-                            color: Colors.orange,
-                          ),
-                        ),
-                      ],
-                    )
-                    .animate()
-                    .fade(delay: 150.ms)
-                    .slideY(begin: 0.1, end: 0, delay: 150.ms),
-                const SizedBox(height: 12),
-                Card(
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(
-                          color: theme.colorScheme.outlineVariant.withValues(
-                            alpha: 0.4,
-                          ),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Penyelesaian Dokumen',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: theme.colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    '$completed dari $totalInbox surat telah selesai diproses.',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: LinearProgressIndicator(
-                                      value: totalInbox > 0
-                                          ? completed / totalInbox
-                                          : 0.0,
-                                      minHeight: 8,
-                                      backgroundColor:
-                                          theme.colorScheme.outlineVariant,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        theme.colorScheme.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primary.withValues(
-                                  alpha: 0.1,
-                                ),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  totalInbox > 0
-                                      ? '${((completed / totalInbox) * 100).toInt()}%'
-                                      : '0%',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .animate()
-                    .fade(delay: 200.ms)
-                    .slideY(begin: 0.1, end: 0, delay: 200.ms),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      localizations.get('recent_letters'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ).animate().fade(delay: 250.ms),
-                const SizedBox(height: 12),
-                ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: recentList.length,
-                      itemBuilder: (context, index) {
-                        final surat = recentList[index];
-                        return Card(
-                          elevation: 0,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: BorderSide(
-                              color: theme.colorScheme.outlineVariant
-                                  .withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: _getStatusColor(
-                                surat.status,
-                              ).withValues(alpha: 0.1),
-                              radius: 18,
-                              child: Icon(
-                                _getStatusIcon(surat.status),
-                                color: _getStatusColor(surat.status),
-                                size: 18,
-                              ),
-                            ),
-                            title: Text(
-                              surat.perihal,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                            Text(
+                              userName,
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13,
                               ),
                             ),
-                            subtitle: Text(
-                              surat.asalSurat,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 11),
+                            Text(
+                              userRole,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                             ),
-                            trailing: const Icon(
-                              Icons.chevron_right_rounded,
-                              size: 18,
-                            ),
-                            onTap: () {
-                              context.push('/detail', extra: surat);
-                            },
-                          ),
-                        );
-                      },
-                    )
-                    .animate()
-                    .fade(delay: 300.ms)
-                    .slideY(begin: 0.1, end: 0, delay: 300.ms),
-              ],
-            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Statistik Section
+              Text(
+                'Statistik Surat',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              summaryAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => EmptyStateView(
+                  message: 'Gagal memuat statistik: $err',
+                  icon: Icons.error_outline,
+                ),
+                data: (summary) {
+                  if (summary == null) {
+                    return const EmptyStateView(
+                      message: 'Belum ada data statistik',
+                      icon: Icons.analytics_outlined,
+                    );
+                  }
+                  
+                  return GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 1.5,
+                    children: [
+                      _StatCard(
+                        title: 'Total Surat',
+                        count: summary.total ?? 0,
+                        icon: Icons.folder_open,
+                        color: Colors.blue,
+                      ),
+                      _StatCard(
+                        title: 'Surat Baru',
+                        count: summary.baru ?? 0,
+                        icon: Icons.mail,
+                        color: Colors.orange,
+                      ),
+                      _StatCard(
+                        title: 'Disposisi',
+                        count: summary.disposisi ?? 0,
+                        icon: Icons.share,
+                        color: Colors.purple,
+                      ),
+                      _StatCard(
+                        title: 'Selesai',
+                        count: summary.selesai ?? 0,
+                        icon: Icons.check_circle,
+                        color: Colors.green,
+                      ),
+                    ],
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Tombol Aksi Cepat
+              Text(
+                'Aksi Cepat',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => context.go('/surat-masuk'),
+                      icon: const Icon(Icons.inbox),
+                      label: const Text('Lihat Surat Masuk'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.go('/approval'),
+                      icon: const Icon(Icons.gavel),
+                      label: const Text('Approval'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        );
-      },
-    );
-  }
-  Widget _buildStatCard(
-    BuildContext context, {
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
       ),
+    );
+  }
+
+  void _confirmLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konfirmasi Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref.read(authProvider.notifier).logout();
+            },
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String title;
+  final int count;
+  final IconData icon;
+  final Color color;
+
+  const _StatCard({
+    required this.title,
+    required this.count,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: 12),
+            Icon(icon, color: color, size: 32),
+            const Spacer(),
             Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+              count.toString(),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
-            const SizedBox(height: 4),
             Text(
               title,
+              style: Theme.of(context).textTheme.bodySmall,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
             ),
           ],
         ),
       ),
     );
-  }
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'belum_dibaca':
-        return Colors.blue;
-      case 'disposisi':
-        return Colors.orange;
-      case 'selesai':
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
-  }
-  IconData _getStatusIcon(String status) {
-    switch (status.toLowerCase()) {
-      case 'belum_dibaca':
-        return Icons.mark_email_unread_outlined;
-      case 'disposisi':
-        return Icons.assignment_outlined;
-      case 'selesai':
-        return Icons.verified_outlined;
-      default:
-        return Icons.email_outlined;
-    }
   }
 }

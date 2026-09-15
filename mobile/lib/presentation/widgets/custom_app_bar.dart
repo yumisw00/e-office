@@ -1,123 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/providers/theme_provider.dart';
-import '../../domain/providers/liquid_glass_provider.dart';
-import '../../core/localization/app_localizations.dart';
-import 'liquid_glass_container.dart';
+
 class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
-  final Widget? title;
-  final Widget? leading;
-  final bool centerTitle;
+  final String title;
+  final bool showLogout;
+  final VoidCallback? onLogoutPressed;
+
   const CustomAppBar({
     super.key,
-    this.title,
-    this.leading,
-    this.centerTitle = true,
+    required this.title,
+    this.showLogout = false,
+    this.onLogoutPressed,
   });
-  void _showSettingsBottomSheet(BuildContext context, WidgetRef ref) {
-    final localizations = AppLocalizations.of(context);
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      builder: (context) {
-        return LiquidGlassContainer(
-          borderRadius: 32, 
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Text(
-                localizations.get('select_theme'),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    localizations.get('liquid_glass_effect'),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Consumer(
-                    builder: (context, ref, child) {
-                      final isGlass = ref.watch(liquidGlassProvider);
-                      return Switch(
-                        value: isGlass,
-                        onChanged: (value) {
-                          ref.read(liquidGlassProvider.notifier).toggle();
-                        },
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Consumer(
-                builder: (context, ref, child) {
-                  final themeMode = ref.watch(themeProvider);
-                  return SegmentedButton<ThemeMode>(
-                    segments: [
-                      ButtonSegment(
-                        value: ThemeMode.light,
-                        icon: const Icon(Icons.light_mode),
-                        label: Text(localizations.get('light')),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.dark,
-                        icon: const Icon(Icons.dark_mode),
-                        label: Text(localizations.get('dark')),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.system,
-                        icon: const Icon(Icons.settings_brightness),
-                        label: Text(localizations.get('system')),
-                      ),
-                    ],
-                    selected: {themeMode},
-                    onSelectionChanged: (Set<ThemeMode> newSelection) {
-                      ref.read(themeProvider.notifier).setThemeMode(newSelection.first);
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final localizations = AppLocalizations.of(context);
     return AppBar(
-      title: title,
-      leading: leading,
-      centerTitle: centerTitle,
+      title: Text(
+        title,
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+      ),
+      centerTitle: true,
       elevation: 0,
-      backgroundColor: Colors.transparent, 
+      backgroundColor: Theme.of(context).colorScheme.surface,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.settings_outlined),
-          tooltip: localizations.get('select_theme'),
-          onPressed: () => _showSettingsBottomSheet(context, ref),
-        ),
+        if (showLogout && onLogoutPressed != null)
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            color: Theme.of(context).colorScheme.error,
+            onPressed: onLogoutPressed,
+          ),
         const SizedBox(width: 8),
       ],
     );
   }
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

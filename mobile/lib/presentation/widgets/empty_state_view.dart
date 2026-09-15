@@ -7,8 +7,8 @@ class EmptyStateView extends StatelessWidget {
   const EmptyStateView({
     super.key,
     required this.icon,
-    required this.title,
-    required this.message,
+    this.title = 'Data Tidak Ditemukan',
+    this.message = 'Tidak ada data untuk ditampilkan.',
     this.onRetry,
   });
   @override

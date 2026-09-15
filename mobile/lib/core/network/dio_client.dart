@@ -1,12 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../constants/app_config.dart';
-part 'dio_client.g.dart';
+import 'api_endpoints.dart';
+
 const _storage = FlutterSecureStorage();
-@Riverpod(keepAlive: true)
-Dio dio(Ref ref) {
+
+final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
       baseUrl: AppConfig.baseUrl,
@@ -21,6 +22,7 @@ Dio dio(Ref ref) {
       },
     ),
   );
+
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {
@@ -28,9 +30,10 @@ Dio dio(Ref ref) {
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
+
         if (AppConfig.enableLogging) {
-          debugPrint(' REQUEST[${options.method}] => ${options.uri}');
-          debugPrint(' Headers: ${options.headers}');
+          debugPrint('📤 REQUEST[${options.method}] => ${options.uri}');
+          debugPrint('   Headers: ${options.headers}');
           if (options.data != null) {
             debugPrint('   Data: ${options.data}');
           }
@@ -39,17 +42,40 @@ Dio dio(Ref ref) {
       },
       onResponse: (response, handler) async {
         if (AppConfig.enableLogging) {
-          print(' RESPONSE[${response.statusCode}] <= ${response.requestOptions.uri}');
+          debugPrint('📥 RESPONSE[${response.statusCode}] <= ${response.requestOptions.uri}');
         }
         handler.next(response);
       },
       onError: (error, handler) async {
         if (AppConfig.enableLogging) {
-          print(' ERROR[${error.error}] => ${error.requestOptions.uri}');
+          debugPrint('❌ ERROR[${error.type}] => ${error.requestOptions.uri}');
+          debugPrint('   Message: ${error.message}');
+          debugPrint('   Status: ${error.response?.statusCode}');
         }
+
+        // Handle 401 Unauthorized - Token expired atau invalid
+        if (error.response?.statusCode == 401) {
+          // Hapus token dari storage
+          await _storage.delete(key: AppConfig.authTokenKey);
+          await _storage.delete(key: AppConfig.userDataKey);
+          
+          if (AppConfig.enableLogging) {
+            debugPrint('⚠️ Token tidak valid, silakan login ulang');
+          }
+        }
+
+        // Handle 422 Validation Error
+        if (error.response?.statusCode == 422) {
+          final errors = error.response?.data['errors'];
+          if (errors != null) {
+            debugPrint('⚠️ Validation Errors: $errors');
+          }
+        }
+
         handler.next(error);
       },
     ),
   );
+
   return dio;
-}
+});

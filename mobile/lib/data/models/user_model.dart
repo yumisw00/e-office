@@ -117,8 +117,10 @@ class UserModel {
       fotoProfil: fotoProfil ?? this.fotoProfil,
     );
   }
+  String get role => jabatan ?? (groups.isNotEmpty ? groups.first : 'User');
+  
   @override
   String toString() {
-    return 'UserModel(id: $id, nama: $nama, email: $email, jabatan: $jabatan)';
+    return 'UserModel(id: $id, nama: $nama, email: $email, jabatan: $jabatan, role: $role)';
   }
 }

@@ -1,66 +1,92 @@
 import 'package:flutter/foundation.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/surat_model.dart';
 import '../../data/repositories/surat_repository.dart';
 import '../../core/network/dio_client.dart';
-import '../../core/constants/app_config.dart';
-part 'surat_provider.g.dart';
-@riverpod
-SuratRepository suratRepository(Ref ref) {
+
+final suratRepositoryProvider = Provider<SuratRepository>((ref) {
   final dio = ref.watch(dioProvider);
   return ApiSuratRepository(dio);
-}
-@riverpod
-class SuratMasuk extends _$SuratMasuk {
+});
+
+/// Provider untuk daftar Surat Masuk
+final suratMasukProvider = AsyncNotifierProvider<SuratMasukNotifier, List<SuratModel>>(() {
+  return SuratMasukNotifier();
+});
+
+class SuratMasukNotifier extends AsyncNotifier<List<SuratModel>> {
   @override
-  FutureOr<List<SuratModel>> build() async {
+  Future<List<SuratModel>> build() async {
     final repository = ref.watch(suratRepositoryProvider);
-    return repository.getMyActions(page: 1, pagesize: 20);
+    return repository.getSuratMasuk(page: 1, pageSize: 20);
   }
+
+  Future<void> fetchSuratMasuk() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final repository = ref.read(suratRepositoryProvider);
+      return repository.getSuratMasuk(page: 1, pageSize: 20);
+    });
+  }
+
+  Future<void> refresh() async {
+    await fetchSuratMasuk();
+  }
+}
+
+final suratSummaryProvider = AsyncNotifierProvider<SuratSummaryNotifier, SuratSummary>(() {
+  return SuratSummaryNotifier();
+});
+
+class SuratSummaryNotifier extends AsyncNotifier<SuratSummary> {
+  @override
+  Future<SuratSummary> build() async {
+    final repository = ref.watch(suratRepositoryProvider);
+    return repository.getSuratMasukSummary();
+  }
+
   Future<void> refresh() async {
     state = const AsyncValue.loading();
-    try {
+    state = await AsyncValue.guard(() async {
       final repository = ref.read(suratRepositoryProvider);
-      final result = await repository.getMyActions(page: 1, pagesize: 20);
-      state = AsyncValue.data(result);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
-  }
-  Future<void> loadMore(int page) async {
-    final currentList = state.value;
-    if (currentList == null) return;
-    try {
-      final repository = ref.read(suratRepositoryProvider);
-      final newItems = await repository.getMyActions(page: page, pagesize: 20);
-      final combined = [...currentList, ...newItems];
-      state = AsyncValue.data(combined);
-    } catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('Error loading more: $e');
-      }
-    }
-  }
-  Future<void> approveSurat(String id) async {
-    final currentList = state.value;
-    if (currentList == null) return;
-    final updatedList = currentList.map((surat) {
-      if (surat.id == id) {
-        return surat.copyWith(status: 'selesai');
-      }
-      return surat;
-    }).toList();
-    state = AsyncValue.data(updatedList);
-  }
-  Future<void> disposisiSurat(String nomorSurat, String tujuan, String instruksi) async {
-    final currentList = state.value;
-    if (currentList == null) return;
-    final updatedList = currentList.map((surat) {
-      if (surat.nomorSurat == nomorSurat) {
-        return surat.copyWith(status: 'DISPOSISI');
-      }
-      return surat;
-    }).toList();
-    state = AsyncValue.data(updatedList);
+      return repository.getSuratMasukSummary();
+    });
   }
 }
+
+final approvalQueueProvider = AsyncNotifierProvider<ApprovalQueueNotifier, List<SuratModel>>(() {
+  return ApprovalQueueNotifier();
+});
+
+class ApprovalQueueNotifier extends AsyncNotifier<List<SuratModel>> {
+  @override
+  Future<List<SuratModel>> build() async {
+    final repository = ref.watch(suratRepositoryProvider);
+    return repository.getApprovalQueue();
+  }
+
+  Future<void> fetchApprovalQueue() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final repository = ref.read(suratRepositoryProvider);
+      return repository.getApprovalQueue();
+    });
+  }
+
+  Future<void> approveSurat(String id) async {
+    final repository = ref.read(suratRepositoryProvider);
+    await repository.approveSuratKeluar(id);
+    await fetchApprovalQueue();
+  }
+
+  Future<void> rejectSurat(String id, String notes) async {
+    final repository = ref.read(suratRepositoryProvider);
+    await repository.rejectSuratKeluar(id, notes);
+    await fetchApprovalQueue();
+  }
+
+  Future<void> refresh() async {
+    await fetchApprovalQueue();
+  }
+}
+

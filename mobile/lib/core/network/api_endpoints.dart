@@ -1,0 +1,33 @@
+class ApiEndpoints {
+  static const String login = '/mobile/login';
+  static const String logout = '/mobile/logout';
+  static const String user = '/mobile/user';
+  static const String registerFcm = '/mobile/register-fcm';
+  static const String suratMasukList = '/surat_masuk';
+  static String suratMasukDetail(String id) => '/surat_masuk/$id';
+  static String suratMasukTimeline(String id) => '/surat_masuk/$id/timeline';
+  static const String suratMasukSummary = '/surat_masuk/summary';
+  static String suratMasukDistribute(String id) => '/surat_masuk/$id/distribute';
+  static String suratMasukRead(String id) => '/surat_masuk/$id/read';
+  static String suratMasukDone(String id) => '/surat_masuk/$id/done';
+  static String suratMasukArchive(String id) => '/surat_masuk/$id/archive';
+  static const String suratKeluarList = '/surat_keluar';
+  static String suratKeluarDetail(String id) => '/surat_keluar/$id';
+  static String suratKeluarSubmit(String id) => '/surat_keluar/$id/submit';
+  static String suratKeluarApprove(String id) => '/surat_keluar/$id/approve';
+  static String suratKeluarReject(String id) => '/surat_keluar/$id/reject';
+  static String suratKeluarSign(String id) => '/surat_keluar/$id/sign';
+  static String suratKeluarSend(String id) => '/surat_keluar/$id/send';
+  static String suratKeluarArchive(String id) => '/surat_keluar/$id/archive';
+  static String suratKeluarTimeline(String id) => '/surat_keluar/$id/timeline';
+  static const String disposisiList = '/surat_disposisi';
+  static const String disposisiCreate = '/surat_disposisi';
+  static String disposisiDetail(String id) => '/surat_disposisi/$id';
+  static String disposisiComplete(String id) => '/surat_disposisi/$id/complete';
+  static String disposisiTimeline(String id) => '/surat_disposisi/$id/timeline';
+  static const String approvalQueue = '/surat_approval';
+  static String getFile(String path) => '/getfile/$path';
+  static const String uploadFile = '/upload';
+  static const String digitalSignatureVerify = '/digital-signature/verify';
+  ApiEndpoints._();
+}
