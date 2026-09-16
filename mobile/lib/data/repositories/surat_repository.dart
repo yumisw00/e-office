@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/surat_model.dart';
 import '../../core/constants/app_config.dart';
 import '../../core/network/api_endpoints.dart';
@@ -198,15 +199,27 @@ class ApiSuratRepository implements SuratRepository {
     DateTime? tanggalJatuhTempo,
   }) async {
     try {
+      const storage = FlutterSecureStorage();
+      final userDataStr = await storage.read(key: AppConfig.userDataKey);
+      String? idPemberi;
+      if (userDataStr != null) {
+        final idMatch = RegExp(r"'id_user':\s*'?([a-zA-Z0-9_-]+)'?").firstMatch(userDataStr) ??
+            RegExp(r"'id':\s*'?([a-zA-Z0-9_-]+)'?").firstMatch(userDataStr);
+        if (idMatch != null) {
+          idPemberi = idMatch.group(1);
+        }
+      }
+
       final payload = {
         'id_surat_masuk': idSuratMasuk,
-        'id_pemberi': idPenerima, 
+        if (idPemberi != null) 'id_pemberi': idPemberi,
         'id_penerima': idPenerima,
         'instruksi': instruksi,
         'status': 'baru',
         if (tanggalJatuhTempo != null)
           'tanggal_jatuh_tempo': tanggalJatuhTempo.toIso8601String(),
       };
+
 
       final response = await _dio.post(
         ApiEndpoints.disposisiCreate,

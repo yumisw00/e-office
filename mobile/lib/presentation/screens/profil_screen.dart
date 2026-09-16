@@ -13,22 +13,18 @@ class ProfilScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
     
     String userName = 'Nama User';
-    String userEmail = 'email@contoh.com';
-    String userRole = 'User';
+    String userEmail = 'email@user.com';
 
     authState.whenData((user) {
       if (user != null) {
         userName = user.nama;
         userEmail = user.email ?? 'email@contoh.com';
-        userRole = user.role;
       }
     });
 
     return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Profil Saya',
-        showLogout: true,
-        onLogoutPressed: () => _confirmLogout(context, ref),
+      appBar: const CustomAppBar(
+        title: 'Profil Sayang',
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -50,17 +46,12 @@ class ProfilScreen extends ConsumerWidget {
                           fontWeight: FontWeight.bold,
                         ),
                   ),
+                  const SizedBox(height: 4),
                   Text(
                     userEmail,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Colors.grey,
                         ),
-                  ),
-                  const SizedBox(height: 8),
-                  Chip(
-                    label: Text(userRole),
-                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
                   ),
                 ],
               ),
@@ -82,10 +73,12 @@ class ProfilScreen extends ConsumerWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: const Text('Versi Aplikasi'),
-                  subtitle: const Text('1.0.0 (Beta)'),
-                  enabled: false,
+                  leading: Icon(Icons.logout_rounded, color: Theme.of(context).colorScheme.error),
+                  title: Text(
+                    'Keluar',
+                    style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold),
+                  ),
+                  onTap: () => _confirmLogout(context, ref),
                 ),
               ],
             ),
@@ -100,11 +93,11 @@ class ProfilScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Konfirmasi Logout'),
-        content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
+        content: const Text('Apakah Anda yakin ingin keluar?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: const Text('Tidak'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -115,7 +108,7 @@ class ProfilScreen extends ConsumerWidget {
               Navigator.pop(ctx);
               await ref.read(authProvider.notifier).logout();
             },
-            child: const Text('Logout'),
+            child: const Text('Ya'),
           ),
         ],
       ),

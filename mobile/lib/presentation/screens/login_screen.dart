@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/network/firebase_messaging_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:io' show Platform;
 import '../../domain/providers/auth_provider.dart';
-import '../widgets/empty_state_view.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:flutter/foundation.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -15,63 +13,78 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isPasswordVisible = false;
-  bool _isCaptchaChecked = false;
-  String? _deviceName;
-  String? _fcmToken;
+  bool _isLoading = false;
+  bool _obscurePassword = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _initializeDeviceInfo();
-    _initializeFCM();
-  }
+  // -------------------------------------------------------------
+  // 🔧 PERSIAPAN CAPTCHA (Diputus sementara dari UI & Backend)
+  // -------------------------------------------------------------
+  // String? _captchaToken;
+  // bool _captchaValidated = false;
+  // final String _recaptchaSiteKey = '6LcExjYrAAAAAOI0XjmrqPwAcDEOM-X2G-z4VQYZ';
+  //
+  // void _handleRecaptchaSuccess(String token) {
+  //   setState(() {
+  //     _captchaToken = token;
+  //     _captchaValidated = true;
+  //   });
+  // }
+  // -------------------------------------------------------------
 
-  Future<void> _initializeDeviceInfo() async {
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // TODO: Aktifkan validasi captcha jika backend sudah siap
+    // if (!_captchaValidated) {
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     const SnackBar(content: Text('Selesaikan verifikasi captcha')),
+    //   );
+    //   return;
+    // }
+
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      final deviceInfo = DeviceInfoPlugin();
-      String name = 'Mobile Device';
-      
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        final androidInfo = await deviceInfo.androidInfo;
-        name = '${androidInfo.brand} ${androidInfo.model}';
-      } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-        final iosInfo = await deviceInfo.iosInfo;
-        name = 'iPhone ${iosInfo.model}';
+      String fcmToken = '';
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken() ?? '';
+      } catch (e) {
+        debugPrint('⚠️ Gagal mengambil FCM token: $e');
       }
-      
-      setState(() {
-        _deviceName = '$name - ${DateTime.now().millisecondsSinceEpoch}';
-      });
-      
-      if (kDebugMode) {
-        print('📱 Device Info: $_deviceName');
+
+      final deviceName = Platform.isAndroid ? 'Android Device' : 'iOS Device';
+
+      // Login langsung (captchaToken diputus sementara)
+      await ref.read(authProvider.notifier).login(
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
+            deviceName,
+            fcmToken,
+            // captchaToken: _captchaToken,
+          );
+
+      if (mounted) {
+        context.go('/dashboard');
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error getting device info: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
-      setState(() {
-        _deviceName = 'Mobile Device - ${DateTime.now().millisecondsSinceEpoch}';
-      });
-    }
-  }
-
-  Future<void> _initializeFCM() async {
-    try {
-      final fcmService = FirebaseMessagingService();
-      final token = await fcmService.getFCMToken();
-      setState(() {
-        _fcmToken = token;
-      });
-      if (kDebugMode) {
-        print('🔑 FCM Token: ${token?.substring(0, 20)}...');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error getting FCM token: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -83,199 +96,104 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
-    if (!_isCaptchaChecked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Silakan verifikasi Captcha terlebih dahulu'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    if (_deviceName == null || _fcmToken == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Menginisialisasi perangkat... Silakan coba lagi'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      await _initializeDeviceInfo();
-      await _initializeFCM();
-      return;
-    }
-
-    try {
-      await ref.read(authProvider.notifier).login(
-        _emailController.text,
-        _passwordController.text,
-        _deviceName!,
-        _fcmToken!,
-      );
-    } catch (e) {
-      String errorMessage = e.toString();
-      if (errorMessage.startsWith('Exception: ')) {
-        errorMessage = errorMessage.substring(11);
-      }
-      errorMessage = errorMessage.replaceAll(RegExp(r'[{}]'), '');
-      errorMessage = errorMessage.replaceAll('errors: ', '');
-      errorMessage = errorMessage.replaceAll('message: ', '');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage.trim()),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    final isLoading = authState.isLoading;
-
-    ref.listen(authProvider, (previous, next) {
-      next.whenOrNull(
-        data: (user) {
-          if (user != null) {
-            if (kDebugMode) {
-              print('✅ User logged in: ${user.nama}');
-            }
-            context.go('/dashboard');
-          }
-        },
-      );
-    });
+    final theme = Theme.of(context);
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.6),
-              Theme.of(context).colorScheme.tertiaryContainer.withOpacity(0.6),
-              Theme.of(context).colorScheme.surface,
-            ],
-          ),
-        ),
+      body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
-            child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Icon(
-                      Icons.home_work_outlined,
-                      size: 80,
-                      color: Colors.blue,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 80,
+                    width: 80,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'E-Office Mobile',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Masuk E-Office',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[900],
-                          ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined),
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 32),
-                    TextFormField(
-                      controller: _emailController,
-                      enabled: !isLoading,
-                      decoration: const InputDecoration(
-                        labelText: 'Surel',
-                        prefixIcon: Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      enabled: !isLoading,
-                      obscureText: !_isPasswordVisible,
-                      decoration: InputDecoration(
-                        labelText: 'Kata Sandi',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordVisible = !_isPasswordVisible;
-                            });
-                          },
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Email wajib diisi';
+                      }
+                      if (!value.contains('@')) {
+                        return 'Format email tidak valid';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
+                      labelText: 'Kata Sandi',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                         ),
-                        border: const OutlineInputBorder(),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
                       ),
+                      border: const OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 8),
-                    CheckboxListTile(
-                      value: _isCaptchaChecked,
-                      onChanged: isLoading 
-                          ? null 
-                          : (value) {
-                              setState(() {
-                                _isCaptchaChecked = value ?? false;
-                              });
-                            },
-                      title: const Text('Saya bukan robot'),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: EdgeInsets.zero,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Kata sandi wajib diisi';
+                      }
+                      if (value.length < 6) {
+                        return 'Kata sandi minimal 6 karakter';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _handleLogin,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
                     ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: (isLoading || _deviceName == null || _fcmToken == null) 
-                            ? null 
-                            : _handleLogin,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        child: isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Masuk',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: isLoading ? null : () {},
-                      child: const Text('Lupa Kata Sandi?'),
-                    ),
-                  ],
-                ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text(
+                            'Masuk',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ],
               ),
             ),
           ),

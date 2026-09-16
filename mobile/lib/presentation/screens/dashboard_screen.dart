@@ -38,10 +38,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     });
 
     return Scaffold(
-      appBar: CustomAppBar(
+      appBar: const CustomAppBar(
         title: 'Dashboard',
-        showLogout: true,
-        onLogoutPressed: () => _confirmLogout(context),
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.read(suratSummaryProvider.notifier).refresh(),

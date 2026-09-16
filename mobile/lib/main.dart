@@ -8,8 +8,13 @@ import 'package:e_office_mobile/domain/providers/theme_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await FirebaseMessagingService().init();
+  try {
+    await Firebase.initializeApp();
+    await FirebaseMessagingService().init();
+  } catch (e) {
+    debugPrint('⚠️ Firebase initialization skipped/failed on desktop platform: $e');
+  }
+  
   runApp(
     const ProviderScope(
       child: EOfficeApp(),
@@ -22,8 +27,9 @@ class EOfficeApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(appRouterProvider);
+    final router = ref.watch(goRouterProvider);
     final themeMode = ref.watch(themeProvider);
+    
     return MaterialApp.router(
       title: 'E-Office PT ABC',
       debugShowCheckedModeBanner: false,
