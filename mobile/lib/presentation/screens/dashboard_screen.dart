@@ -57,7 +57,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       CircleAvatar(
                         radius: 30,
                         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                        child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
+                        child: Icon(Icons.person_outline_rounded, color: Theme.of(context).colorScheme.primary),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -102,7 +102,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (err, stack) => EmptyStateView(
                   message: 'Gagal memuat statistik: $err',
-                  icon: Icons.error_outline,
+                  icon: Icons.error_outline_rounded,
                 ),
                 data: (summary) {
                   if (summary == null) {
@@ -122,33 +122,105 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     children: [
                       _StatCard(
                         title: 'Total Surat',
-                        count: summary.total ?? 0,
-                        icon: Icons.folder_open,
-                        color: Colors.blue,
+                        count: summary.total,
+                        icon: Icons.folder_open_outlined,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       _StatCard(
                         title: 'Surat Baru',
-                        count: summary.baru ?? 0,
-                        icon: Icons.mail,
-                        color: Colors.orange,
+                        count: summary.baru,
+                        icon: Icons.mail_outline_rounded,
+                        color: const Color(0xFFE67E22),
                       ),
                       _StatCard(
                         title: 'Disposisi',
-                        count: summary.disposisi ?? 0,
-                        icon: Icons.share,
-                        color: Colors.purple,
+                        count: summary.disposisi,
+                        icon: Icons.share_outlined,
+                        color: Theme.of(context).colorScheme.secondary,
                       ),
                       _StatCard(
                         title: 'Selesai',
-                        count: summary.selesai ?? 0,
-                        icon: Icons.check_circle,
-                        color: Colors.green,
+                        count: summary.selesai,
+                        icon: Icons.check_circle_outline_rounded,
+                        color: const Color(0xFF27AE60),
                       ),
                     ],
                   );
                 },
               ),
               
+              const SizedBox(height: 24),
+
+              // Section Surat Terbaru
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Surat Terbaru',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.go('/surat-masuk'),
+                    child: const Text('Lihat Semua'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ref.watch(suratMasukProvider).when(
+                loading: () => const Center(child: LinearProgressIndicator()),
+                error: (err, st) => Text('Gagal memuat surat: $err'),
+                data: (list) {
+                  if (list.isEmpty) return const Text('Tidak ada surat terbaru');
+                  final recent = list.take(3).toList();
+                  return Column(
+                    children: recent.map((surat) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: const CircleAvatar(child: Icon(Icons.description_outlined, size: 20)),
+                        title: Text(surat.perihal, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(surat.asalSurat),
+                        onTap: () => context.push('/surat-masuk/${surat.id}'),
+                      ),
+                    )).toList(),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 24),
+              
+              // Section Agenda
+              Text(
+                'Agenda Kerja',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.event_note_outlined, size: 40, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Fitur Agenda Segera Hadir',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 24),
               
               // Tombol Aksi Cepat
@@ -164,7 +236,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () => context.go('/surat-masuk'),
-                      icon: const Icon(Icons.inbox),
+                      icon: const Icon(Icons.inbox_outlined),
                       label: const Text('Lihat Surat Masuk'),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -175,7 +247,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => context.go('/approval'),
-                      icon: const Icon(Icons.gavel),
+                      icon: const Icon(Icons.gavel_outlined),
                       label: const Text('Approval'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),

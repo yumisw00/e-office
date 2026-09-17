@@ -31,9 +31,13 @@ final dioProvider = Provider<Dio>((ref) {
           options.headers['Authorization'] = 'Bearer $token';
         }
 
-        if (AppConfig.enableLogging) {
+        if (AppConfig.enableLogging && kDebugMode) {
+          final sanitizedHeaders = Map<String, dynamic>.from(options.headers);
+          if (sanitizedHeaders.containsKey('Authorization')) {
+            sanitizedHeaders['Authorization'] = 'Bearer [HIDDEN]';
+          }
           debugPrint('📤 REQUEST[${options.method}] => ${options.uri}');
-          debugPrint('   Headers: ${options.headers}');
+          debugPrint('   Headers: $sanitizedHeaders');
           if (options.data != null) {
             debugPrint('   Data: ${options.data}');
           }

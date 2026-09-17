@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final String title;
@@ -27,12 +28,8 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
       backgroundColor: Theme.of(context).colorScheme.surface,
       actions: [
         IconButton(
-          icon: const Icon(Icons.notifications_outlined),
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Tidak ada notifikasi baru')),
-            );
-          },
+          icon: const Icon(Icons.notifications_none_rounded),
+          onPressed: () => context.push('/notifications'),
         ),
         const SizedBox(width: 8),
       ],

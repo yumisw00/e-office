@@ -3,17 +3,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/network/api_endpoints.dart';
+import '../../core/network/dio_client.dart';
 import '../../core/constants/app_config.dart';
 import '../../data/models/user_model.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AsyncValue<UserModel?>>((ref) {
-  return AuthNotifier();
+  return AuthNotifier(ref);
 });
 
 class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
-  AuthNotifier() : super(const AsyncValue.data(null));
+  final Ref _ref;
+  AuthNotifier(this._ref) : super(const AsyncValue.data(null));
 
-  Future<void> login(
+  Future<Map<String, dynamic>?> login(
     String email,
     String password,
     String deviceName,
@@ -22,17 +24,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   }) async {
     state = const AsyncValue.loading();
     try {
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: AppConfig.baseUrl,
-          connectTimeout: AppConfig.connectTimeout,
-          receiveTimeout: AppConfig.receiveTimeout,
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-        ),
-      );
+      final dio = _ref.read(dioProvider);
 
       final loginData = {
         'email': email,
@@ -51,6 +43,15 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       );
 
       final responseData = response.data;
+
+      // Handle MFA Required - ASUMSI-API
+      if (responseData != null && responseData['mfa_required'] == true) {
+        state = const AsyncValue.data(null);
+        return {
+          'mfa_required': true,
+          'mfa_token': responseData['mfa_token'],
+        };
+      }
 
       if (responseData != null && responseData['token'] != null) {
         final token = responseData['token'].toString();
@@ -71,6 +72,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
         }
 
         state = AsyncValue.data(user);
+        return {'success': true};
       } else {
         throw Exception(
           responseData?['message'] ?? 'Token tidak ditemukan di response server.',
@@ -129,24 +131,61 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     }
   }
 
+  Future<void> verifyMfa(String mfaToken, String otp) async {
+    state = const AsyncValue.loading();
+    try {
+      final dio = _ref.read(dioProvider);
+      final response = await dio.post(
+        ApiEndpoints.verifyMfa,
+        data: {
+          'mfa_token': mfaToken,
+          'otp': otp,
+        },
+      );
+
+      final responseData = response.data;
+      if (responseData != null && responseData['token'] != null) {
+        final token = responseData['token'].toString();
+        const storage = FlutterSecureStorage();
+        
+        await storage.write(
+          key: AppConfig.authTokenKey,
+          value: token,
+        );
+
+        UserModel? user;
+        if (responseData['user'] != null) {
+          user = UserModel.fromJsonApi(responseData['user']);
+          await storage.write(
+            key: AppConfig.userDataKey,
+            value: user.toJson().toString(),
+          );
+        }
+
+        state = AsyncValue.data(user);
+      } else {
+        throw Exception(
+          responseData?['message'] ?? 'OTP tidak valid atau expired.',
+        );
+      }
+    } on DioException catch (e) {
+       // standard error handling (could refactor to shared method)
+       final msg = e.response?.data?['message'] ?? 'Gagal memverifikasi OTP';
+       state = AsyncValue.error(Exception(msg), StackTrace.current);
+       throw Exception(msg);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
   Future<void> logout() async {
     state = const AsyncValue.loading();
     try {
       const storage = FlutterSecureStorage();
       final token = await storage.read(key: AppConfig.authTokenKey);
       if (token != null) {
-        final dio = Dio(
-          BaseOptions(
-            baseUrl: AppConfig.baseUrl,
-            connectTimeout: AppConfig.connectTimeout,
-            receiveTimeout: AppConfig.receiveTimeout,
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          ),
-        );
+        final dio = _ref.read(dioProvider);
         await dio.post(ApiEndpoints.logout);
       }
     } catch (e) {

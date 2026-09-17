@@ -20,7 +20,12 @@ abstract class SuratRepository {
   Future<void> approveSuratKeluar(String id);
   Future<void> rejectSuratKeluar(String id, String catatanRevisi);
   Future<String> signSuratKeluar(String id);
+  Future<void> submitSuratKeluar(String id);
   Future<List<SuratModel>> getApprovalQueue({int page = 1, int pageSize = 20});
+  Future<List<dynamic>> getDisposisiList({int page = 1, int pageSize = 20});
+  Future<void> forwardDisposisi(String id, Map<String, dynamic> data);
+  Future<List<dynamic>> getNotifications();
+  Future<void> logAuditTrail(String action, Map<String, dynamic> metadata);
 }
 
 class ApiSuratRepository implements SuratRepository {
@@ -289,28 +294,117 @@ class ApiSuratRepository implements SuratRepository {
   @override
   Future<String> signSuratKeluar(String id) async {
     try {
-      final response = await _dio.post(ApiEndpoints.suratKeluarSign(id));
+      final response = await _dio.post(ApiEndpoints.approvalSign(id)); // ASUMSI-API
       
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
-        // Backend returns QR code URL/path in response
         if (data != null && data['data'] != null) {
           return data['data']['qr_code_url'] ?? data['data']['qr_code'] ?? '';
         }
         return '';
       }
       
-      throw DioException(
-        requestOptions: response.requestOptions,
-        response: response,
-        type: DioExceptionType.badResponse,
-      );
+      throw _handleAssumedEndpointError(response);
     } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 501) {
+        throw Exception('Fitur tanda tangan digital belum tersedia di server.');
+      }
       if (AppConfig.enableLogging) {
         debugPrint('❌ Error signing surat: ${e.message}');
       }
       rethrow;
     }
+  }
+
+  @override
+  Future<void> submitSuratKeluar(String id) async {
+    try {
+      final response = await _dio.post(ApiEndpoints.suratKeluarSubmit(id)); // ASUMSI-API
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw _handleAssumedEndpointError(response);
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 501) {
+        throw Exception('Fitur submit surat keluar belum tersedia di server.');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> forwardDisposisi(String id, Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.put(ApiEndpoints.disposisiForward(id), data: data); // ASUMSI-API
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw _handleAssumedEndpointError(response);
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 501) {
+        throw Exception('Fitur teruskan disposisi belum tersedia di server.');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getNotifications() async {
+    try {
+      final response = await _dio.get(ApiEndpoints.notifications); // ASUMSI-API
+      if (response.statusCode == 200) {
+        return response.data['data'] ?? [];
+      }
+      return [];
+    } on DioException catch (e) {
+      if (AppConfig.enableLogging) {
+        debugPrint('⚠️ Notifications feature not yet available: ${e.message}');
+      }
+      return []; // Fallback empty list
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getDisposisiList({int page = 1, int pageSize = 20}) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.disposisiList,
+        queryParameters: {
+          'page': page,
+          'pagesize': pageSize,
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        return response.data['data'] ?? [];
+      }
+      return [];
+    } on DioException catch (e) {
+      if (AppConfig.enableLogging) {
+        debugPrint('❌ Error getting disposisi list: ${e.message}');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> logAuditTrail(String action, Map<String, dynamic> metadata) async {
+    try {
+      await _dio.post(ApiEndpoints.auditTrail, data: { // ASUMSI-API
+        'action': action,
+        'metadata': metadata,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+    } on DioException catch (e) {
+      if (AppConfig.enableLogging) {
+        debugPrint('⚠️ Audit trail logging failed (optional feature): ${e.message}');
+      }
+    }
+  }
+
+  Exception _handleAssumedEndpointError(Response response) {
+    if (response.statusCode == 404 || response.statusCode == 501) {
+      return Exception('Fitur ini sedang dikembangkan di backend.');
+    }
+    return Exception('Gagal memproses permintaan (Error ${response.statusCode})');
   }
 
   @override

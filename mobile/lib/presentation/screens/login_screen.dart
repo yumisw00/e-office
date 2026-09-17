@@ -60,7 +60,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final deviceName = Platform.isAndroid ? 'Android Device' : 'iOS Device';
 
       // Login langsung (captchaToken diputus sementara)
-      await ref.read(authProvider.notifier).login(
+      final result = await ref.read(authProvider.notifier).login(
             _emailController.text.trim(),
             _passwordController.text.trim(),
             deviceName,
@@ -69,7 +69,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
 
       if (mounted) {
-        context.go('/dashboard');
+        if (result != null && result['mfa_required'] == true) {
+          context.push('/mfa', extra: result['mfa_token']);
+        } else {
+          context.go('/dashboard');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -113,13 +117,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   Image.asset(
                     'assets/images/logo.png',
-                    height: 80,
-                    width: 80,
+                    height: 150,
+                    width: 150,
                     color: theme.colorScheme.primary,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'E-Office Mobile',
+                    'E-Office',
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.primary,
@@ -132,7 +136,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
                       labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
+                      prefixIcon: Icon(Icons.mail_outline_rounded),
                       border: OutlineInputBorder(),
                     ),
                     validator: (value) {
@@ -151,7 +155,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       labelText: 'Kata Sandi',
-                      prefixIcon: const Icon(Icons.lock_outline),
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,

@@ -24,7 +24,7 @@ class ProfilScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: const CustomAppBar(
-        title: 'Profil Sayang',
+        title: 'Profil Saya',
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -37,20 +37,21 @@ class ProfilScreen extends ConsumerWidget {
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                    child: Icon(Icons.person, size: 50, color: Theme.of(context).colorScheme.primary),
+                    child: Icon(Icons.person_outline_rounded, size: 50, color: Theme.of(context).colorScheme.primary),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     userName,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     userEmail,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                   ),
                 ],
@@ -62,7 +63,7 @@ class ProfilScreen extends ConsumerWidget {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.palette),
+                  leading: const Icon(Icons.palette_outlined),
                   title: const Text('Mode Gelap'),
                   trailing: Switch(
                     value: themeMode == ThemeMode.dark,
@@ -92,7 +93,7 @@ class ProfilScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Konfirmasi Logout'),
+        title: const Text('Konfirmasi'),
         content: const Text('Apakah Anda yakin ingin keluar?'),
         actions: [
           TextButton(

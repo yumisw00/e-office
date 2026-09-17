@@ -1,6 +1,7 @@
 class ApiEndpoints {
   static const String login = '/mobile/login';
   static const String logout = '/mobile/logout';
+  static const String verifyMfa = '/mobile/verify-mfa'; // ASUMSI-API
   static const String user = '/mobile/user';
   static const String registerFcm = '/mobile/register-fcm';
   static const String suratMasukList = '/surat_masuk';
@@ -26,6 +27,11 @@ class ApiEndpoints {
   static String disposisiComplete(String id) => '/surat_disposisi/$id/complete';
   static String disposisiTimeline(String id) => '/surat_disposisi/$id/timeline';
   static const String approvalQueue = '/surat_approval';
+  static String approvalSign(String id) => '/approval/$id/sign'; // ASUMSI-API
+  static const String notifications = '/notifications'; // ASUMSI-API
+  static String disposisiForward(String id) => '/disposisi/$id/forward'; // ASUMSI-API
+  static const String auditTrail = '/audit-trail'; // ASUMSI-API
+  
   static String getFile(String path) => '/getfile/$path';
   static const String uploadFile = '/upload';
   static const String digitalSignatureVerify = '/digital-signature/verify';

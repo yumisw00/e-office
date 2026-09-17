@@ -32,13 +32,13 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => EmptyStateView(
             message: 'Gagal memuat antrian: $err',
-            icon: Icons.error_outline,
+            icon: Icons.info_outline_rounded,
           ),
           data: (queueList) {
             if (queueList.isEmpty) {
               return const EmptyStateView(
                 message: 'Tidak ada surat yang menunggu persetujuan.',
-                icon: Icons.check_circle_outline,
+                icon: Icons.check_circle_outline_rounded,
               );
             }
 
@@ -56,7 +56,7 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.description, color: Theme.of(context).colorScheme.primary),
+                            Icon(Icons.description_outlined, color: Theme.of(context).colorScheme.primary),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
@@ -86,9 +86,9 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
                             ),
                             const SizedBox(width: 12),
                             ElevatedButton.icon(
-                              onPressed: () => _showApproveDialog(context, item.id),
-                              icon: const Icon(Icons.check),
-                              label: const Text('Setuju'),
+                              onPressed: () => _showApproveDialog(context, item.id, canSign: true),
+                              icon: const Icon(Icons.draw_outlined),
+                              label: const Text('Setujui & Sign'),
                             ),
                           ],
                         ),
@@ -139,20 +139,37 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
     );
   }
 
-  void _showApproveDialog(BuildContext context, String idSurat) {
+  void _showApproveDialog(BuildContext context, String idSurat, {bool canSign = false}) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Setujui Surat'),
-        content: const Text('Apakah Anda yakin ingin menyetujui surat ini?'),
+        content: Text(canSign 
+          ? 'Apakah Anda yakin ingin menyetujui dan menandatangani surat ini secara digital?'
+          : 'Apakah Anda yakin ingin menyetujui surat ini?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              ref.read(approvalQueueProvider.notifier).approveSurat(idSurat);
+              try {
+                if (canSign) {
+                  await ref.read(approvalQueueProvider.notifier).signSurat(idSurat);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Surat berhasil di-approve dan status menjadi "signed"')),
+                    );
+                  }
+                } else {
+                  await ref.read(approvalQueueProvider.notifier).approveSurat(idSurat);
+                }
+              } catch (e) {
+                 if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                 }
+              }
             },
-            child: const Text('Setuju'),
+            child: Text(canSign ? 'Setuju & Sign' : 'Setuju'),
           ),
         ],
       ),

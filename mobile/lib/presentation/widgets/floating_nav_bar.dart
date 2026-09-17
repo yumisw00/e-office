@@ -17,7 +17,7 @@ class FloatingNavBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(70)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -28,7 +28,7 @@ class FloatingNavBar extends StatelessWidget {
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 36.0, vertical: 12.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -36,8 +36,8 @@ class FloatingNavBar extends StatelessWidget {
                 context,
                 index: 0,
                 label: 'Home',
-                activeIcon: Icons.dashboard_rounded,
-                inactiveIcon: Icons.dashboard_outlined,
+                activeIcon: Icons.grid_view_rounded,
+                inactiveIcon: Icons.grid_view_outlined,
               ),
               _buildTabItem(
                 context,
@@ -49,13 +49,20 @@ class FloatingNavBar extends StatelessWidget {
               _buildTabItem(
                 context,
                 index: 2,
-                label: 'Approval',
-                activeIcon: Icons.gavel_rounded,
-                inactiveIcon: Icons.gavel_outlined,
+                label: 'Disposisi',
+                activeIcon: Icons.shortcut_rounded,
+                inactiveIcon: Icons.shortcut_outlined,
               ),
               _buildTabItem(
                 context,
                 index: 3,
+                label: 'Approval',
+                activeIcon: Icons.check_circle_rounded,
+                inactiveIcon: Icons.check_circle_outline_rounded,
+              ),
+              _buildTabItem(
+                context,
+                index: 4,
                 label: 'Profil',
                 activeIcon: Icons.person_rounded,
                 inactiveIcon: Icons.person_outline_rounded,
@@ -88,7 +95,7 @@ class FloatingNavBar extends StatelessWidget {
         decoration: isSelected
             ? BoxDecoration(
                 color: activeColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(25),
               )
             : null,
         child: Column(

@@ -13,8 +13,8 @@ class SuratShimmerList extends StatelessWidget {
           elevation: 2,
           margin: const EdgeInsets.only(bottom: 12),
           child: Shimmer.fromColors(
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
+            baseColor: Theme.of(context).colorScheme.surfaceVariant,
+            highlightColor: Theme.of(context).colorScheme.surface,
             child: Padding(
               padding: const EdgeInsets.all(12.0),
               child: Row(
@@ -22,8 +22,8 @@ class SuratShimmerList extends StatelessWidget {
                   Container(
                     width: 48,
                     height: 48,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -36,7 +36,7 @@ class SuratShimmerList extends StatelessWidget {
                           width: double.infinity,
                           height: 14,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -45,7 +45,7 @@ class SuratShimmerList extends StatelessWidget {
                           width: 150,
                           height: 12,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -54,7 +54,7 @@ class SuratShimmerList extends StatelessWidget {
                           width: 80,
                           height: 10,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),

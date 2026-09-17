@@ -8,9 +8,13 @@ import '../../data/models/user_model.dart';
 import '../../presentation/screens/main_layout_screen.dart';
 import '../../presentation/screens/detail_surat_screen.dart';
 import '../../presentation/screens/login_screen.dart';
+import '../../presentation/screens/mfa_screen.dart';
 import '../../presentation/screens/dashboard_screen.dart';
 import '../../presentation/screens/surat_masuk_screen.dart';
+import '../../presentation/screens/disposisi_screen.dart';
 import '../../presentation/screens/approval_screen.dart';
+import '../../presentation/screens/notification_screen.dart';
+import '../../presentation/screens/pdf_viewer_screen.dart';
 import '../../presentation/screens/profil_screen.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -44,6 +48,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           child: LoginScreen(),
         ),
       ),
+      GoRoute(
+        path: '/mfa',
+        pageBuilder: (context, state) {
+          final mfaToken = state.extra as String? ?? '';
+          return NoTransitionPage(
+            child: MfaScreen(mfaToken: mfaToken),
+          );
+        },
+      ),
       ShellRoute(
         builder: (context, state, child) {
           int selectedIndex = 0;
@@ -53,10 +66,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             selectedIndex = 0;
           } else if (location != null && (location == '/surat-masuk' || location.startsWith('/surat-masuk/'))) {
             selectedIndex = 1;
-          } else if (location == '/approval') {
+          } else if (location == '/disposisi') {
             selectedIndex = 2;
-          } else if (location == '/profil') {
+          } else if (location == '/approval') {
             selectedIndex = 3;
+          } else if (location == '/profil') {
+            selectedIndex = 4;
           }
 
           return MainLayoutScreen(
@@ -89,9 +104,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
+            path: '/disposisi',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: DisposisiScreen(),
+            ),
+          ),
+          GoRoute(
             path: '/approval',
             pageBuilder: (context, state) => const NoTransitionPage(
               child: ApprovalScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/notifications',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: NotificationScreen(),
             ),
           ),
           GoRoute(
@@ -99,6 +126,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => const NoTransitionPage(
               child: ProfilScreen(),
             ),
+          ),
+          GoRoute(
+            path: '/pdf',
+            pageBuilder: (context, state) {
+              final url = state.extra as String? ?? '';
+              return NoTransitionPage(
+                child: PdfViewerScreen(pdfUrl: url),
+              );
+            },
           ),
         ],
       ),

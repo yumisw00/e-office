@@ -27,9 +27,12 @@ class MainLayoutScreen extends StatelessWidget {
               context.go('/surat-masuk');
               break;
             case 2:
-              context.go('/approval');
+              context.go('/disposisi');
               break;
             case 3:
+              context.go('/approval');
+              break;
+            case 4:
               context.go('/profil');
               break;
           }

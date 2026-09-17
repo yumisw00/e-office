@@ -15,6 +15,16 @@ class DetailSuratScreen extends ConsumerStatefulWidget {
 
 class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(suratRepositoryProvider).logAuditTrail('view_surat_detail', {
+        'id_surat': widget.idSurat,
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final suratMasukAsync = ref.watch(suratMasukProvider);
     final currentSurat = suratMasukAsync.maybeWhen(
@@ -23,17 +33,34 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
       orElse: () => throw Exception('Data surat belum tersedia'),
     );
     final isApproved = currentSurat.status == 'selesai';
+    
+    // ASUMSI-API: Fetch timeline secara paralel
+    final timelineAsync = ref.watch(suratTimelineProvider(widget.idSurat));
+
     return Scaffold(
       appBar: AppBar(title: Text(currentSurat.nomorSurat)),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildMetadataCard(context, currentSurat),
-            const SizedBox(height: 16),
-            _buildTrackingCard(context, currentSurat),
-          ],
+      body: RefreshIndicator(
+        onRefresh: () async {
+           ref.invalidate(suratTimelineProvider(widget.idSurat));
+           return ref.read(suratMasukProvider.notifier).refresh();
+        },
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildMetadataCard(context, currentSurat),
+              const SizedBox(height: 16),
+              timelineAsync.when(
+                data: (events) => _buildTrackingCard(context, currentSurat, events),
+                loading: () => const Center(child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: CircularProgressIndicator(),
+                )),
+                error: (err, st) => Text('Gagal memuat timeline: $err'),
+              ),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: isApproved
@@ -46,7 +73,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () =>
                           _showDisposisiSheet(context, ref, currentSurat),
-                      icon: const Icon(Icons.send),
+                      icon: const Icon(Icons.send_outlined),
                       label: const Text('Disposisi'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -61,7 +88,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
                       },
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.green,
+                        backgroundColor: const Color(0xFF27AE60),
                       ),
                       child: const Text(
                         'Setujui',
@@ -183,14 +210,14 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: Theme.of(context).colorScheme.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(height: 24),
               const Icon(
-                Icons.check_circle_outline,
-                color: Colors.green,
+                Icons.check_circle_outline_rounded,
+                color: Color(0xFF27AE60),
                 size: 64,
               ),
               const SizedBox(height: 16),
@@ -198,7 +225,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
                 'Persetujuan Digital Berhasil',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.green,
+                  color: const Color(0xFF27AE60),
                 ),
               ),
               const SizedBox(height: 16),
@@ -278,7 +305,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
                       'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
                 );
               },
-              icon: const Icon(Icons.picture_as_pdf),
+              icon: const Icon(Icons.picture_as_pdf_outlined),
               label: const Text('Lihat Dokumen'),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -323,7 +350,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
       ),
     );
   }
-  Widget _buildTrackingCard(BuildContext context, SuratModel currentSurat) {
+  Widget _buildTrackingCard(BuildContext context, SuratModel currentSurat, List<TimelineEvent> events) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -339,42 +366,24 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const Divider(),
-            Stepper(
-              physics: const NeverScrollableScrollPhysics(),
-              currentStep: currentSurat.status == 'selesai'
-                  ? 2
-                  : 2, 
-              controlsBuilder: _nullControlsBuilder,
-              steps: [
-                const Step(
-                  title: Text('Diterima Admin'),
-                  subtitle: Text('Surat telah diverifikasi oleh bagian umum'),
-                  content: SizedBox.shrink(),
+            if (events.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('Belum ada riwayat perjalanan surat'),
+              )
+            else
+              Stepper(
+                physics: const NeverScrollableScrollPhysics(),
+                currentStep: events.length - 1,
+                controlsBuilder: _nullControlsBuilder,
+                steps: events.map((event) => Step(
+                  title: Text(event.judul),
+                  subtitle: Text('${event.pelaku} - ${DateFormat('dd MMM yyyy HH:mm').format(event.tanggal)}'),
+                  content: Text(event.deskripsi),
                   isActive: true,
-                  state: StepState.complete,
-                ),
-                const Step(
-                  title: Text('Disposisi Manager'),
-                  subtitle: Text('Diteruskan ke Manager Unit untuk arahan'),
-                  content: SizedBox.shrink(),
-                  isActive: true,
-                  state: StepState.complete,
-                ),
-                Step(
-                  title: const Text('Menunggu Persetujuan'),
-                  subtitle: Text(
-                    currentSurat.status == 'selesai'
-                        ? 'Surat telah disetujui secara digital'
-                        : 'Sedang dalam tahap review akhir',
-                  ),
-                  content: const SizedBox.shrink(),
-                  isActive: true,
-                  state: currentSurat.status == 'selesai'
-                      ? StepState.complete
-                      : StepState.indexed,
-                ),
-              ],
-            ),
+                  state: event.status == 'selesai' ? StepState.complete : StepState.indexed,
+                )).toList(),
+              ),
           ],
         ),
       ),
@@ -389,13 +398,13 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
   Color _getStatusColor(String status) {
     switch (status.toUpperCase()) {
       case 'BELUM_DIBACA':
-        return Colors.blue;
+        return Theme.of(context).colorScheme.primary;
       case 'DISPOSISI':
-        return Colors.orange;
+        return const Color(0xFFE67E22);
       case 'SELESAI':
-        return Colors.green;
+        return const Color(0xFF27AE60);
       default:
-        return Colors.grey;
+        return const Color(0xFF7F8C8D);
     }
   }
 }

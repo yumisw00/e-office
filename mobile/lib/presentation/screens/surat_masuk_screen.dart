@@ -33,7 +33,7 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => EmptyStateView(
             message: 'Gagal memuat surat: $err',
-            icon: Icons.error_outline,
+            icon: Icons.error_outline_rounded,
           ),
           data: (suratList) {
             if (suratList.isEmpty) {
@@ -54,7 +54,7 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
                     contentPadding: const EdgeInsets.all(12),
                     leading: CircleAvatar(
                       backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      child: Icon(Icons.document_scanner, color: Theme.of(context).colorScheme.primary),
+                      child: Icon(Icons.description_outlined, color: Theme.of(context).colorScheme.primary),
                     ),
                     title: Text(
                       surat.perihal ?? 'Tanpa Perihal',
@@ -113,13 +113,13 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
   Color _getStatusColor(String? status) {
     switch (status?.toLowerCase()) {
       case 'baru':
-        return Colors.blue;
+        return Theme.of(context).colorScheme.primary;
       case 'dibaca':
-        return Colors.green;
+        return const Color(0xFF27AE60);
       case 'didisposisi':
-        return Colors.orange;
+        return const Color(0xFFE67E22);
       default:
-        return Colors.grey;
+        return const Color(0xFF7F8C8D);
     }
   }
 }
