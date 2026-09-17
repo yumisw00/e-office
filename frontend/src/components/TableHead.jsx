@@ -128,7 +128,7 @@ const TableHead = props => {
                         </th>
                     )
                 })}
-                <th className="border text-right" style={{ width: props.actionWidth || '1px' }}>
+                <th className="border text-center eoffice-action-column" style={{ width: props.actionWidth || 48 }}>
                     Aksi
                 </th>
             </tr>

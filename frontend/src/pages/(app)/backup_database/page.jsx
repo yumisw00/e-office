@@ -156,7 +156,7 @@ const BackupDatabase = () => {
                         {isGenerating ? "Membuat Backup..." : "Generate Backup"}
                     </Button>
                 </div>
-                <div className="table-responsive">
+                <div className="table-responsive backup-database-table">
                     <table className="w-full table table-auto border-collapse border">
                         <thead>
                             <tr>
@@ -164,7 +164,7 @@ const BackupDatabase = () => {
                                 <th className="border">Nama File</th>
                                 <th className="border" style={{ width: 140 }}>Ukuran</th>
                                 <th className="border" style={{ width: 190 }}>Tanggal Backup</th>
-                                <th className="border text-center" style={{ width: 140 }}>Aksi</th>
+                                <th className="border text-center backup-database-action-column">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -187,8 +187,8 @@ const BackupDatabase = () => {
                                             <td className="border">
                                                 {createdAt ? formatDateApp(createdAt, "YYYY-MM-DD HH:mm") : "-"}
                                             </td>
-                                            <td className="border align-middle" style={{ padding: "8px 6px" }}>
-                                                <div className="d-flex align-items-center justify-content-center td-action" style={{ gap: 2 }}>
+                                            <td className="border align-middle backup-database-action-cell">
+                                                <div className="backup-database-actions d-flex align-items-center justify-content-center td-action">
                                                     <BtnIconAct
                                                         className="btn-warning"
                                                         icon="edit"

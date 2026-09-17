@@ -3,6 +3,7 @@
 import HeaderApp from "components/HeaderApp";
 import Pagination from "components/Pagination";
 import EditDelete from "components/EditDelete";
+import JenisSuratTabs from "components/JenisSuratTabs";
 import EofficeTimelineModal from "components/EofficeTimelineModal";
 import surat_masukModel from "hooks/models/surat_masukModel";
 import Surat_masukedit from "./[...slug]/page";
@@ -49,12 +50,14 @@ class Surat_masuk extends IndexPage {
         showDistribusiPopup: false,
         showTimelinePopup: false,
         summary: { total: 0, baru: 0, distribusi: 0, selesai: 0 },
+        categorySummary: { total: 0, internal: 0, eksternal: 0 },
         distribusiLoading: false,
         selectedSurat: null,
         selectedDetailSurat: null,
         selectedTimelineSurat: null,
         inlineFilterValues: {},
         jenisPengirimanTab: 'semua',
+        jenisSuratTab: 'semua',
         distribusiForm: {
             id_unit_tujuan: '',
             id_user_tujuan: '',
@@ -66,7 +69,7 @@ class Surat_masuk extends IndexPage {
             ...this.state.datafilter,
             paginate: {
                 ...this.state.datafilter.paginate,
-                pagesize: 10,
+                pagesize: 20,
             },
         },
         listreferensi: {
@@ -114,6 +117,7 @@ class Surat_masuk extends IndexPage {
         this.setState({
             list: response.data,
             summary: response.summary || { total: 0, baru: 0, distribusi: 0, selesai: 0 },
+            categorySummary: response.category_summary || this.state.categorySummary,
             datafilter: {
                 ...datafilter,
                 paginate: { ...datafilter.paginate, total_records: response.total_records },
@@ -335,6 +339,17 @@ class Surat_masuk extends IndexPage {
 
     hasAttachment = item => Boolean(this.getAttachmentValue(item))
 
+    getJenisPengiriman = item => {
+        const jenisPengiriman = String(item?.jenis_pengiriman || '').trim().toLowerCase()
+        if (jenisPengiriman === 'internal' || jenisPengiriman === 'eksternal') {
+            return jenisPengiriman
+        }
+
+        // Data lama belum selalu memiliki nilai jenis_pengiriman. Tetap
+        // kelompokkan secara konsisten dengan API agar isi tab tidak kosong.
+        return item?.id_surat_keluar ? 'internal' : 'eksternal'
+    }
+
     getVisibleList = () => {
         const list = Array.isArray(this.state.list) ? this.state.list : []
         const filter = this.state.filter || {}
@@ -411,7 +426,8 @@ class Surat_masuk extends IndexPage {
         const list = Array.isArray(this.state.list) ? this.state.list : []
         const category = this.state.jenisPengirimanTab
         return list.filter(item => {
-            if (category !== 'semua' && String(item.jenis_pengiriman || (item.id_surat_keluar ? 'internal' : 'eksternal')).toLowerCase() !== category) return false
+            if (category !== 'semua' && this.getJenisPengiriman(item) !== category) return false
+            if (this.state.jenisSuratTab !== 'semua' && String(item.jenis || '').toLowerCase() !== String(this.state.jenisSuratTab).toLowerCase()) return false
             // Nomor Agenda filter
             if (filters.nomor_agenda) {
                 const search = filters.nomor_agenda.toLowerCase()
@@ -562,16 +578,10 @@ class Surat_masuk extends IndexPage {
     }
 
     getRowActions = item => {
-        const suratId = this.getSuratId(item)
-        const actions = [{
-            label: 'Detail',
-            icon: 'visibility',
-            href: `/surat_masuk/detail/${suratId}`,
-            blank: true,
-        }]
+        const actions = []
 
         if (canUseEofficeAction('surat_masuk', 'delete')) {
-            actions.push({ label: 'Delete', icon: 'delete', url: 'surat_masuk' })
+            actions.push({ label: 'Hapus', icon: 'delete', url: 'surat_masuk' })
         }
 
         return actions
@@ -638,15 +648,15 @@ class Surat_masuk extends IndexPage {
 
     // Table headers with filter config for EofficeTableWithFilter
     tableHeaders = [
-        { name: 'nomor_agenda', label: 'Nomor Agenda', width: 170, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
         { name: 'nomor_surat', label: 'Nomor Surat', width: 190, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
+        { name: 'nomor_agenda', label: 'Nomor Agenda', width: 170, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
         { name: 'asal_surat', label: 'Pengirim', width: 180, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
         { name: 'kepada_tujuan', label: 'Penerima/Tujuan', width: 190, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
         { name: 'status', label: 'Status', width: 150, align: 'center', filterType: 'select', filterPlaceholder: 'Filter...' },
         { name: 'aksi', label: 'Aksi', width: 56, align: 'center', filterType: 'none' },
     ]
 
-    tableColgroup = [170, 190, 180, 190, 150, 56]
+    tableColgroup = [190, 170, 180, 190, 150, 56]
 
     getStatusOptions = () => {
         const masterData = this.state.masterData || fallbackSuratMasukMasterData
@@ -670,13 +680,12 @@ class Surat_masuk extends IndexPage {
                 filterValues={this.state.inlineFilterValues}
                 onFilterChange={this.handleInlineFilterChange}
                 align="start"
-                minWidth={1080}
+                minWidth={936}
             >
                 {list.map(item => {
                     const rowActions = this.getRowActions(item)
                     return (
                         <tr key={this.getSuratId(item) || item.nomor_surat} className="align-top">
-                            <EofficeTableCell width={170} align="start" wrap>{item.nomor_agenda || '-'}</EofficeTableCell>
                             <EofficeTableCell width={190} align="start" wrap>
                                 <a
                                     className="color-link cursor-pointer font-semibold"
@@ -687,6 +696,7 @@ class Surat_masuk extends IndexPage {
                                     {item.nomor_surat || '-'}
                                 </a>
                             </EofficeTableCell>
+                            <EofficeTableCell width={170} align="start" wrap>{item.nomor_agenda || '-'}</EofficeTableCell>
                             <EofficeTableCell width={180} align="start" wrap>{item.asal_surat || '-'}</EofficeTableCell>
                             <EofficeTableCell width={190} align="start" wrap>{item.kepada_tujuan || '-'}</EofficeTableCell>
                             <EofficeTableCell width={150}>
@@ -714,6 +724,24 @@ class Surat_masuk extends IndexPage {
         const list = this.getFilteredSuratList()
         const canAdd = canUseEofficeAction('surat_masuk', 'add')
         const summary = this.state.summary
+        // Older API responses may provide only total; derive category counts
+        // from the loaded records so the tabs never appear falsely empty.
+        const loadedCategoryCounts = (Array.isArray(this.state.list) ? this.state.list : []).reduce((counts, item) => {
+            const category = this.getJenisPengiriman(item)
+            counts[category] += 1
+            return counts
+        }, { internal: 0, eksternal: 0 })
+        const categorySummary = {
+            ...this.state.categorySummary,
+            internal: Math.max(Number(this.state.categorySummary?.internal || 0), loadedCategoryCounts.internal),
+            eksternal: Math.max(Number(this.state.categorySummary?.eksternal || 0), loadedCategoryCounts.eksternal),
+        }
+        // Legacy records with no delivery type are treated as external by the
+        // API. Keep the same fallback when an older response only contains a total.
+        const categorizedTotal = categorySummary.internal + categorySummary.eksternal
+        if (Number(categorySummary.total || 0) > categorizedTotal) {
+            categorySummary.eksternal += Number(categorySummary.total) - categorizedTotal
+        }
 
         return (
             <>
@@ -721,9 +749,31 @@ class Surat_masuk extends IndexPage {
                     title={this.titlePage}
                     is_loading={this.state.is_loading}
                     data_btn={[]}
-                    filterTabs={<div style={{ marginTop: 16, marginBottom: 0 }}>{[['semua', 'Semua Surat'], ['internal', 'Internal'], ['eksternal', 'Eksternal']].map(([value, label]) => <button key={value} type="button" className={`btn btn-sm ${this.state.jenisPengirimanTab === value ? 'btn-info' : 'btn-outline-secondary'}`} onClick={() => this.setState(state => ({ jenisPengirimanTab: value, datafilter: { ...state.datafilter, paginate: { ...state.datafilter.paginate, page: 1 } } }), this.get)}>{label}</button>)}</div>}
+                    filterTabs={<div className="surat-masuk-pengiriman-tabs" role="tablist" aria-label="Filter pengiriman surat masuk">{[
+                        ['semua', 'Semua Surat', 'description'],
+                        ['internal', 'Internal', 'business'],
+                        ['eksternal', 'Eksternal', 'account_balance'],
+                    ].map(([value, label, icon]) => (
+                        <button
+                            key={value}
+                            type="button"
+                            role="tab"
+                            aria-selected={this.state.jenisPengirimanTab === value}
+                            className={this.state.jenisPengirimanTab === value ? 'active' : ''}
+                            onClick={() => this.setState(state => ({
+                                jenisPengirimanTab: value,
+                                datafilter: {
+                                    ...state.datafilter,
+                                    paginate: { ...state.datafilter.paginate, page: 1 },
+                                },
+                            }), this.get)}
+                        >
+                            <span className="material-icons" aria-hidden="true">{icon}</span>
+                            <span>{label} ({value === 'semua' ? categorySummary.total : categorySummary[value] || 0})</span>
+                        </button>
+                    ))}<JenisSuratTabs value={this.state.jenisSuratTab} onChange={value => this.setState({ jenisSuratTab: value })} /></div>}
                     btnCustom={
-                        <div style={{ marginTop: 16, marginBottom: 0 }}>
+                        <div className="surat-header-actions surat-masuk-header-actions" style={{ marginTop: 0, marginBottom: 0 }}>
                         <EofficeToolbar>
                             <Button
                                 className="btn-default-app btn-secondary"
@@ -757,13 +807,6 @@ class Surat_masuk extends IndexPage {
                     }}
                 />
                 <div className="container pl-4 pr-4">
-                    <div className="row mb-2">
-                        {this.renderSummaryCard('Total', summary.total, 'move_to_inbox')}
-                        {this.renderSummaryCard('Baru', summary.baru, 'mark_email_unread')}
-                        {this.renderSummaryCard('Distribusi', summary.distribusi, 'pending_actions')}
-                        {this.renderSummaryCard('Selesai', summary.selesai, 'task_alt', '#22a06b')}
-                    </div>
-
                     <EofficeCard className="p-3 mb-3">
                         {list.length > 0 ? this.renderLetterTable(list) : (
                             <EofficeEmptyState

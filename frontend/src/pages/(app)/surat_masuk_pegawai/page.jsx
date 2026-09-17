@@ -5,6 +5,7 @@ import Pagination from "components/Pagination";
 import Button from "components/Button";
 import EditDelete from "components/EditDelete";
 import EofficeTimelineModal from "components/EofficeTimelineModal";
+import JenisSuratTabs from "components/JenisSuratTabs";
 import { Modal } from "react-bootstrap";
 import IndexPage from "../IndexPage";
 import surat_distribusiModel from "hooks/models/surat_distribusiModel";
@@ -59,11 +60,13 @@ class SuratMasukPegawai extends IndexPage {
         ...this.state,
         inlineFilterValues: {},
         jenisPengirimanTab: "semua",
+        jenisSuratTab: "semua",
         listreferensi: {
             status: statusReferensi,
         },
         scopeWarning: "",
         summary: { total: 0, baru: 0, distribusi: 0, selesai: 0 },
+        categorySummary: { total: 0, internal: 0, eksternal: 0 },
         showTimelinePopup: false,
         selectedTimelineSurat: null,
         showDetailPopup: false,
@@ -144,6 +147,7 @@ class SuratMasukPegawai extends IndexPage {
         this.setState({
             list: Array.isArray(response.data) ? response.data : [],
             summary: response.summary || this.state.summary,
+            categorySummary: response.category_summary || this.state.categorySummary,
             datafilter: {
                 ...datafilter,
                 paginate: {
@@ -385,6 +389,11 @@ class SuratMasukPegawai extends IndexPage {
             ).toLowerCase()
             if (category !== "semua" && jenisPengiriman !== category) return false
 
+            const jenisSurat = String(
+                surat.jenis || surat.jenis_surat || item.jenis || item.jenis_surat || ""
+            ).toLowerCase()
+            if (this.state.jenisSuratTab !== "semua" && jenisSurat !== String(this.state.jenisSuratTab).toLowerCase()) return false
+
             const nomorSurat = String(surat.nomor_surat || "").toLowerCase()
             const asalSurat = String(surat.asal_surat || "").toLowerCase()
             const kepadaTujuan = String(surat.kepada_tujuan || "").toLowerCase()
@@ -453,20 +462,11 @@ class SuratMasukPegawai extends IndexPage {
     )
 
     getRowActions = item => {
-        const actions = []
-
-        actions.push({
-            label: "Lihat Surat",
-            icon: "visibility",
-            onClick: () => this.openDetailModal(item),
-        })
-        actions.push({
-            label: "Lihat Riwayat",
-            icon: "timeline",
-            onClick: () => this.openTimelineModal(item),
-        })
-
-        return actions
+        return [{
+            label: "Hapus",
+            icon: "delete",
+            onClick: () => this.handleDeleteDistribution(item),
+        }]
     }
 
     getSurat = item => item?.surat_masuk || item?.suratMasuk || item || {}
@@ -499,6 +499,7 @@ class SuratMasukPegawai extends IndexPage {
 
     renderLetterTable = list => (
         <EofficeTableWithFilter
+            className="surat-masuk-pegawai-table"
             headers={this.tableHeaders}
             colgroup={[190, 180, 190, 150, 110]}
             filterValues={this.state.inlineFilterValues}
@@ -783,6 +784,21 @@ class SuratMasukPegawai extends IndexPage {
     render() {
         const list = this.getVisibleList()
         const summary = this.state.summary
+        const sourceList = Array.isArray(this.state.list) ? this.state.list : []
+        const loadedCounts = sourceList.reduce((counts, item) => {
+            const surat = item.surat_masuk || item.suratMasuk || item
+            const type = String(surat.jenis_pengiriman || item.jenis_pengiriman || (surat.id_surat_keluar ? 'internal' : 'eksternal')).toLowerCase()
+            if (type === 'internal' || type === 'eksternal') counts[type] += 1
+            return counts
+        }, { internal: 0, eksternal: 0 })
+        const categorySummary = {
+            ...this.state.categorySummary,
+            internal: Math.max(Number(this.state.categorySummary?.internal || 0), loadedCounts.internal),
+            eksternal: Math.max(Number(this.state.categorySummary?.eksternal || 0), loadedCounts.eksternal),
+        }
+        const categorizedTotal = categorySummary.internal + categorySummary.eksternal
+        if (Number(categorySummary.total || 0) > categorizedTotal) categorySummary.eksternal += Number(categorySummary.total) - categorizedTotal
+        const suratCounts = { semua: categorySummary.total, internal: categorySummary.internal, eksternal: categorySummary.eksternal }
 
         return (
             <>
@@ -790,20 +806,13 @@ class SuratMasukPegawai extends IndexPage {
                     title={this.titlePage}
                     is_loading={this.state.is_loading}
                     data_btn={[]}
-                    filterTabs={<div style={{ marginTop: 16, marginBottom: 0 }}>{[["semua", "Semua Surat"], ["internal", "Internal"], ["eksternal", "Eksternal"]].map(([value, label]) => <button key={value} type="button" className={`btn btn-sm ${this.state.jenisPengirimanTab === value ? "btn-info" : "btn-outline-secondary"}`} onClick={() => this.setState({ jenisPengirimanTab: value })}>{label}</button>)}</div>}
+                    filterTabs={<div className="surat-masuk-pegawai-pengiriman-tabs" role="tablist" aria-label="Filter pengiriman surat pegawai">{[["semua", "Semua Surat", "description"], ["internal", "Internal", "business"], ["eksternal", "Eksternal", "account_balance"]].map(([value, label, icon]) => <button key={value} type="button" role="tab" aria-selected={this.state.jenisPengirimanTab === value} className={this.state.jenisPengirimanTab === value ? "active" : ""} onClick={() => this.setState({ jenisPengirimanTab: value })}><span className="material-icons" aria-hidden="true">{icon}</span><span>{label} ({suratCounts[value] || 0})</span></button>)}<JenisSuratTabs value={this.state.jenisSuratTab} onChange={value => this.setState({ jenisSuratTab: value })} /></div>}
                 />
 
                 <div className="container pl-4 pr-4">
                     {this.state.scopeWarning ? (
                         <div className="alert alert-warning">{this.state.scopeWarning}</div>
                     ) : null}
-
-                    <div className="row mb-2">
-                        {this.renderSummaryCard("Total", summary.total, "move_to_inbox")}
-                        {this.renderSummaryCard("Baru", summary.baru, "mark_email_unread")}
-                        {this.renderSummaryCard("Distribusi", summary.distribusi, "pending_actions")}
-                        {this.renderSummaryCard("Selesai", summary.selesai, "task_alt", "#22a06b")}
-                    </div>
 
                     <EofficeCard className="p-3 mb-3">
                         {list.length > 0 ? this.renderLetterTable(list) : (

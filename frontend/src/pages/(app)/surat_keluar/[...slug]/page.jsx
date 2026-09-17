@@ -46,19 +46,10 @@ class Surat_keluar_edit extends EditPage {
         nomorAgendaGenerated: false,
         nomorSuratGenerated: false,
         selectedKualifikasi: [],
-        selectedSifatMulti: [],
-        jenisSuratOptions: [
-            { label: 'Surat Undangan', value: 'Surat Undangan' },
-            { label: 'Surat Tugas', value: 'Surat Tugas' },
-            { label: 'Surat Keputusan', value: 'Surat Keputusan' },
-            { label: 'Surat Edaran', value: 'Surat Edaran' },
-            { label: 'Surat Pemberitahuan', value: 'Surat Pemberitahuan' },
-            { label: 'Surat Permohonan', value: 'Surat Permohonan' },
-            { label: 'Nota Dinas', value: 'Nota Dinas' },
-            { label: 'Memo Internal', value: 'Memo Internal' },
-            { label: 'Surat Pengantar', value: 'Surat Pengantar' },
-            { label: 'Surat Keterangan', value: 'Surat Keterangan' },
-        ],
+        jenisSuratOptions: [],
+        signLoading: false,
+        showSignaturePad: false,
+        signatureData: '',
     }
 
     componentDidMount() {
@@ -142,7 +133,9 @@ class Surat_keluar_edit extends EditPage {
             const rows = Array.isArray(response?.data) ? response.data : []
             const userOptions = rows.map(item => ({
                 value: item.id_user || item.id,
-                label: item.nama || item.name || item.email || `User ${item.id_user || item.id}`,
+                label: [item.nama || item.name || item.email || `User ${item.id_user || item.id}`, item.nama_group]
+                    .filter(Boolean)
+                    .join(' - '),
                 email: item.email || '',
             }))
             this.setState({ userOptions })
@@ -167,71 +160,36 @@ class Surat_keluar_edit extends EditPage {
                 console.log('[loadTemplates] First item:', list[0])
             }
 
-            const defaults = this.getDefaultTemplates()
-            this.setState({ templates: list.length > 0 ? list : defaults })
+            this.setState({ templates: list })
         } catch (error) {
             console.error('[loadTemplates] Error:', error?.response?.status, error?.response?.data || error?.message)
-            // Fallback to defaults on error
-            this.setState({ templates: this.getDefaultTemplates() })
+            // Do not present hard-coded IDs: a template must be selected from
+            // the server because it is the source of truth for jenis surat.
+            this.setState({ templates: [] })
         }
     }
 
-    getDefaultTemplates = () => [
-        { id_surat_template: '1', nama: 'Surat Permohonan',           nama_template: 'Surat Permohonan' },
-        { id_surat_template: '2', nama: 'Surat Undangan',             nama_template: 'Surat Undangan' },
-        { id_surat_template: '3', nama: 'Surat Undangan Rapat',        nama_template: 'Surat Undangan Rapat' },
-        { id_surat_template: '4', nama: 'Surat Undangan Pelatihan',     nama_template: 'Surat Undangan Pelatihan' },
-        { id_surat_template: '5', nama: 'Surat MOU / MoU',             nama_template: 'Surat MOU / MoU' },
-        { id_surat_template: '6', nama: 'Surat Tugas',                 nama_template: 'Surat Tugas' },
-        { id_surat_template: '7', nama: 'Surat Keputusan',              nama_template: 'Surat Keputusan' },
-        { id_surat_template: '8', nama: 'Surat Edaran',                nama_template: 'Surat Edaran' },
-        { id_surat_template: '9', nama: 'Surat Pemberitahuan',          nama_template: 'Surat Pemberitahuan' },
-        { id_surat_template: '10', nama: 'Nota Dinas',                  nama_template: 'Nota Dinas' },
-        { id_surat_template: '11', nama: 'Memo Internal',               nama_template: 'Memo Internal' },
-        { id_surat_template: '12', nama: 'Surat Pengantar',            nama_template: 'Surat Pengantar' },
-        { id_surat_template: '13', nama: 'Surat Keterangan',           nama_template: 'Surat Keterangan' },
-    ]
-
     loadJenisSuratOptions = async () => {
-        const defaultOptions = [
-            { label: 'Surat Undangan', value: 'Surat Undangan' },
-            { label: 'Surat Tugas', value: 'Surat Tugas' },
-            { label: 'Surat Keputusan', value: 'Surat Keputusan' },
-            { label: 'Surat Edaran', value: 'Surat Edaran' },
-            { label: 'Surat Pemberitahuan', value: 'Surat Pemberitahuan' },
-            { label: 'Surat Permohonan', value: 'Surat Permohonan' },
-            { label: 'Nota Dinas', value: 'Nota Dinas' },
-            { label: 'Memo Internal', value: 'Memo Internal' },
-            { label: 'Surat Pengantar', value: 'Surat Pengantar' },
-            { label: 'Surat Keterangan', value: 'Surat Keterangan' },
-        ]
         try {
-            const { getapi_services } = api_services({ api_path: '/surat_template/jenis-options' })
+            const { getapi_services } = api_services({ api_path: '/surat_masuk/master-data' })
             const response = await getapi_services({})
             if (response?.error || response?.code) {
-                this.setState({ jenisSuratOptions: defaultOptions })
+                this.setState({ jenisSuratOptions: [] })
                 return
             }
-            const rows = Array.isArray(response?.data) ? response.data : []
-            // If API returns no data, keep defaults
-            if (rows.length === 0) {
-                this.setState({ jenisSuratOptions: defaultOptions })
-                return
-            }
-            // Merge API results with defaults, avoiding duplicates
-            const apiOptions = rows.map(item => ({
+            const rows = Array.isArray(response?.data?.jenis) ? response.data.jenis : []
+            const options = rows.map(item => ({
                 value: item.value || item.nama || item,
                 label: item.label || item.nama || item,
             }))
-            const existingValues = new Set(defaultOptions.map(o => o.value))
-            for (const opt of apiOptions) {
-                if (!existingValues.has(opt.value)) {
-                    defaultOptions.push(opt)
+            this.setState({ jenisSuratOptions: options }, () => {
+                const selectedTemplate = this.state.datainsert?.id_surat_template
+                if (selectedTemplate && !this.state.datainsert?.jenis) {
+                    this.applyTemplate(selectedTemplate)
                 }
-            }
-            this.setState({ jenisSuratOptions: defaultOptions })
+            })
         } catch (error) {
-            this.setState({ jenisSuratOptions: defaultOptions })
+            this.setState({ jenisSuratOptions: [] })
         }
     }
 
@@ -492,12 +450,15 @@ class Surat_keluar_edit extends EditPage {
         const templateKualifikasi = template?.kualifikasi || template?.kualifikasi_surat || ''
         const kualifikasiList = templateKualifikasi ? templateKualifikasi.split(',').map(k => k.trim()).filter(Boolean) : []
 
-        // Parse multi-value sifat from template
-        const templateSifat = template?.sifat || template?.sifat_surat || ''
-        const sifatList = templateSifat ? templateSifat.split(',').map(s => s.trim()).filter(Boolean) : []
-
-        // Extract google_drive_url from template
         const templateName = template?.nama_template || template?.nama || ''
+        const normalizeJenis = value => String(value || '').trim().toLocaleLowerCase('id')
+        const templateJenisSource = template?.jenis_surat || template?.jenis || templateName
+        const matchedJenis = this.state.jenisSuratOptions.find(option =>
+            normalizeJenis(option.value) === normalizeJenis(templateJenisSource)
+            || normalizeJenis(option.label) === normalizeJenis(templateJenisSource)
+            || normalizeJenis(option.value) === normalizeJenis(templateName)
+        )
+        const templateJenis = String(matchedJenis?.value || template?.jenis_surat || template?.jenis || '').trim()
         const templateGoogleDriveUrl = template?.drive_document_url || template?.google_drive_url || template?.drive_url || template?.google_drive_link || template?.office365_document_url || ''
 
         this.setState(state => ({
@@ -505,15 +466,17 @@ class Surat_keluar_edit extends EditPage {
                 ...state.datainsert,
                 id_surat_template: templateId,
                 template_nama: templateName,
-                isi_surat: template?.isi_template || template?.content || state.datainsert.isi_surat || '',
-                ringkasan: template?.deskripsi || state.datainsert.ringkasan || '',
-                jenis: templateName,
-                template_file_path: template?.file_path || template?.file_draft_path || '',
+                // Copy template values into this new surat draft. Do not keep
+                // the previous draft values when the selected template is empty.
+                isi_surat: template?.isi_template ?? template?.content ?? '',
+                ringkasan: template?.deskripsi ?? '',
+                template_file_path: template?.file_path ?? template?.file_draft_path ?? '',
                 template_google_drive_url: templateGoogleDriveUrl,
-                klasifikasi: kualifikasiList.length ? kualifikasiList.join(', ') : state.datainsert.klasifikasi,
+                // Jenis surat mengikuti jenis yang didefinisikan pada template.
+                jenis: templateJenis,
+                klasifikasi: kualifikasiList.join(', '),
             },
             selectedKualifikasi: kualifikasiList.length ? kualifikasiList : state.selectedKualifikasi,
-            selectedSifatMulti: sifatList.length ? sifatList : state.selectedSifatMulti,
         }))
     }
 
@@ -528,22 +491,6 @@ class Surat_keluar_edit extends EditPage {
                 datainsert: {
                     ...state.datainsert,
                     klasifikasi: newSelected.join(', '),
-                }
-            }
-        })
-    }
-
-    handleSifatToggle = (value) => {
-        this.setState(state => {
-            const current = state.selectedSifatMulti
-            const newSelected = current.includes(value)
-                ? current.filter(v => v !== value)
-                : [...current, value]
-            return {
-                selectedSifatMulti: newSelected,
-                datainsert: {
-                    ...state.datainsert,
-                    sifat: newSelected.join(', '),
                 }
             }
         })
@@ -617,8 +564,24 @@ class Surat_keluar_edit extends EditPage {
             <div style={{ minHeight: 'calc(100vh - 92px)', background: '#fff', border: '1px solid #d6dce1', borderRadius: 6, overflow: 'hidden' }}>
                 <div className="d-flex align-items-center justify-content-between" style={{ minHeight: 52, padding: '0 14px', borderBottom: '1px solid #d6dce1' }}>
                     <h1 className="mb-0" style={{ fontSize: 22, fontWeight: 500 }}>Detail Surat Keluar</h1>
-                    <button type="button" aria-label="Tutup detail" onClick={closePage} style={{ border: 0, borderRadius: 6, width: 30, height: 30, background: '#f28b8b', color: '#fff', fontSize: 22 }}>×</button>
+                    <div className="d-flex align-items-center gap-2">
+                        <button type="button" aria-label="Tutup detail" onClick={closePage} style={{ border: 0, borderRadius: 6, width: 30, height: 30, background: '#f28b8b', color: '#fff', fontSize: 22 }}>×</button>
+                    </div>
                 </div>
+                {this.state.showSignaturePad && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 1050, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div className="bg-white rounded p-4" style={{ width: 460, maxWidth: '94vw' }}>
+                            <h3 style={{ fontSize: 18 }}>Gambar Tanda Tangan</h3>
+                            <p className="text-muted" style={{ fontSize: 12 }}>Gunakan mouse atau jari pada area di bawah.</p>
+                            <canvas ref={node => { this.signatureCanvas = node }} width="420" height="180" style={{ width: '100%', border: '1px solid #cbd5e1', touchAction: 'none' }} onMouseDown={this.beginSignature} onMouseMove={this.drawSignature} onMouseUp={this.endSignature} onMouseLeave={this.endSignature} />
+                            <div className="d-flex justify-content-end gap-2 mt-3">
+                                <button type="button" className="btn btn-light" onClick={() => this.setState({ showSignaturePad: false })}>Batal</button>
+                                <button type="button" className="btn btn-secondary" onClick={this.clearSignature}>Bersihkan</button>
+                                <button type="button" className="btn btn-info text-white" onClick={this.saveDrawnSignature} disabled={this.state.signLoading}>Simpan Tanda Tangan</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <div className="d-flex flex-column flex-xl-row" style={{ gap: 12, padding: 12, minHeight: 'calc(100vh - 145px)' }}>
                     <div style={{ flex: '0 0 30%', minWidth: 280 }}>
                         <div className="border rounded p-3 h-100" style={{ background: '#fff' }}>
@@ -680,6 +643,12 @@ class Surat_keluar_edit extends EditPage {
                             <div className="font-semibold mb-2">Status Arsip</div>
                             <div className={data.sudah_diarsipkan ? 'text-success' : 'text-warning'} style={{ fontSize: 13 }}>{data.sudah_diarsipkan ? 'Surat ini sudah diarsipkan.' : 'Surat ini belum diarsipkan.'}</div>
                         </div>
+                        {['approved', 'disetujui'].includes(String(data.status || '').toLowerCase()) && (
+                            <button type="button" className="btn-default-app btn-info mt-2" onClick={this.signApprovedLetter} disabled={this.state.signLoading} style={{ width: 'auto', height: 36, fontSize: 12, padding: '4px 12px' }}>
+                                <span className="material-icons mr-1" style={{ fontSize: 15 }}>draw</span>
+                                {this.state.signLoading ? 'Memproses...' : 'Tanda Tangani'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -711,6 +680,54 @@ class Surat_keluar_edit extends EditPage {
         }
     }
 
+    signApprovedLetter = async () => {
+        const id = this.id || this.state.datainsert?.id_surat_keluar
+        if (!id || this.state.signLoading) return
+
+        this.setState({ showSignaturePad: true, signatureData: '' })
+    }
+
+    saveDrawnSignature = async () => {
+        const id = this.id || this.state.datainsert?.id_surat_keluar
+        const signatureData = this.signatureCanvas?.toDataURL('image/png')
+        if (!signatureData || !this.signatureHasInk) {
+            showToastr('error', 'Silakan gambar tanda tangan terlebih dahulu.')
+            return
+        }
+        this.setState({ signLoading: true })
+        try {
+            const response = await axios.post(`/api/surat_keluar/${id}/sign`, { signature_data: signatureData })
+            if (!response?.data?.success) throw new Error(response?.data?.message || 'Surat gagal ditandatangani.')
+            showToastr('success', response.data.message || 'Surat berhasil ditandatangani.')
+            await this.getid()
+        } catch (error) {
+            showToastr('error', error?.response?.data?.message || error.message || 'Surat gagal ditandatangani.')
+        } finally {
+            this.setState({ signLoading: false, showSignaturePad: false })
+        }
+    }
+
+    beginSignature = event => {
+        const rect = this.signatureCanvas.getBoundingClientRect()
+        const ctx = this.signatureCanvas.getContext('2d')
+        ctx.beginPath(); ctx.moveTo(event.clientX - rect.left, event.clientY - rect.top)
+        this.signatureDrawing = true; this.signatureHasInk = true
+    }
+
+    drawSignature = event => {
+        if (!this.signatureDrawing) return
+        const rect = this.signatureCanvas.getBoundingClientRect(); const ctx = this.signatureCanvas.getContext('2d')
+        ctx.lineTo(event.clientX - rect.left, event.clientY - rect.top); ctx.stroke()
+    }
+
+    endSignature = () => { this.signatureDrawing = false }
+
+    clearSignature = () => {
+        if (!this.signatureCanvas) return
+        const ctx = this.signatureCanvas.getContext('2d'); ctx.clearRect(0, 0, this.signatureCanvas.width, this.signatureCanvas.height)
+        this.signatureHasInk = false
+    }
+
     renderTemplateSelector = () => {
         const selectedTemplate = this.state.datainsert?.id_surat_template
         const templateDriveUrl = this.getTemplateGoogleDriveUrl()
@@ -726,8 +743,9 @@ class Surat_keluar_edit extends EditPage {
                                 value={this.state.datainsert.id_surat_template || ''}
                                 onChange={event => this.applyTemplate(event.target.value)}
                                 disabled={this.state.is_disabled}
+                                required
                             >
-                                <option value="">Pilih template</option>
+                                <option value="">Pilih template surat</option>
                                 {this.state.templates.map(item => (
                                     <option key={item?.id_surat_template || item?.id} value={item?.id_surat_template || item?.id}>
                                         {item?.nama_template || item?.nama || item?.file_path}
@@ -754,7 +772,7 @@ class Surat_keluar_edit extends EditPage {
                                             <strong>Langkah:</strong> Klik tombol di bawah → edit surat di Google Docs → kembali ke sini → lengkapi data → Kirim.
                                         </div>
                                         <a
-                                            href={templateDriveUrl}
+                                            href={templateDriveUrl.replace(/\/edit(?:\?.*)?$/i, '/preview')}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="btn btn-primary d-inline-flex align-items-center gap-1"
@@ -766,7 +784,7 @@ class Surat_keluar_edit extends EditPage {
                                                 <path d="M21.5 34.3L21.5 24.8C21.5 21.8 24 19.3 27 19.3C30 19.3 32.5 21.8 32.5 24.8L32.5 34.3C32.5 37.3 30 39.8 27 39.8C24 39.8 21.5 37.3 21.5 34.3Z" fill="#fff"/>
                                                 <path d="M12 34.3L12 24.8C12 21.8 14.5 19.3 17.5 19.3C20.5 19.3 23 21.8 23 24.8L23 34.3C23 37.3 20.5 39.8 17.5 39.8C14.5 39.8 12 37.3 12 34.3Z" fill="#fff"/>
                                             </svg>
-                                            Buka & Edit Surat di Google Docs
+                                            Lihat Template (Read-only)
                                         </a>
                                     </div>
                                 ) : (
@@ -991,32 +1009,19 @@ class Surat_keluar_edit extends EditPage {
                 <div className="row g-3">
                     {this.renderTemplateSelector()}
 
-                    {/* Jenis surat otomatis mengikuti template yang dipilih. */}
+                    {/* Jenis Surat selalu mengikuti Template Surat yang dipilih. */}
                     <div className="col-12">
                         <div className="border rounded p-3" style={{ background: '#f8fbfc' }}>
                             <div className="row g-3">
                                 <div className="col-12">
                                     <FormGroup label="Jenis Surat" formCol noMb>
-                                        <select
+                                        <input
                                             className="form-control"
                                             value={this.state.datainsert.jenis || ''}
-                                            onChange={e => this.handleChange('jenis', e.target.value)}
-                                            disabled={this.state.is_disabled || Boolean(this.state.datainsert.id_surat_template)}
-                                        >
-                                            <option value="">-- Pilih Jenis --</option>
-                                            {this.state.jenisSuratOptions.map(opt => (
-                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                            ))}
-                                            {this.state.datainsert.template_nama && !this.state.jenisSuratOptions.some(opt => String(opt.value) === String(this.state.datainsert.template_nama)) ? (
-                                                <option value={this.state.datainsert.template_nama}>{this.state.datainsert.template_nama}</option>
-                                            ) : null}
-                                        </select>
-                                        {this.state.datainsert.template_nama && (
-                                            <small className="text-success" style={{ fontSize: 11 }}>
-                                                <span className="material-icons" style={{ fontSize: 11, verticalAlign: 'middle' }}>check_circle</span>
-                                                Otomatis dari template: {this.state.datainsert.template_nama}
-                                            </small>
-                                        )}
+                                            placeholder="Pilih Template Surat terlebih dahulu"
+                                            readOnly
+                                        />
+                                        <small className="text-muted d-block mt-1">Terisi otomatis dari Template Surat dan tidak perlu dipilih manual.</small>
                                     </FormGroup>
                                 </div>
                             </div>

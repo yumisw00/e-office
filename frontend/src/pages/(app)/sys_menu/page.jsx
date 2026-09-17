@@ -150,13 +150,13 @@ const Sys_menu = props => {
                                 field="opsi"
                                 title="Aksi"
                                 align="center"
-                                width={200}
+                                width={104}
                                 render={({ row }) => (
-                                    <div className="flex align-center justify-center td-action">
+                                    <div className="sys-menu-actions flex align-center justify-center td-action">
                                         <BtnIconAct
                                             className="btn-info"
                                             icon="menu"
-                                            label="Action"
+                                            tooltips="Kelola aksi"
                                             onTap={() => {
                                                 setdatasidebar(row)
                                                 setsys_action_sidebar(true)

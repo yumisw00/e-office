@@ -21,6 +21,8 @@ const BtnIconAct = (props) => {
     if (props.icon == 'edit') {
         btn = 'btn-warning'
     }
+    const buttonClass = props.className || btn
+    const actionLabel = props.tooltips || props.ariaLabel || props.label || props.icon || 'Aksi'
 
     if (is_page_readonly && !props.abaikan_is_page_readonly) {
         return null
@@ -37,8 +39,10 @@ const BtnIconAct = (props) => {
                 <NavLink
                     blank={props.blank ? props.blank : null}
                     href={props.href}
+                    aria-label={actionLabel}
+                    title={actionLabel}
                     active={false}>
-                    <div className={`btn-icon-act rounded-sm  ${props.className ? props.className : ''} ${props.label ? 'width-auto pl-1 pr-1' : ''}`}>
+                    <div className={`btn-icon-act rounded-sm ${buttonClass} ${props.label ? 'width-auto pl-1 pr-1' : ''}`}>
                         {!props.right ? (
                             <span className={`material-icons icon-btn-left ${props.classNameColorText ? props.classNameColorText : ''}`}>{props.icon}</span>
                         ) : null}
@@ -57,7 +61,7 @@ const BtnIconAct = (props) => {
     if (props.tooltips) {
         return (
             <Links title={props.tooltips} id={props.tooltips}>
-                <div className={`btn-icon-act rounded-sm ${props.className ? props.className : ''} ${props.label ? 'width-auto pl-1 pr-1' : ''}`} onClick={props.onTap ? props.onTap : null}>
+                <button type="button" aria-label={actionLabel} className={`btn-icon-act rounded-sm ${buttonClass} ${props.label ? 'width-auto pl-1 pr-1' : ''}`} onClick={props.onTap ? props.onTap : null}>
                     {!props.right ? (
                         <span className={`material-icons icon-btn-left ${props.classNameColorText ? props.classNameColorText : ''}`}>{props.icon}</span>
                     ) : null}
@@ -67,14 +71,16 @@ const BtnIconAct = (props) => {
                     {props.right ? (
                         <span className={`material-icons icon-btn-left ${props.classNameColorText ? props.classNameColorText : ''}`}>{props.icon}</span>
                     ) : null}
-                </div>
+                </button>
             </Links>
         )
     }
     return (
         <>
-            <div
-                style={{ width: props.width ? props.width : "auto", height: props.width ? props.width : "auto" }} className={`btn-icon-act rounded-sm pt-1 ${props.className ? props.className : ''} ${props.label ? 'width-auto pl-1 pr-1' : ''}`}
+            <button
+                type="button"
+                aria-label={actionLabel}
+                style={{ width: props.width ? props.width : "auto", height: props.width ? props.width : "auto" }} className={`btn-icon-act rounded-sm pt-1 ${buttonClass} ${props.label ? 'width-auto pl-1 pr-1' : ''}`}
                 onClick={() => {
                     if (props.onTap) {
                         props.onTap()
@@ -95,7 +101,7 @@ const BtnIconAct = (props) => {
                 {props.right ? (
                     <span className={`material-icons icon-btn-left ${props.classNameColorText ? props.classNameColorText : ''}`}>{props.icon}</span>
                 ) : null}
-            </div>
+            </button>
 
         </>
     )

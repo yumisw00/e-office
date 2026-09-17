@@ -162,10 +162,10 @@ const Sys_group = (props) => {
                                         <td className='border'>{m.nama}</td>
                                         <td className='border'>
                                             <div className='flex align-center justify-center td-action'>
-                                                <BtnIconAct
-                                                    className="btn-info"
-                                                    icon="menu"
-                                                    label="Action"
+                                                    <BtnIconAct
+                                                        className="btn-info"
+                                                        icon="menu"
+                                                        tooltips="Kelola aksi"
                                                     onTap={() => {
                                                         setdatasidebar(m)
                                                         setsys_action_sidebar(true)

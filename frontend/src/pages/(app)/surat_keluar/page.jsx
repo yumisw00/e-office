@@ -3,12 +3,13 @@
 import HeaderApp from "components/HeaderApp";
 import Pagination from "components/Pagination";
 import EditDelete from "components/EditDelete";
+import JenisSuratTabs from "components/JenisSuratTabs";
 import Button from "components/Button";
 import IndexPage from "../IndexPage";
 import surat_keluarModel from "hooks/models/surat_keluarModel";
 import Surat_keluar_edit from "./[...slug]/page";
 import { formatDateApp } from "pages/Utils";
-import { canUseEofficeAction, getEofficeRole, getStoredUserLogin } from "lib/eofficeAccess";
+import { canUseEofficeAction } from "lib/eofficeAccess";
 import EofficeTimelineModal from "components/EofficeTimelineModal";
 import {
     EofficeBadge,
@@ -36,9 +37,20 @@ const statusReferensi = {
     arsip: 'Diarsipkan',
 }
 
-const statusOptionsUnik = Object.entries(statusReferensi)
-    .filter(([, label], index, entries) => entries.findIndex(([, firstLabel]) => firstLabel === label) === index)
-    .map(([key, label]) => ({ value: key, label }))
+const statusOptionsUnik = [
+    { value: 'diproses', label: 'Diproses' },
+    { value: 'dikirim', label: 'Dikirim' },
+    { value: 'selesai', label: 'Selesai' },
+    { value: 'diarsipkan', label: 'Diarsipkan' },
+]
+
+const normalizeBusinessStatus = status => {
+    const value = String(status || '').toLowerCase()
+    if (['sent', 'dikirim'].includes(value)) return 'dikirim'
+    if (['completed', 'complete', 'done', 'selesai'].includes(value)) return 'selesai'
+    if (['archived', 'archive', 'arsip', 'diarsipkan'].includes(value)) return 'diarsipkan'
+    return 'diproses'
+}
 
 class Surat_keluar extends IndexPage {
     titlePage = ""
@@ -69,6 +81,7 @@ class Surat_keluar extends IndexPage {
         selectedSurat: null,
         inlineFilterValues: {},
         jenisPengirimanTab: 'semua',
+        jenisSuratTab: 'semua',
         summary: { total: 0, draft: 0, proses: 0, selesai: 0, internal: 0, eksternal: 0 },
         categorySummary: { total: 0, draft: 0, proses: 0, selesai: 0, internal: 0, eksternal: 0 },
         listreferensi: {
@@ -89,35 +102,17 @@ class Surat_keluar extends IndexPage {
     }
 
     getRowActions = item => {
-        const suratId = this.getItemId(item)
         const actions = [{
-            label: 'Detail',
-            icon: 'visibility',
-            href: `/surat_keluar/detail/${suratId}`,
-            blank: true,
-        }]
-
-        actions.push({
             label: 'Cetak',
             icon: 'print',
             onClick: () => this.printItem(item),
-        })
-
-        actions.push({
-            label: 'Timeline',
-            icon: 'timeline',
-            onClick: () => this.openTimeline(item),
-        })
-
-        actions.push({
+        }, {
             label: 'Info TTD',
             icon: 'draw',
             onClick: () => this.openSignatureInfo(item),
-        })
+        }]
 
-        if (canUseEofficeAction('surat_keluar', 'delete')) {
-            actions.push({ label: 'Delete', icon: 'delete', url: 'surat_keluar' })
-        }
+        actions.push({ label: 'Hapus', icon: 'delete', url: 'surat_keluar' })
 
         return actions
     }
@@ -154,16 +149,6 @@ class Surat_keluar extends IndexPage {
             filterarr.jenis_pengiriman = this.state.jenisPengirimanTab
         }
 
-        const user = getStoredUserLogin()
-        const role = getEofficeRole(user)
-        const userId = user?.id_user || user?.user?.id_user || user?.id || user?.user?.id
-
-        // Setiap role operasional, termasuk pimpinan, hanya melihat surat yang
-        // dibuat oleh akunnya. Approval pimpinan tersedia pada menu Approval.
-        if (userId && !['admin_sistem', 'admin_konten'].includes(role)) {
-            filterarr.created_by = userId
-        }
-
         this.setState({ is_loading: true })
         const response = await this.model.get({
             filter: {
@@ -178,7 +163,13 @@ class Surat_keluar extends IndexPage {
 
         this.setState({
             list: response.data,
-            summary: response.summary || { total: 0, draft: 0, proses: 0, selesai: 0, internal: 0, eksternal: 0 },
+            // total_records berasal dari paginator setelah seluruh scope akses
+            // role dan filter diterapkan; ini adalah jumlah yang sama dengan
+            // jumlah data Surat Keluar sebenarnya, bukan jumlah halaman aktif.
+            summary: {
+                ...(response.summary || { total: 0, draft: 0, proses: 0, selesai: 0, internal: 0, eksternal: 0 }),
+                total: response.total_records ?? response.summary?.total ?? 0,
+            },
             categorySummary: response.category_summary || response.summary || { total: 0, draft: 0, proses: 0, selesai: 0, internal: 0, eksternal: 0 },
             datafilter: {
                 ...datafilter,
@@ -224,18 +215,9 @@ class Surat_keluar extends IndexPage {
     getFilteredSuratKeluarList = () => {
         const filters = this.state.inlineFilterValues
         const list = Array.isArray(this.state.list) ? this.state.list : []
-        const category = this.state.jenisPengirimanTab
-        const user = getStoredUserLogin()
-        const role = getEofficeRole(user)
-        const userId = user?.id_user || user?.user?.id_user || user?.id || user?.user?.id
-        const isAdmin = ['admin_sistem', 'admin_konten'].includes(role)
 
         return list.filter(item => {
-            if (category !== 'semua' && String(item.jenis_pengiriman || (item.tujuan_id ? 'internal' : 'eksternal')).toLowerCase() !== category) return false
-            // Surat internal untuk penerima hanya boleh ada di Surat Masuk.
-            // Surat Keluar selalu dibatasi pada surat yang dibuat akun aktif.
-            if (!isAdmin && (!userId || String(item.created_by) !== String(userId))) return false
-
+            if (this.state.jenisSuratTab !== 'semua' && String(item.jenis || '').toLowerCase() !== String(this.state.jenisSuratTab).toLowerCase()) return false
             // Nomor Surat filter
             if (filters.nomor_surat) {
                 const search = filters.nomor_surat.toLowerCase()
@@ -248,10 +230,25 @@ class Surat_keluar extends IndexPage {
             }
             // Status filter (dropdown select - match by value)
             if (filters.status) {
-                if (String(item.status || '') !== String(filters.status)) return false
+                if (normalizeBusinessStatus(item.status) !== filters.status) return false
             }
             return true
         })
+    }
+
+    formatTujuan = item => {
+        if (item.jenis_pengiriman !== 'internal' || !item.penerima_internal?.length) {
+            return item.tujuan_nama || '-'
+        }
+
+        return item.penerima_internal
+            .map(recipient => {
+                const name = recipient?.name || ''
+                const role = recipient?.nama_group || ''
+                return role ? `${name} (${role})` : name
+            })
+            .filter(Boolean)
+            .join(', ') || '-'
     }
 
     getCellStyle = header => ({
@@ -278,9 +275,14 @@ class Surat_keluar extends IndexPage {
 
     openSignatureInfo = item => {
         const params = new URLSearchParams({
+            id: this.getItemId(item) || '',
             nomor_surat: item?.nomor_surat || item?.kode_draft || '',
+            tanggal_surat: item?.tanggal_surat || '',
             penandatangan: item?.nama_penandatangan || item?.penandatangan_nama || '',
-            tanggal_ttd: item?.signed_at || item?.tanggal_ttd || '',
+            jabatan: item?.jabatan_penandatangan || '',
+            nip: item?.nip_penandatangan || '',
+            tanggal_ttd: item?.signed_at || item?.tanggal_ttd || item?.tanggal_tanda_tangan || '',
+            status: item?.status_ttd || item?.status_signature || (['signed', 'ditandatangani'].includes(String(item?.status || '').toLowerCase()) ? 'signed' : 'pending'),
         })
 
         window.open(`/informasi_tanda_tangan_surat?${params.toString()}`, '_blank')
@@ -402,14 +404,14 @@ class Surat_keluar extends IndexPage {
 
     // Table headers with filter config for EofficeTableWithFilter
     tableHeaders = [
-        { name: 'nomor_agenda', label: 'Nomor Agenda', width: 170, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
         { name: 'nomor_surat', label: 'Nomor Surat', width: 220, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
+        { name: 'nomor_agenda', label: 'Nomor Agenda', width: 170, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
         { name: 'tujuan_nama', label: 'Kepada/Tujuan', width: 240, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
-        { name: 'status', label: 'Status', width: 140, align: 'center', filterType: 'select', filterPlaceholder: 'Filter...' },
-        { name: 'aksi', label: 'Aksi', width: 130, align: 'center', filterType: 'none' },
+        { name: 'status', label: 'Status', width: 110, align: 'center', filterType: 'select', filterPlaceholder: 'Filter...' },
+        { name: 'aksi', label: 'Aksi', width: 100, align: 'center', filterType: 'none' },
     ]
 
-    tableColgroup = [170, 220, 240, 140, 130]
+    tableColgroup = [220, 170, 240, 110, 100]
 
     renderSuratKeluarTable = list => {
         const statusOptions = this.getStatusOptions()
@@ -422,21 +424,19 @@ class Surat_keluar extends IndexPage {
 
         return (
             <EofficeTableWithFilter
+                className="surat-keluar-table"
                 headers={headersWithOptions}
                 colgroup={this.tableColgroup}
                 filterValues={this.state.inlineFilterValues}
                 onFilterChange={this.handleInlineFilterChange}
                 align="start"
-                minWidth={1030}
+                minWidth={900}
             >
                 {list.map(item => {
                     const rowActions = this.getRowActions(item)
 
                     return (
                         <tr key={this.getItemId(item) || item.kode_draft} className="align-top">
-                            <EofficeTableCell width={170} align="start" wrap>
-                                {item.nomor_agenda || '-'}
-                            </EofficeTableCell>
                             <EofficeTableCell width={220} align="start" wrap>
                                 <a
                                     className="color-link font-semibold"
@@ -448,14 +448,17 @@ class Surat_keluar extends IndexPage {
                                     {item.nomor_surat || '-'}
                                 </a>
                             </EofficeTableCell>
+                            <EofficeTableCell width={170} align="start" wrap>
+                                {item.nomor_agenda || '-'}
+                            </EofficeTableCell>
                             <EofficeTableCell width={240} align="start" wrap>
-                                {item.tujuan_nama || '-'}
+                                {this.formatTujuan(item)}
                             </EofficeTableCell>
-                            <EofficeTableCell width={140}>
-                                <EofficeStatusBadge value={item.status || 'draft'} label={this.capitalizeFirst(statusReferensi[item.status] || item.status || 'Draft')} />
+                            <EofficeTableCell width={110}>
+                                <EofficeStatusBadge value={normalizeBusinessStatus(item.status)} label={statusOptionsUnik.find(option => option.value === normalizeBusinessStatus(item.status))?.label} />
                             </EofficeTableCell>
-                            <EofficeTableCell width={130} style={{ paddingLeft: 6, paddingRight: 6 }}>
-                                <div className="d-flex align-items-center justify-content-center td-action">
+                            <EofficeTableCell width={100} className="surat-keluar-action-cell">
+                                <div className="surat-keluar-actions td-action">
                                     <EditDelete
                                         data={rowActions}
                                         id={this.getItemId(item)}
@@ -474,7 +477,14 @@ class Surat_keluar extends IndexPage {
         const list = this.getFilteredSuratKeluarList()
         const canAdd = canUseEofficeAction('surat_keluar', 'add')
         const summary = this.state.summary
-        const categorySummary = this.state.categorySummary
+        // Tab totals come from the unfiltered, visibility-scoped category summary.
+        // Keep a fallback to the current summary for older API responses.
+        const categorySummary = this.state.categorySummary || summary || {}
+        const tabCounts = {
+            semua: categorySummary.total ?? summary.total ?? 0,
+            internal: categorySummary.internal ?? 0,
+            eksternal: categorySummary.eksternal ?? 0,
+        }
 
         return (
             <>
@@ -482,13 +492,13 @@ class Surat_keluar extends IndexPage {
                     title={this.titlePage}
                     is_loading={this.state.is_loading}
                     data_btn={[]}
-                    filterTabs={<div style={{ marginTop: 16, marginBottom: 0 }}>{[
-                        ['semua', 'Semua Surat', categorySummary.total],
-                        ['internal', 'Internal', categorySummary.internal],
-                        ['eksternal', 'Eksternal', categorySummary.eksternal],
-                    ].map(([value, label, count]) => <button key={value} type="button" className={`btn btn-sm ${this.state.jenisPengirimanTab === value ? 'btn-info' : 'btn-outline-secondary'}`} onClick={() => { this.setState(state => ({ jenisPengirimanTab: value, datafilter: { ...state.datafilter, paginate: { ...state.datafilter.paginate, page: 1 } } }), this.get) }}>{label} ({count || 0})</button>)}</div>}
+                    filterTabs={<div className="surat-keluar-pengiriman-tabs" role="tablist" aria-label="Filter pengiriman surat keluar">{[
+                        ['semua', 'Semua Surat', 'description'],
+                        ['internal', 'Internal', 'business'],
+                        ['eksternal', 'Eksternal', 'account_balance'],
+                    ].map(([value, label, icon]) => <button key={value} type="button" role="tab" aria-selected={this.state.jenisPengirimanTab === value} className={this.state.jenisPengirimanTab === value ? 'active' : ''} onClick={() => { this.setState(state => ({ jenisPengirimanTab: value, datafilter: { ...state.datafilter, paginate: { ...state.datafilter.paginate, page: 1 } } }), this.get) }}><span className="material-icons" aria-hidden="true">{icon}</span><span>{label} ({tabCounts[value]})</span></button>)}<JenisSuratTabs value={this.state.jenisSuratTab} onChange={value => this.setState({ jenisSuratTab: value })} /></div>}
                     btnCustom={
-                        <div style={{ marginTop: 16, marginBottom: 0 }}>
+                        <div className="surat-header-actions surat-keluar-header-actions" style={{ marginTop: 0, marginBottom: 0 }}>
                         <EofficeToolbar>
                             {canAdd ? (
                                 <Button
@@ -508,13 +518,6 @@ class Surat_keluar extends IndexPage {
                 />
 
                 <div className="container pl-4 pr-4">
-                    <div className="row mb-2">
-                        {this.renderSummaryCard('Total', summary.total, 'outbox')}
-                        {this.renderSummaryCard('Draft', summary.draft, 'edit_document')}
-                        {this.renderSummaryCard('Proses', summary.proses, 'pending_actions')}
-                        {this.renderSummaryCard('Selesai', summary.selesai, 'task_alt', '#22a06b')}
-                    </div>
-
                     <EofficeCard className="p-3 mb-3">
                         {list.length > 0 ? this.renderSuratKeluarTable(list) : (
                             <EofficeEmptyState

@@ -147,11 +147,15 @@ export const EofficeTable = ({
 }) => {
     const isActionHeader = header => typeof header !== 'string'
         && ['aksi', 'action'].includes(String(header.name || header.label || '').trim().toLowerCase())
-    const resolveColumnWidth = (header, fallbackWidth) => isActionHeader(header) ? 60 : fallbackWidth
+    // Most tables use a compact action column, but modules with several
+    // inline controls can explicitly reserve more space through header.width.
+    const resolveColumnWidth = (header, fallbackWidth) => isActionHeader(header)
+        ? (typeof header === 'object' && header.width ? header.width : 56)
+        : fallbackWidth
 
     return (
     <EofficeCard className={className}>
-        <div className={`d-flex justify-content-${align}`}>
+        <div className={`eoffice-table-scroll d-flex justify-content-${align}`}>
             <table
                 className="w-full table table-fixed mb-0"
                 style={{ minWidth }}
@@ -256,7 +260,9 @@ export const EofficeTableWithFilter = ({
 }) => {
     const isActionHeader = header => typeof header !== 'string'
         && ['aksi', 'action'].includes(String(header.name || header.label || '').trim().toLowerCase())
-    const resolveColumnWidth = (header, fallbackWidth) => isActionHeader(header) ? 60 : fallbackWidth
+    const resolveColumnWidth = (header, fallbackWidth) => isActionHeader(header)
+        ? (typeof header === 'object' && header.width ? header.width : 56)
+        : fallbackWidth
 
     // Render a single filter input based on type
     const renderFilterInput = (header, value, onChange) => {
@@ -319,7 +325,7 @@ export const EofficeTableWithFilter = ({
 
     return (
         <EofficeCard className={className}>
-            <div className={`d-flex justify-content-${align}`}>
+            <div className={`eoffice-table-scroll d-flex justify-content-${align}`}>
                 <table
                     className="w-full table table-fixed mb-0"
                     style={{ minWidth }}

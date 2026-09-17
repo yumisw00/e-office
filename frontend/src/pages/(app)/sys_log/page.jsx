@@ -28,10 +28,10 @@ const tableHeaders = [
   { name: 'activity_time', label: 'Activity Time', width: 170, align: 'center', filterType: 'date', filterPlaceholder: 'Filter...' },
   { name: 'data', label: 'Data', width: 360, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
   { name: 'user_desc', label: 'User', width: 130, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
-  { name: 'aksi', label: 'Aksi', width: 80, align: 'center', filterType: 'none' },
+  { name: 'aksi', label: 'Aksi', width: 56, align: 'center', filterType: 'none' },
 ];
 
-const colgroup = [180, 190, 120, 170, 360, 130, 80];
+const colgroup = [180, 190, 120, 170, 360, 130, 56];
 
 const cleanLogPage = value =>
   String(value || "")
@@ -81,7 +81,7 @@ const Sys_log = (props) => {
   const [datafilter, setdatafilter] = useState({
     paginate: {
       page: 1,
-      pagesize: 50,
+      pagesize: 20,
     },
   });
 
@@ -213,7 +213,7 @@ const Sys_log = (props) => {
           filterValues={inlineFilterValues}
           onFilterChange={handleInlineFilterChange}
           align="start"
-          minWidth={1120}
+          minWidth={1206}
         >
           {filteredList.map((m, i) => (
             <tr key={m.id_log || i} className="align-top">
@@ -258,16 +258,8 @@ const Sys_log = (props) => {
                   {m.user_desc || '-'}
                 </span>
               </EofficeTableCell>
-              <EofficeTableCell align="center">
-                <div className="d-flex align-items-center justify-content-center gap-1">
-                  {access_method.btn_edit_delete?.edit && (
-                    <BtnIconAct
-                      className="btn-warning"
-                      icon="edit"
-                      href={`/${page_url}/edit/${m.id_log}`}
-                      tooltips="Edit"
-                    />
-                  )}
+              <EofficeTableCell width={56} align="center">
+                <div className="d-flex align-items-center justify-content-center td-action">
                   {access_method.btn_edit_delete?.delete && (
                     <BtnIconAct
                       className="btn-danger"
@@ -277,7 +269,7 @@ const Sys_log = (props) => {
                           handledeletesys_log(m.id_log);
                         }
                       }}
-                      tooltips="Delete"
+                      tooltips="Hapus"
                     />
                   )}
                 </div>

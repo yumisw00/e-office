@@ -873,7 +873,8 @@ const Sys_useredit = (props) => {
       </div>
       <style>{`
         .user-form-layout { max-width: 1180px; margin: 0 auto; }
-        .user-form-actions { max-width: 1180px; margin-left: auto; margin-right: auto; }
+        /* Keep the save button aligned with the page-level Back button. */
+        .user-form-actions { width: 100%; max-width: none; margin-left: 0; margin-right: 0; }
         .user-form-card { padding: 20px; background: #fff; border: 1px solid #d9e5e8; border-radius: 10px; box-shadow: 0 2px 6px rgba(15, 116, 128, .06); }
         .user-form-card-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #e7eef0; }
         .user-form-card-header > .material-icons { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; color: #0f7480; background: #e6f5f6; font-size: 19px; }

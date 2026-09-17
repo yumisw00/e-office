@@ -24,10 +24,10 @@ const tableHeaders = [
   { name: 'name', label: 'Name', width: 'auto', align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
   { name: 'email', label: 'Email', width: 'auto', align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
   { name: 'jabatan', label: 'Jabatan', width: 'auto', align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
-  { name: 'aksi', label: 'Aksi', width: 160, align: 'center', filterType: 'none' },
+  { name: 'aksi', label: 'Aksi', width: 90, align: 'center', filterType: 'none' },
 ];
 
-const colgroup = ['auto', 'auto', 'auto', 160];
+const colgroup = ['auto', 'auto', 'auto', 90];
 
 const Sys_user = (props) => {
   const page_url = "sys_user";
@@ -45,7 +45,7 @@ const Sys_user = (props) => {
   const [datafilter, setdatafilter] = useState({
     paginate: {
       page: 1,
-      pagesize: 50,
+      pagesize: 20,
     },
   });
 
@@ -377,6 +377,7 @@ const Sys_user = (props) => {
         </div>
         {/* Table with inline filter */}
         <EofficeTableWithFilter
+          className="sys-user-table"
           headers={tableHeadersWithOptions}
           colgroup={colgroup}
           filterValues={inlineFilterValues}
@@ -399,8 +400,8 @@ const Sys_user = (props) => {
                   {m.nama_jabatan || m.nama_group || '-'}
                 </span>
               </EofficeTableCell>
-              <EofficeTableCell align="center">
-                <div className="td-action d-flex align-items-center justify-content-center gap-1">
+              <EofficeTableCell width={90} align="center" className="sys-user-action-cell">
+                <div className="sys-user-actions td-action">
                   {(access_method.editdelete || []).some(action => action.label === 'Edit') ? (
                     <BtnIconAct
                       className="btn-warning"

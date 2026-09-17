@@ -1228,6 +1228,121 @@ table.w-full.table.table-fixed.border-collapse.border>thead {
   top: 0px;
 }
 
+/* Align the notification action with the standard header button height. */
+.notifikasi-create-btn {
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+  line-height: 20px;
+}
+
+.notifikasi-create-wrap {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+@media (max-width: 576px) {
+  .notifikasi-create-wrap {
+    margin-top: 8px;
+  }
+}
+
+/* STANDARD DATA TABLES
+ * Keep each module's sorting, filters, selection, and actions intact while
+ * presenting every application data table like the Surat Masuk table. */
+main.layout-app-body .table {
+  width: 100%;
+  margin-bottom: 0;
+  color: #243b42;
+  vertical-align: middle;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+main.layout-app-body .table > thead > tr:first-child > th {
+  padding: 12px 10px !important;
+  background: #138a98 !important;
+  border-color: #0f7480 !important;
+  color: #fff !important;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  vertical-align: middle;
+}
+
+main.layout-app-body .table > thead > tr:first-child > th > a {
+  color: #fff !important;
+  font-weight: inherit;
+}
+
+main.layout-app-body .table > thead > tr:not(:first-child) > td,
+main.layout-app-body .table > thead > tr:not(:first-child) > th {
+  padding: 8px !important;
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+main.layout-app-body .table > tbody > tr > td {
+  padding: 7px 8px !important;
+  border-color: #dfe7ea !important;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+
+main.layout-app-body .table > tbody > tr:nth-child(even) > td {
+  background-color: #f8fbfc;
+}
+
+main.layout-app-body .table > tbody > tr:hover > td {
+  background-color: #eaf6f8;
+}
+
+main.layout-app-body .table .eoffice-action-column,
+main.layout-app-body .table th:last-child:has(.td-action),
+main.layout-app-body .table td:has(> .td-action),
+main.layout-app-body .table td:has(> * > .td-action) {
+  width: 56px !important;
+  min-width: 56px !important;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+  text-align: center;
+  white-space: nowrap;
+}
+
+main.layout-app-body .table .td-action {
+  display: flex;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+main.layout-app-body .table input,
+main.layout-app-body .table select,
+main.layout-app-body .table .form-control {
+  min-height: 30px;
+  font-size: 12px !important;
+}
+
+main.layout-app-body .table-responsive,
+main.layout-app-body .table-responsive-x,
+main.layout-app-body .eoffice-table-scroll {
+  border-radius: 8px;
+}
+
+@media (max-width: 767px) {
+  main.layout-app-body .table > thead > tr:first-child > th {
+    padding: 10px 8px !important;
+  }
+
+  main.layout-app-body .table > tbody > tr > td {
+    padding: 7px 6px !important;
+  }
+}
+
 /* Section labels are displayed only for structured administration menus. */
 .sidebar-ul-structured {
   padding-bottom: 8px;
@@ -1687,31 +1802,21 @@ table.table:not(.table-input-rcm-tlc) thead td .custom-select-rn-dnd__control {
 }
 
 .table .eoffice-action-column {
-  width: 96px !important;
-  min-width: 96px !important;
-  max-width: 96px !important;
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
   padding-left: 2px !important;
   padding-right: 2px !important;
 }
 
 .table td:has(> .td-action),
 .table td:has(> * > .td-action) {
-  width: 96px !important;
-  min-width: 96px !important;
-  max-width: 96px !important;
-  padding-left: 2px !important;
-  padding-right: 2px !important;
-  text-align: center;
-}
-
-/* Keep Master Organisasi's two-icon action column at its content width. */
-.master-organisasi-table .table .eoffice-action-column,
-.master-organisasi-table .table td:has(> .td-action),
-.master-organisasi-table .table td:has(> * > .td-action) {
   width: 56px !important;
   min-width: 56px !important;
   max-width: 56px !important;
-  white-space: nowrap;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+  text-align: center;
 }
 
 /* Keep Template Surat's action column compact as well. */
@@ -1724,7 +1829,48 @@ table.table:not(.table-input-rcm-tlc) thead td .custom-select-rn-dnd__control {
   white-space: nowrap;
 }
 
-/* Incoming-letter rows use a detail and delete icon. */
+/* Match Master Organisasi's action column exactly to Master Jenis Surat. */
+.master-organisasi-table .table {
+  table-layout: auto !important;
+}
+
+.master-organisasi-table .table .eoffice-action-column,
+.master-organisasi-table .table th.eoffice-action-column,
+.master-organisasi-table .table td.eoffice-action-column,
+.master-organisasi-table .table td:has(> .td-action),
+.master-organisasi-table .table td:has(> * > .td-action) {
+  width: 52px !important;
+  min-width: 52px !important;
+  max-width: 52px !important;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+  text-align: center !important;
+  white-space: nowrap;
+}
+
+.master-organisasi-table .table td:last-child > .td-action {
+  width: 46px;
+  max-width: 46px;
+  margin: 0 auto;
+  gap: 2px !important;
+}
+
+.master-organisasi-table .table > thead > tr:first-child > .eoffice-action-column {
+  border-left: 1px solid #0f7480 !important;
+  border-right: 1px solid #0f7480 !important;
+}
+
+.master-organisasi-table .table > thead > tr:not(:first-child) > .eoffice-action-column {
+  border-left: 1px solid #e2e8f0 !important;
+  border-right: 1px solid #e2e8f0 !important;
+}
+
+.master-organisasi-table .table > tbody > tr > td:last-child {
+  border-left: 1px solid #dfe7ea !important;
+  border-right: 1px solid #dfe7ea !important;
+}
+
+/* Incoming-letter rows use the same delete action as the archive table. */
 .surat-masuk-table .table .eoffice-action-column,
 .surat-masuk-table .table td:has(> .td-action),
 .surat-masuk-table .table td:has(> * > .td-action) {
@@ -1735,13 +1881,13 @@ table.table:not(.table-input-rcm-tlc) thead td .custom-select-rn-dnd__control {
 }
 
 .surat-masuk-table .surat-masuk-action-cell > .td-action {
-  gap: 1px !important;
+  gap: 2px !important;
 }
 
 .table .approval-action-cell {
-  width: 64px !important;
-  min-width: 64px !important;
-  max-width: 64px !important;
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
   padding-left: 2px !important;
   padding-right: 2px !important;
   white-space: nowrap;
@@ -1791,6 +1937,130 @@ table.table:not(.table-input-rcm-tlc) thead td .custom-select-rn-dnd__control {
 .table .td-action .btn-icon-act > span.material-icons {
   font-size: 13px !important;
   line-height: 22px;
+}
+
+/* Use one consistent action-column width throughout the application. */
+.table td:has(.td-action > :nth-child(3)),
+.table td:has(.td-action > a:nth-child(3)),
+.table td:has(.td-action > div:nth-child(3)) {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+}
+
+.table td:has(.td-action > :nth-child(4)),
+.table td:has(.td-action > a:nth-child(4)),
+.table td:has(.td-action > div:nth-child(4)) {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+}
+
+.table .td-action > a,
+.table .td-action > div,
+.table .td-action .btn-icon-act {
+  flex: 0 0 auto;
+}
+
+.table .td-action .btn-icon-act {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.table .td-action .btn-icon-act:hover {
+  filter: brightness(0.94);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 75, 85, 0.18);
+}
+
+/*
+ * Row-action cells are sized from the controls they contain.  This is kept
+ * here (after module-specific legacy rules) so every menu gets the same
+ * compact spacing, including tables that use an inline width style.
+ */
+.table:has(td .td-action) > thead > tr > th:last-child,
+.table .eoffice-action-column,
+.table td:has(> .td-action),
+.table td:has(> * > .td-action) {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+  white-space: nowrap;
+}
+
+.table td:has(> .td-action),
+.table td:has(> * > .td-action) {
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+}
+
+.table:has(td .td-action) > thead > tr > th:last-child {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+  text-align: center !important;
+}
+
+/* Keep every action column the same width, regardless of its controls. */
+.table:has(.td-action > :nth-child(2)) > thead > tr > th:last-child,
+.table:has(.td-action > :nth-child(2)) .eoffice-action-column,
+.table td:has(.td-action > :nth-child(2)) {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+}
+
+.table:has(.td-action > :nth-child(3)) > thead > tr > th:last-child,
+.table:has(.td-action > :nth-child(3)) .eoffice-action-column,
+.table td:has(.td-action > :nth-child(3)) {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+}
+
+.table:has(.td-action > :nth-child(4)) > thead > tr > th:last-child,
+.table:has(.td-action > :nth-child(4)) .eoffice-action-column,
+.table td:has(.td-action > :nth-child(4)) {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+}
+
+/* EditDelete may be wrapped by a parent action container in older menus. */
+.table:has(.td-action > .td-action > :nth-child(2)) > thead > tr > th:last-child,
+.table:has(.td-action > .td-action > :nth-child(2)) .eoffice-action-column,
+.table td:has(.td-action > .td-action > :nth-child(2)) {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+}
+
+/* The approval menu uses native buttons instead of BtnIconAct. */
+.table .approval-action-cell {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+  padding: 3px 2px !important;
+  white-space: nowrap;
+}
+
+.table .approval-action-cell .btn-default-app {
+  display: inline-flex;
+  width: 22px !important;
+  min-width: 22px !important;
+  height: 22px !important;
+  min-height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.table .approval-action-cell .material-icons {
+  font-size: 13px !important;
+  line-height: 1 !important;
 }
 
 [type="text"],
@@ -3828,4 +4098,530 @@ header.bg-white {
     max-height: 100vh;
     border-radius: 0;
   }
+}
+
+/* RESPONSIVE APP SAFETY NET */
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+.layout-app,
+.layout-app-body,
+.layout-app-body > .flex-1,
+.container,
+.card,
+.card-body,
+.form-group,
+.row,
+[class*="col-"] {
+  min-width: 0;
+}
+
+img,
+svg,
+video,
+canvas,
+iframe {
+  max-width: 100%;
+}
+
+.table-responsive,
+.table-responsive-x {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive > table,
+.table-responsive-x > table {
+  min-width: max-content;
+}
+
+/* Keep wide filtered tables inside the card and scroll them on small screens. */
+.eoffice-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+  background: #fff;
+}
+
+.eoffice-table-scroll > table { flex: 0 0 auto; }
+.eoffice-table-scroll thead th { white-space: normal; overflow-wrap: anywhere; }
+.eoffice-table-scroll tbody td { background-color: #fff; }
+.eoffice-table-scroll tbody tr:nth-child(even) td { background-color: #f8fbfc; }
+.eoffice-table-scroll tbody tr:hover td { background-color: #eaf6f8; }
+
+.modal-dialog {
+  max-width: min(calc(100vw - 32px), var(--bs-modal-width, 500px));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 991px) {
+  .container.pl-4.pr-4,
+  main.layout-app-body > .flex-1.overflow-y-auto > .container,
+  .container.dashboard {
+    width: 100%;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .card-header,
+  .card-body,
+  .modal-body,
+  .modal-header,
+  .modal-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .form-group.row > [class*="col-"],
+  .row > [class*="col-"] {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  .layout-app {
+    min-height: 100dvh;
+    height: auto;
+  }
+
+  .layout-app-body,
+  .layout-app-body.d-flex {
+    display: flex;
+    min-height: calc(100dvh - 3.3rem);
+    height: auto;
+  }
+
+  .layout-app-body > .flex-1,
+  body.sidebar-collapsed .layout-app-body > .flex-1,
+  body:not(.sidebar-collapsed) .layout-app-body > .flex-1 {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .container-sidebar,
+  body.sidebar-collapsed .layout-app-body > .container-sidebar,
+  body:not(.sidebar-collapsed) .layout-app-body > .container-sidebar {
+    position: fixed !important;
+    top: 3.3rem;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    display: block;
+    width: min(82vw, 300px) !important;
+    height: calc(100dvh - 3.3rem);
+    transform: translateX(0);
+    transition: transform 0.25s ease;
+  }
+
+  body.sidebar-collapsed .layout-app-body > .container-sidebar {
+    transform: translateX(-105%);
+  }
+
+  .navbar-app > div.mx-auto > div {
+    background: #ffffff;
+  }
+
+  .navbar-right {
+    width: 100%;
+    padding: 0 10px;
+  }
+
+  .navbar-right button {
+    margin-left: auto;
+    color: var(--primary);
+  }
+
+  header.bg-white.shadow > div,
+  header.bg-white > div {
+    padding: 18px 14px !important;
+  }
+
+  header h2,
+  .card-header-title,
+  .title-login {
+    overflow-wrap: anywhere;
+  }
+
+  .d-flex.justify-content-space-between,
+  .card-header.d-flex,
+  .modal-footer {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .form-group.row > label,
+  .form-group.row > [class*="col-"],
+  .row > .col-sm-6,
+  .row > .col-md-6 {
+    width: 100%;
+  }
+
+  input,
+  select,
+  textarea,
+  button,
+  .form-control,
+  .custom-select-rn-dnd__control {
+    max-width: 100%;
+  }
+
+  .modal-dialog {
+    max-width: calc(100vw - 16px);
+    margin: 8px auto;
+  }
+
+  .modal-content {
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+  }
+
+  .eoffice-table-scroll {
+    margin-left: -1px;
+    margin-right: -1px;
+    width: calc(100% + 2px);
+  }
+
+  .eoffice-table-scroll > table { min-width: 1100px; }
+
+  /* Keep dense action bars and tab sets usable on narrow screens. */
+  .btn-group,
+  .btn-toolbar,
+  .nav.nav-tabs,
+  .nav.nav-pills {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .btn-group > .btn,
+  .btn-toolbar > .btn,
+  .btn-toolbar .btn-group {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .card-header > .d-flex,
+  .card-header > .flex,
+  .card-header > .justify-content-between {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Prevent long identifiers and URLs from widening every menu page. */
+  .card,
+  .card-body,
+  .modal-body,
+  .form-control,
+  td,
+  th {
+    overflow-wrap: anywhere;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3px;
+  }
+}
+
+/* Keep Surat Keluar actions centered and fully inside their cell. */
+html body main.layout-app-body .surat-keluar-table .table .eoffice-action-column,
+html body main.layout-app-body .surat-keluar-table .table th:last-child,
+html body main.layout-app-body .surat-keluar-table .table td.surat-keluar-action-cell {
+  width: 100px !important;
+  min-width: 100px !important;
+  max-width: 100px !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  overflow-wrap: normal;
+}
+
+html body main.layout-app-body .surat-keluar-table .table td.surat-keluar-action-cell > .surat-keluar-actions,
+html body main.layout-app-body .surat-keluar-table .table td.surat-keluar-action-cell .surat-keluar-actions > .td-action {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: none;
+  align-items: center;
+  justify-content: center;
+  gap: 4px !important;
+}
+
+html body main.layout-app-body .surat-keluar-table .table td.surat-keluar-action-cell .btn-icon-act,
+html body main.layout-app-body .surat-keluar-table .table td.surat-keluar-action-cell .btn-icon-act.rounded-sm {
+  flex: 0 0 24px !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+}
+
+html body main.layout-app-body .surat-keluar-table .table td.surat-keluar-action-cell .btn-icon-act > .material-icons,
+html body main.layout-app-body .surat-keluar-table .table td.surat-keluar-action-cell .btn-icon-act > span.material-icons {
+  font-size: 14px !important;
+  line-height: 24px !important;
+}
+
+/* Match the Surat Masuk delete action to the Surat Keluar action size. */
+html body main.layout-app-body .surat-masuk-table .table td.surat-masuk-action-cell .btn-icon-act,
+html body main.layout-app-body .surat-masuk-table .table td.surat-masuk-action-cell .btn-icon-act.rounded-sm {
+  flex: 0 0 24px !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+}
+
+html body main.layout-app-body .surat-masuk-table .table td.surat-masuk-action-cell .btn-icon-act > .material-icons,
+html body main.layout-app-body .surat-masuk-table .table td.surat-masuk-action-cell .btn-icon-act > span.material-icons {
+  font-size: 14px !important;
+  line-height: 24px !important;
+}
+
+/* Reserve enough room for edit, delete, and account-status actions. */
+html body main.layout-app-body .sys-user-table .table .eoffice-action-column,
+html body main.layout-app-body .sys-user-table .table th:last-child,
+html body main.layout-app-body .sys-user-table .table td.sys-user-action-cell {
+  width: 90px !important;
+  min-width: 90px !important;
+  max-width: 90px !important;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+html body main.layout-app-body .sys-user-table .table .sys-user-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: none;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 4px !important;
+}
+
+/* Keep all three TreeGrid menu actions aligned and inside their column. */
+.sys_menu .sys-menu-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 80px;
+  max-width: 80px;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 4px !important;
+}
+
+.sys_menu .sys-menu-actions .btn-icon-act,
+.sys_menu .sys-menu-actions .btn-icon-act.rounded-sm {
+  flex: 0 0 24px !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 !important;
+  border-radius: 4px;
+}
+
+.sys_menu .sys-menu-actions .btn-icon-act > .material-icons,
+.sys_menu .sys-menu-actions .btn-icon-act > span.material-icons {
+  font-size: 14px !important;
+  line-height: 24px !important;
+}
+
+/* Configuration only has edit and delete, matching the compact table pattern. */
+html body main.layout-app-body .sys-setting-table .table .eoffice-action-column,
+html body main.layout-app-body .sys-setting-table .table th:last-child,
+html body main.layout-app-body .sys-setting-table .table td.sys-setting-action-cell {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+  text-align: center;
+  white-space: nowrap;
+}
+
+html body main.layout-app-body .sys-setting-table .table .sys-setting-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 46px;
+  max-width: 46px;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 2px !important;
+}
+
+/* Backup Database exposes three actions in one compact, centered row. */
+html body main.layout-app-body .backup-database-table .table th.backup-database-action-column,
+html body main.layout-app-body .backup-database-table .table td.backup-database-action-cell {
+  width: 88px !important;
+  min-width: 88px !important;
+  max-width: 88px !important;
+  padding-left: 5px !important;
+  padding-right: 5px !important;
+  text-align: center;
+  white-space: nowrap;
+}
+
+html body main.layout-app-body .backup-database-table .table .backup-database-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 70px;
+  max-width: 70px;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 2px !important;
+}
+
+/* Give approval decisions a larger, easier-to-scan action area. */
+html body main.layout-app-body .surat-approval-table .table th:last-child,
+html body main.layout-app-body .surat-approval-table .table td.approval-action-cell {
+  width: 86px !important;
+  min-width: 86px !important;
+  max-width: 86px !important;
+  padding-left: 5px !important;
+  padding-right: 5px !important;
+  white-space: nowrap;
+}
+
+html body main.layout-app-body .surat-approval-table .table .approval-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 70px;
+  max-width: 70px;
+  margin: 0 auto;
+  gap: 6px !important;
+}
+
+html body main.layout-app-body .surat-approval-table .table .approval-actions .btn-default-app {
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+}
+
+html body main.layout-app-body .surat-approval-table .table .approval-actions .material-icons {
+  font-size: 18px !important;
+  line-height: 1 !important;
+}
+
+.jenis-surat-tabs { display: flex; width: 100%; min-width: 0; box-sizing: border-box; margin-top: 8px; padding: 9px 12px; align-items: center; gap: 12px; border: 1px solid #d7e2e6; border-radius: 8px; background: #fff; }
+
+.surat-masuk-pengiriman-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 14px; width: 100%; }
+.surat-masuk-pengiriman-tabs > button { display: inline-flex; flex: 0 0 190px; box-sizing: border-box; align-items: center; justify-content: center; gap: 7px; width: 190px; min-width: 190px; height: 36px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #334155; font-size: 13px; font-weight: 600; white-space: nowrap; transition: .15s ease; }
+.surat-masuk-pengiriman-tabs > button:hover { border-color: #0f7f89; color: #0f7f89; }
+.surat-masuk-pengiriman-tabs > button.active { border-color: #0f8f98; background: linear-gradient(180deg, #18a3a8, #078790); color: #fff; box-shadow: 0 2px 5px rgba(7, 135, 144, .2); }
+.surat-masuk-pengiriman-tabs > button .material-icons { font-size: 17px; }
+.surat-masuk-pengiriman-tabs > .jenis-surat-tabs { flex-basis: 100%; width: 100%; margin-top: 8px; }
+.surat-keluar-pengiriman-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 14px; width: 100%; }
+.surat-keluar-pengiriman-tabs > button { display: inline-flex; flex: 0 0 190px; box-sizing: border-box; align-items: center; justify-content: center; width: 190px; min-width: 190px; height: 36px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #334155; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.surat-keluar-pengiriman-tabs > button.active { border-color: #0f8f98; background: linear-gradient(180deg, #18a3a8, #078790); color: #fff; }
+.surat-keluar-pengiriman-tabs > .jenis-surat-tabs { flex-basis: 100%; width: 100%; margin-top: 8px; }
+.disposisi-pengiriman-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 14px; width: 100%; }
+.disposisi-pengiriman-tabs > button { display: inline-flex; flex: 0 0 190px; box-sizing: border-box; align-items: center; justify-content: center; gap: 7px; width: 190px; min-width: 190px; height: 36px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #334155; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.disposisi-pengiriman-tabs > button.active { border-color: #0f8f98; background: linear-gradient(180deg, #18a3a8, #078790); color: #fff; }
+.disposisi-pengiriman-tabs > button .material-icons { font-size: 17px; }
+.disposisi-pengiriman-tabs > .jenis-surat-tabs { flex-basis: 100%; width: 100%; margin-top: 8px; }
+.container-header-app .disposisi-header-actions .btn-default-app { box-sizing: border-box; height: 36px; padding-top: 0; padding-bottom: 0; align-items: center; }
+.surat-masuk-pegawai-pengiriman-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 14px; width: 100%; }
+.surat-masuk-pegawai-pengiriman-tabs > button { display: inline-flex; flex: 0 0 190px; box-sizing: border-box; align-items: center; justify-content: center; gap: 7px; width: 190px; min-width: 190px; height: 36px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #334155; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.surat-masuk-pegawai-pengiriman-tabs > button.active { border-color: #0f8f98; background: linear-gradient(180deg, #18a3a8, #078790); color: #fff; }
+.surat-masuk-pegawai-pengiriman-tabs > button .material-icons { font-size: 17px; }
+.surat-masuk-pegawai-pengiriman-tabs > .jenis-surat-tabs { flex-basis: 100%; width: 100%; margin-top: 8px; }
+.surat-masuk-pegawai-table .td-action { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.container-header-app .surat-masuk-header-actions .btn-default-app,
+.container-header-app .surat-keluar-header-actions .btn-default-app { box-sizing: border-box; height: 36px; padding-top: 0; padding-bottom: 0; align-items: center; }
+@media (max-width: 700px) { .surat-masuk-pengiriman-tabs { overflow-x: auto; padding-bottom: 3px; } .surat-masuk-pengiriman-tabs > button { min-width: 142px; } }
+
+.jenis-surat-tabs-label { flex: 0 0 auto; padding-right: 12px; border-right: 1px solid #d7e2e6; color: #334155; font-size: 13px; font-weight: 700; }
+.jenis-surat-tabs-list { display: flex; flex: 1 1 auto; min-width: 0; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: thin; }
+.jenis-surat-tabs-list button { flex: 0 0 auto; padding: 5px 16px; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; color: #334155; font-size: 12px; font-weight: 600; line-height: 1.2; }
+.jenis-surat-tabs-list button.active { border-color: #0f7f89; background: #0f7f89; color: #fff; box-shadow: 0 2px 5px rgba(15, 127, 137, .2); }
+
+.container-header-app [role="tablist"]:has(.jenis-surat-tabs),
+.container-header-app [role="tablist"]:has(.jenis-surat-tabs) > div {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Let the second filter row span beneath the right-side header actions. */
+.container-header-app:has(.jenis-surat-tabs) {
+  position: relative;
+  display: block;
+  min-height: 70px;
+  width: calc(100% + 6px);
+  margin-left: -10px;
+  padding-right: 16px;
+}
+
+.container-header-app:has(.jenis-surat-tabs) > .col {
+  width: 100%;
+  max-width: none;
+}
+
+.container-header-app:has(.jenis-surat-tabs) > .pr-4 {
+  position: absolute;
+  top: 14px;
+  right: 0;
+  z-index: 2;
+}
+
+.container-header-app:has(.jenis-surat-tabs) [role="tablist"] {
+  padding-right: 0;
+}
+
+.container-header-app:has(.jenis-surat-tabs) .jenis-surat-tabs {
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  .container-header-app:has(.jenis-surat-tabs) {
+    min-height: 0;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .container-header-app:has(.jenis-surat-tabs) > .pr-4 {
+    position: static;
+    padding-right: 0;
+    margin-top: 8px;
+  }
+
+  .container-header-app:has(.jenis-surat-tabs) [role="tablist"] {
+    padding-right: 0;
+  }
+}
+
+/* Header tabs span two rows; keep the action buttons aligned with row one. */
+.container-header-app > .pr-4:has(.surat-header-actions) {
+  align-self: flex-start;
+  margin-top: 0;
+}
+
+
+@media (max-width: 576px) {
+  .jenis-surat-tabs { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .jenis-surat-tabs-label { padding-right: 0; border-right: 0; }
+  .jenis-surat-tabs-list { width: 100%; }
 }

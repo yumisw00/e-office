@@ -1,26 +1,7 @@
 export const fallbackSuratMasukMasterData = {
-    jenis: [
-        { label: 'Surat Undangan', value: 'Surat Undangan' },
-        { label: 'Surat Undangan Rapat', value: 'Surat Undangan Rapat' },
-        { label: 'Surat Rapat/Notulen', value: 'Surat Rapat/Notulen' },
-        { label: 'Surat Pemberitahuan', value: 'Surat Pemberitahuan' },
-        { label: 'Surat Pengumuman', value: 'Surat Pengumuman' },
-        { label: 'Surat Permohonan', value: 'Surat Permohonan' },
-        { label: 'Surat Tugas', value: 'Surat Tugas' },
-        { label: 'Surat Edaran', value: 'Surat Edaran' },
-        { label: 'Surat Keputusan', value: 'Surat Keputusan' },
-        { label: 'Surat Perintah Kerja', value: 'Surat Perintah Kerja' },
-        { label: 'Surat Pengantar', value: 'Surat Pengantar' },
-        { label: 'Surat Keterangan', value: 'Surat Keterangan' },
-        { label: 'Surat Perjanjian/Kontrak', value: 'Surat Perjanjian/Kontrak' },
-        { label: 'Surat Penawaran', value: 'Surat Penawaran' },
-        { label: 'Surat Tagihan/Invoice', value: 'Surat Tagihan/Invoice' },
-        { label: 'Surat Klaim/Komplain', value: 'Surat Klaim/Komplain' },
-        { label: 'Nota Dinas', value: 'Nota Dinas' },
-        { label: 'Memo Internal', value: 'Memo Internal' },
-        { label: 'Berita Acara', value: 'Berita Acara' },
-        { label: 'Laporan', value: 'Laporan' },
-    ],
+    // Jenis surat selalu dimuat dari Master Jenis Surat. Jangan gunakan
+    // daftar statis karena dapat berbeda atau menampilkan data duplikat.
+    jenis: [],
     sifat: [
         { label: 'Biasa', value: 'Biasa' },
         { label: 'Penting', value: 'Penting' },
@@ -36,10 +17,11 @@ export const fallbackSuratMasukMasterData = {
         { label: 'SDM', value: 'SDM' },
     ],
     status: [
-        { label: 'Baru', value: 'baru' },
-        { label: 'Distribusikan', value: 'diproses' },
-        { label: 'Menunggu Disposisi', value: 'menunggu_disposisi' },
+        { label: 'Draf', value: 'draft' },
+        { label: 'Dikirim', value: 'dikirim' },
+        { label: 'Disposisi', value: 'disposisi' },
         { label: 'Selesai', value: 'selesai' },
+        { label: 'Diarsipkan', value: 'diarsipkan' },
     ],
 }
 

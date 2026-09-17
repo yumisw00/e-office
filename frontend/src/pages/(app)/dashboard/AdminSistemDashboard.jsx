@@ -96,12 +96,20 @@ const QuickAction = ({ icon, title, href }) => (
   </Link>
 )
 
+const StatCard = ({ icon, label, value, href, loading }) => (
+  <Link href={href || '#'} className="group bg-white rounded-xl shadow-sm border border-slate-200/80 hover:shadow-md hover:border-teal-300 transition-all duration-200 p-5 flex items-center gap-4 no-underline">
+    <div className="w-12 h-12 rounded-xl bg-teal-50 group-hover:bg-teal-100 flex items-center justify-center flex-shrink-0"><span className="material-icons text-teal-600">{icon}</span></div>
+    <div className="flex-1 min-w-0"><div className="text-xs font-medium text-slate-500 mb-0.5">{label}</div><div className="text-xl font-bold text-slate-900">{loading ? '...' : (value ?? 0)}</div></div>
+  </Link>
+)
+
 class AdminSistemDashboard extends Component {
   state = {
     is_loading: true,
     counts: {},
     auditTrail: [],
     backupHistory: [],
+    loadError: false,
     serverStatus: {
       api: 'online',
       database: 'connected',
@@ -187,10 +195,11 @@ class AdminSistemDashboard extends Component {
         counts,
         auditTrail,
         backupHistory,
+        loadError: [userResponse, roleResponse, auditResponse, backupResponse].every(item => item.status === 'rejected'),
         is_loading: false,
       })
     } catch (error) {
-      this.setState({ is_loading: false })
+      this.setState({ is_loading: false, loadError: true })
     }
   }
 
@@ -235,7 +244,7 @@ class AdminSistemDashboard extends Component {
   })
 
   render() {
-    const { counts, auditTrail, backupHistory, serverStatus, systemStats, is_loading } = this.state
+    const { counts, auditTrail, backupHistory, serverStatus, systemStats, is_loading, loadError } = this.state
 
     return (
       <>
@@ -256,6 +265,15 @@ class AdminSistemDashboard extends Component {
                 </div>
               </div>
             </div>
+          </div>
+
+          {loadError && <div className="mb-4 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="alert"><span>Data dashboard belum dapat dimuat.</span><button type="button" className="btn btn-sm btn-outline-warning" onClick={this.loadData}>Coba lagi</button></div>}
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <StatCard icon="people" label="Total User" value={counts.total_user} href="/sys_user" loading={is_loading} />
+            <StatCard icon="admin_panel_settings" label="Total Role" value={counts.total_role} href="/group" loading={is_loading} />
+            <StatCard icon="history" label="Audit Trail" value={counts.audit_trail} href="/sys_log" loading={is_loading} />
+            <StatCard icon="backup" label="Backup Tersedia" value={backupHistory.length} href="/backup_database" loading={is_loading} />
           </div>
 
           {/* Charts Row */}
@@ -389,6 +407,16 @@ class AdminSistemDashboard extends Component {
                   </table>
                 )}
               </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 mt-4 p-4">
+            <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2"><span className="material-icons text-teal-600 text-lg">bolt</span>Akses Cepat</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <QuickAction icon="people" title="Kelola User" href="/sys_user" />
+              <QuickAction icon="verified_user" title="Hak Akses" href="/group" />
+              <QuickAction icon="history" title="Audit Trail" href="/sys_log" />
+              <QuickAction icon="backup" title="Backup Database" href="/backup_database" />
             </div>
           </div>
 

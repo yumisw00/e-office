@@ -45,12 +45,12 @@ class Sys_setting extends IndexPage {
 
 
 
-                    <div className="table-responsive">
+                    <div className="table-responsive sys-setting-table">
                         <table className="w-full table table-auto border-collapse border">
                             <thead>
                                 <TableHead
                                     data={this.headers ? this.headers : []}
-                                    actionWidth={96}
+                                    actionWidth={56}
                                     access_role={[]}
                                     referensi={this.state.listreferensi}
                                     onChange={(key, value) => {
@@ -109,8 +109,8 @@ class Sys_setting extends IndexPage {
                                         ))}
 
 
-                                        <td className="border" style={{ width: 96, minWidth: 96, padding: "8px 6px" }}>
-                                            <div className="flex align-center justify-center td-action" style={{ gap: 6 }}>
+                                        <td className="border sys-setting-action-cell">
+                                            <div className="sys-setting-actions flex align-center justify-center td-action">
                                                 <BtnIconAct
                                                     className="btn-warning"
                                                     icon="edit"

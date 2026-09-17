@@ -4,7 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Modal } from "react-bootstrap";
 import HeaderApp from "components/HeaderApp";
 import Button from "components/Button";
-import EofficeStatusBadge from "components/EofficeStatusBadge";
+import EditDelete from "components/EditDelete";
+import {
+    EofficeCard,
+    EofficeEmptyState,
+    EofficeStatusBadge,
+    EofficeTableCell,
+    EofficeTableWithFilter,
+} from "components/EofficeModuleUI";
 import { api_services } from "hooks/api_services";
 import { formatDateApp, showToastr } from "pages/Utils";
 import { canUseEofficeAction } from "lib/eofficeAccess";
@@ -32,6 +39,7 @@ const Notifikasi = () => {
     const [form, setForm] = useState(emptyForm)
     const [unitOptions, setUnitOptions] = useState([])
     const [userOptions, setUserOptions] = useState([])
+    const [filters, setFilters] = useState({})
     const canCreate = canUseEofficeAction('notifikasi', 'add')
 
     const service = useMemo(() => api_services({ api_path: "/eoffice/notifications" }), [])
@@ -69,6 +77,39 @@ const Notifikasi = () => {
         if (!form.id_unit_tujuan) return true
         return String(user.id_unit || '') === String(form.id_unit_tujuan)
     })
+
+    const filteredList = list.filter(item => {
+        const isRead = item?.is_read === true || item?.is_read === 1 || item?.read_at
+        const values = {
+            title: item?.title || item?.judul || '',
+            message: item?.message || item?.pesan || item?.body || '',
+            created_at: item?.created_at ? formatDateApp(item.created_at, "YYYY-MM-DD HH:mm") : '',
+            status: isRead ? 'read' : 'pending',
+        }
+
+        return Object.entries(filters).every(([key, filterValue]) => {
+            if (!filterValue) return true
+            return String(values[key] || '').toLowerCase().includes(String(filterValue).toLowerCase())
+        })
+    })
+
+    const tableHeaders = [
+        { name: 'title', label: 'Judul', width: 210, align: 'center', filterType: 'text' },
+        { name: 'message', label: 'Pesan', width: 360, align: 'center', filterType: 'text' },
+        { name: 'created_at', label: 'Tanggal', width: 170, align: 'center', filterType: 'text' },
+        {
+            name: 'status',
+            label: 'Status',
+            width: 150,
+            align: 'center',
+            filterType: 'select',
+            filterOptions: [
+                { value: 'pending', label: 'Belum Dibaca' },
+                { value: 'read', label: 'Dibaca' },
+            ],
+        },
+        { name: 'aksi', label: 'Aksi', width: 60, align: 'center', filterType: 'none' },
+    ]
 
     const getRecipientIds = () => {
         if (form.id_user) return [Number(form.id_user)]
@@ -119,52 +160,81 @@ const Notifikasi = () => {
         <>
             <HeaderApp
                 title="Notifikasi"
+                hideTitle
                 is_loading={isLoading}
                 data_btn={[]}
                 btnCustom={
                     canCreate ? (
-                        <Button className="ml-2 btn-default-app btn-info" onClick={() => setShowModal(true)}>
-                            <span className="material-icons mr-1" style={{ fontSize: 16 }}>notifications</span>
-                            Buat Notifikasi
-                        </Button>
+                        <div className="notifikasi-create-wrap">
+                            <Button
+                                className="ml-2 btn-default-app btn-info notifikasi-create-btn"
+                                onClick={() => setShowModal(true)}
+                            >
+                                <span className="material-icons mr-1" style={{ fontSize: 16 }}>notifications</span>
+                                Buat Notifikasi
+                            </Button>
+                        </div>
                     ) : null
                 }
             />
 
             <div className="container pl-4 pr-4">
-                <div className="table-responsive">
-                    <table className="w-full table border-collapse border" style={{ tableLayout: "fixed", minWidth: 900 }}>
-                        <thead>
-                            <tr>
-                                {["No", "Judul", "Pesan", "Tanggal", "Status", ""].map((label, index) => (
-                                    <th key={label || index} className="border" style={{ backgroundColor: "#138a98", color: "#fff", textAlign: "center", padding: "10px 8px", width: index === 0 ? 44 : index === 5 ? 120 : "auto" }}>{label}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {list.map((item, index) => {
+                <EofficeCard className="p-3 mb-3">
+                    {list.length ? (
+                        <EofficeTableWithFilter
+                            className="notifikasi-table"
+                            headers={tableHeaders}
+                            colgroup={[210, 360, 170, 150, 60]}
+                            filterValues={filters}
+                            onFilterChange={(name, value) => setFilters(current => ({ ...current, [name]: value }))}
+                            minWidth={950}
+                        >
+                            {filteredList.map((item, index) => {
                                 const isRead = item?.is_read === true || item?.is_read === 1 || item?.read_at
                                 return (
                                     <tr key={item?.id_notification || item?.id || index}>
-                                        <td className="border text-center">{index + 1}</td>
-                                        <td className="border font-semibold" style={{ overflowWrap: "anywhere" }}>{item?.title || item?.judul || "-"}</td>
-                                        <td className="border" style={{ overflowWrap: "anywhere" }}>{item?.message || item?.pesan || item?.body || "-"}</td>
-                                        <td className="border">{item?.created_at ? formatDateApp(item.created_at, "YYYY-MM-DD HH:mm") : "-"}</td>
-                                        <td className="border text-center"><EofficeStatusBadge value={isRead ? "read" : "pending"} label={isRead ? "Dibaca" : "Belum Dibaca"} /></td>
-                                        <td className="border text-center">
+                                        <EofficeTableCell width={210} align="start" wrap className="font-semibold">
+                                            {item?.title || item?.judul || "-"}
+                                        </EofficeTableCell>
+                                        <EofficeTableCell width={360} align="start" wrap>
+                                            {item?.message || item?.pesan || item?.body || "-"}
+                                        </EofficeTableCell>
+                                        <EofficeTableCell width={170}>
+                                            {item?.created_at ? formatDateApp(item.created_at, "YYYY-MM-DD HH:mm") : "-"}
+                                        </EofficeTableCell>
+                                        <EofficeTableCell width={150}>
+                                            <EofficeStatusBadge value={isRead ? "read" : "pending"} label={isRead ? "Dibaca" : "Belum Dibaca"} />
+                                        </EofficeTableCell>
+                                        <EofficeTableCell width={60}>
                                             {!isRead ? (
-                                                <Button className="btn-default-app btn-info" onClick={() => markRead(item)}>
-                                                    Tandai Dibaca
-                                                </Button>
-                                            ) : "-"}
-                                        </td>
+                                                <EditDelete
+                                                    data={[{
+                                                        label: 'Tandai Dibaca',
+                                                        icon: 'done_all',
+                                                        onClick: () => markRead(item),
+                                                    }]}
+                                                />
+                                            ) : null}
+                                        </EofficeTableCell>
                                     </tr>
                                 )
                             })}
-                            {!list.length ? <tr><td className="border text-center text-muted" colSpan={6} style={{ padding: 28 }}>Belum ada notifikasi.</td></tr> : null}
-                        </tbody>
-                    </table>
-                </div>
+                            {!filteredList.length ? (
+                                <tr>
+                                    <td className="text-center text-muted" colSpan={5} style={{ padding: 28 }}>
+                                        Tidak ada notifikasi yang sesuai filter.
+                                    </td>
+                                </tr>
+                            ) : null}
+                        </EofficeTableWithFilter>
+                    ) : (
+                        <EofficeEmptyState
+                            icon="notifications_none"
+                            title="Belum ada notifikasi"
+                            description="Notifikasi yang tersedia akan muncul di sini."
+                        />
+                    )}
+                </EofficeCard>
             </div>
 
             <Modal show={canCreate && showModal} onHide={() => setShowModal(false)} centered>

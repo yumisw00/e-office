@@ -136,12 +136,16 @@ const SuratApproval = () => {
             }
             showToastr('success', data?.message || 'Surat keluar berhasil disetujui.');
 
-            // Generate barcode/QR data after approval
+            // Remove the processed approval immediately, then confirm with the API.
+            const processedId = getId(item)
+            setList(current => current.filter(row => getId(row) !== processedId))
+
+            // Generate barcode/QR data after approval.
             const approverName = getCurrentUserName()
             const qrData = generateApprovalQRData(item, approverName)
-            setBarcodeModal({ show: true, item, qrData, approverName })
+            setBarcodeModal({ show: true, item: { ...item, status: 'approved' }, qrData, approverName })
 
-            loadData();
+            await loadData();
         } catch (error) {
             const message = error?.response?.data?.message || 'Gagal menyetujui surat.';
             showToastr('error', message);
@@ -213,7 +217,7 @@ const SuratApproval = () => {
             />
 
             <div className="container pl-4 pr-4">
-                <div className="table-responsive">
+                <div className="table-responsive surat-approval-table">
                     <table className="w-full table border-collapse border" style={{ minWidth: 980 }}>
                         <thead>
                             <tr>
@@ -227,7 +231,7 @@ const SuratApproval = () => {
                                             textAlign: 'center',
                                             padding: '10px 8px',
                                             verticalAlign: 'middle',
-                                            width: index === 8 ? 64 : undefined,
+                                            width: index === 8 ? 86 : undefined,
                                         }}
                                     >
                                         {label}
@@ -253,29 +257,29 @@ const SuratApproval = () => {
                                         <EofficeStatusBadge value={item?.status || 'review'} />
                                     </td>
                                     <td className="border text-center approval-action-cell">
-                                        <div className="d-flex justify-content-center" style={{ gap: 4 }}>
+                                        <div className="approval-actions d-flex align-items-center justify-content-center" style={{ gap: 6 }}>
                                             {canApprove ? (
                                                 <Button
                                                     className="btn-default-app"
-                                                    style={{ background: '#22a06b', color: '#fff', borderColor: '#22a06b', width: 28, minWidth: 28, height: 28, padding: 0, justifyContent: 'center' }}
+                                                    style={{ background: '#22a06b', color: '#fff', borderColor: '#22a06b', width: 32, minWidth: 32, height: 32, padding: 0, justifyContent: 'center' }}
                                                     disabled={processing}
                                                     onClick={() => handleApprove(item)}
                                                     title="Setujui"
                                                     aria-label="Setujui"
                                                 >
-                                                    <span className="material-icons" style={{ display: 'block', fontSize: 16, lineHeight: 1 }}>check</span>
+                                                    <span className="material-icons" style={{ display: 'block', fontSize: 18, lineHeight: 1 }}>check</span>
                                                 </Button>
                                             ) : null}
                                             {canReject ? (
                                                 <Button
                                                     className="btn-default-app btn-danger"
-                                                    style={{ width: 28, minWidth: 28, height: 28, padding: 0, justifyContent: 'center' }}
+                                                    style={{ width: 32, minWidth: 32, height: 32, padding: 0, justifyContent: 'center' }}
                                                     disabled={processing}
                                                     onClick={() => openReject(item)}
                                                     title="Tolak"
                                                     aria-label="Tolak"
                                                 >
-                                                    <span className="material-icons" style={{ display: 'block', fontSize: 16, lineHeight: 1 }}>close</span>
+                                                    <span className="material-icons" style={{ display: 'block', fontSize: 18, lineHeight: 1 }}>close</span>
                                                 </Button>
                                             ) : null}
                                         </div>

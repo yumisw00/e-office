@@ -236,21 +236,21 @@ const MasterOrganisasi = () => {
         { name: 'nama_unit', label: 'Nama Unit', width: 220, align: 'center', filterType: 'text', filterPlaceholder: 'Cari nama unit...' },
         { name: 'id_parent', label: 'Induk Unit (Parent)', width: 180, align: 'center', filterType: 'text', filterPlaceholder: 'Cari parent...' },
         { name: 'status', label: 'Status', width: 100, align: 'center', filterType: 'select', filterPlaceholder: 'Filter...', filterOptions: statusFilterOptions },
-        { name: 'aksi', label: 'Aksi', width: 60, align: 'center', filterType: 'none' },
+        { name: 'aksi', label: 'Aksi', width: 52, align: 'center', filterType: 'none' },
     ]
     const divisiHeaders = [
         { name: 'kode_unit', label: 'Kode Divisi', width: 100, align: 'left', filterType: 'text', filterPlaceholder: 'Cari kode...' },
         { name: 'nama_unit', label: 'Nama Divisi', width: 200, align: 'left', filterType: 'text', filterPlaceholder: 'Cari nama divisi...' },
         { name: 'unit', label: 'Unit Kerja Induk', width: 180, align: 'left', filterType: 'text', filterPlaceholder: 'Cari unit...' },
         { name: 'status', label: 'Status', width: 100, align: 'center', filterType: 'select', filterPlaceholder: 'Filter...', filterOptions: statusFilterOptions },
-        { name: 'aksi', label: 'Aksi', width: 60, align: 'center', filterType: 'none' },
+        { name: 'aksi', label: 'Aksi', width: 52, align: 'center', filterType: 'none' },
     ]
     const departemenHeaders = [
         { name: 'kode_unit', label: 'Kode Dept', width: 100, align: 'left', filterType: 'text', filterPlaceholder: 'Cari kode...' },
         { name: 'nama_unit', label: 'Nama Departemen', width: 200, align: 'left', filterType: 'text', filterPlaceholder: 'Cari nama...' },
         { name: 'divisi', label: 'Divisi Induk', width: 180, align: 'left', filterType: 'text', filterPlaceholder: 'Cari divisi...' },
         { name: 'status', label: 'Status', width: 100, align: 'left', filterType: 'select', filterPlaceholder: 'Filter...', filterOptions: statusFilterOptions },
-        { name: 'aksi', label: 'Aksi', width: 60, align: 'left', filterType: 'none' },
+        { name: 'aksi', label: 'Aksi', width: 52, align: 'center', filterType: 'none' },
     ]
     const jabatanHeaders = [
         { name: 'kode_jabatan', label: 'Kode Jabatan', width: 110, align: 'center', filterType: 'text', filterPlaceholder: 'Cari kode...' },
@@ -258,7 +258,7 @@ const MasterOrganisasi = () => {
         { name: 'unit', label: 'Unit Kerja', width: 180, align: 'left', filterType: 'text', filterPlaceholder: 'Cari unit...' },
         { name: 'level_jabatan', label: 'Level', width: 100, align: 'center', filterType: 'text', filterPlaceholder: 'Cari level...' },
         { name: 'status', label: 'Status', width: 100, align: 'center', filterType: 'select', filterPlaceholder: 'Filter...', filterOptions: statusFilterOptions },
-        { name: 'aksi', label: 'Aksi', width: 60, align: 'center', filterType: 'none' },
+        { name: 'aksi', label: 'Aksi', width: 52, align: 'center', filterType: 'none' },
     ]
     const pegawaiHeaders = [
         { name: 'nip', label: 'NIP', width: 120, align: 'center', filterType: 'text', filterPlaceholder: 'Cari NIP...' },
@@ -267,14 +267,14 @@ const MasterOrganisasi = () => {
         { name: 'unit', label: 'Unit Kerja', width: 150, align: 'left', filterType: 'text', filterPlaceholder: 'Cari unit...' },
         { name: 'email', label: 'Email', width: 180, align: 'left', filterType: 'text', filterPlaceholder: 'Cari email...' },
         { name: 'status', label: 'Status', width: 100, align: 'center', filterType: 'select', filterPlaceholder: 'Filter...', filterOptions: statusFilterOptions },
-        { name: 'aksi', label: 'Aksi', width: 60, align: 'center', filterType: 'none' },
+        { name: 'aksi', label: 'Aksi', width: 52, align: 'center', filterType: 'none' },
     ]
     const relasiHeaders = [
         { name: 'pegawai', label: 'Pegawai', width: 180, align: 'left', filterType: 'text', filterPlaceholder: 'Cari nama...' },
         { name: 'atasan', label: 'Atasan', width: 180, align: 'left', filterType: 'text', filterPlaceholder: 'Cari nama atasan...' },
         { name: 'relasi', label: 'Jenis Relasi', width: 120, align: 'center', filterType: 'text', filterPlaceholder: 'Cari relasi...' },
         { name: 'status', label: 'Status', width: 100, align: 'center', filterType: 'select', filterPlaceholder: 'Filter...', filterOptions: statusFilterOptions },
-        { name: 'aksi', label: 'Aksi', width: 60, align: 'center', filterType: 'none' },
+        { name: 'aksi', label: 'Aksi', width: 52, align: 'center', filterType: 'none' },
     ]
 
     const getTableHeaders = () => {
@@ -497,17 +497,15 @@ const MasterOrganisasi = () => {
                                         }
                                         if (header.name === 'aksi') {
                                             return (
-                                                <EofficeTableCell key={header.name} width={header.width} align={header.align}>
-                                                    <div className="d-flex align-items-center justify-content-center td-action">
-                                                        <EditDelete
-                                                            data={[
-                                                                { label: "Edit", icon: "edit" },
-                                                                { label: "Hapus", icon: "delete" }
-                                                            ]}
-                                                            onEdit={() => openForm(item)}
-                                                            onDelete={() => deleteData(item)}
-                                                        />
-                                                    </div>
+                                                <EofficeTableCell key={header.name} width={52} align="center">
+                                                    <EditDelete
+                                                        data={[
+                                                            { label: "Edit", icon: "edit" },
+                                                            { label: "Hapus", icon: "delete" }
+                                                        ]}
+                                                        onEdit={() => openForm(item)}
+                                                        onDelete={() => deleteData(item)}
+                                                    />
                                                 </EofficeTableCell>
                                             )
                                         }

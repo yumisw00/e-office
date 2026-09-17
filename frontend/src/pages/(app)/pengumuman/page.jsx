@@ -6,7 +6,6 @@ import Button from "components/Button"
 import EofficeStatusBadge from "components/EofficeStatusBadge"
 import { api_services } from "hooks/api_services"
 import { formatDateApp } from "pages/Utils"
-import EditDelete from "components/EditDelete"
 
 const emptyForm = {
     judul: "",
@@ -46,27 +45,11 @@ const kategoriOptions = [
     { value: "edukasi", label: "Edukasi", icon: "school", color: "#16a34a" },
 ]
 
-const isiPengumumanTemplates = [
-    {
-        value: "informasi_umum",
-        label: "Informasi Umum",
-        isi: "Dengan ini disampaikan informasi kepada seluruh pegawai agar memperhatikan ketentuan dan informasi terbaru yang berlaku.",
-    },
-    {
-        value: "pemberitahuan_penting",
-        label: "Pemberitahuan Penting",
-        isi: "Diberitahukan kepada seluruh pegawai bahwa terdapat informasi penting yang perlu segera diperhatikan dan ditindaklanjuti sesuai ketentuan.",
-    },
-    {
-        value: "undangan_kegiatan",
-        label: "Undangan Kegiatan",
-        isi: "Diharapkan kehadiran pihak yang dituju pada kegiatan sesuai jadwal, tempat, dan ketentuan yang telah ditetapkan.",
-    },
-    {
-        value: "layanan_sistem",
-        label: "Informasi Layanan Sistem",
-        isi: "Layanan sistem akan mengalami penyesuaian. Mohon pengguna memperhatikan informasi terbaru dan melakukan tindakan yang diperlukan.",
-    },
+const roleOptions = [
+    { value: 'pegawai', label: 'Pegawai' },
+    { value: 'pimpinan', label: 'Pimpinan' },
+    { value: 'admin_sistem', label: 'Admin Sistem' },
+    { value: 'admin_konten', label: 'Admin Konten' },
 ]
 
 const getKategori = value => kategoriOptions.find(k => k.value === value) || kategoriOptions[0]
@@ -74,6 +57,15 @@ const getKategori = value => kategoriOptions.find(k => k.value === value) || kat
 const formatDateShort = value => {
     if (!value) return "-"
     return formatDateApp(value, "DD MMM YYYY")
+}
+
+const cardActionButtonStyle = {
+    minWidth: 58,
+    height: 30,
+    padding: "0 7px",
+    justifyContent: "center",
+    gap: 4,
+    fontSize: 12,
 }
 
 const Pengumuman = () => {
@@ -88,12 +80,9 @@ const Pengumuman = () => {
     const [draftFilters, setDraftFilters] = useState(emptyFilters)
     const [pagination, setPagination] = useState({ page: 1, pagesize: 12, total_records: 0, total_page: 1 })
     const [loadError, setLoadError] = useState("")
-    const [roleOptions, setRoleOptions] = useState([])
-    const [isiTemplate, setIsiTemplate] = useState("")
     const [activeKategori, setActiveKategori] = useState("semua")
 
     const service = useMemo(() => api_services({ api_path: "/pengumuman" }), [])
-    const roleService = useMemo(() => api_services({ api_path: "/pengumuman/roles" }), [])
 
     const loadData = async (activeFilters = filters, page = pagination.page) => {
         setIsLoading(true)
@@ -125,44 +114,24 @@ const Pengumuman = () => {
 
     useEffect(() => { loadData() }, [filters, pagination.page])
 
-    useEffect(() => {
-        const loadRoles = async () => {
-            const response = await roleService.getapi_services({})
-            setRoleOptions(normalizeList(response)
-                .map(item => ({
-                    value: `group:${item.id_group || item.id}`,
-                    label: item.nama || item.nama_group || item.name,
-                }))
-                .filter(item => item.value !== 'group:undefined' && item.label))
-        }
-        loadRoles().catch(() => setRoleOptions([]))
-    }, [roleService])
-
     const getTargetRoleLabel = value => {
         if (value === 'semua') return 'Semua'
         const legacyLabels = {
             admin_sistem: 'Admin Sistem',
             admin_konten: 'Admin Konten',
-            pegawai: 'Pegawai / Pimpinan',
+            pegawai: 'Pegawai',
         }
         return roleOptions.find(option => option.value === value)?.label || legacyLabels[value] || value || 'Semua'
     }
 
     const openForm = item => {
         setSelectedId(getId(item))
-        setIsiTemplate(isiPengumumanTemplates.find(template => template.isi === item?.isi)?.value || "")
         setForm({
             ...emptyForm,
             ...item,
             tanggal_publish: item?.tanggal_publish ? String(item.tanggal_publish).slice(0, 10) : '',
         })
         setShowModal(true)
-    }
-
-    const handleIsiTemplateChange = templateId => {
-        const template = isiPengumumanTemplates.find(item => item.value === templateId)
-        setIsiTemplate(templateId)
-        setForm(current => ({ ...current, isi: template?.isi || "" }))
     }
 
     const saveData = async event => {
@@ -174,7 +143,6 @@ const Pengumuman = () => {
         if (response?.success === false || response?.error || response?.code || !response?.data) return
         setShowModal(false)
         setSelectedId(null)
-        setIsiTemplate("")
         setForm(emptyForm)
         loadData()
     }
@@ -336,20 +304,24 @@ const Pengumuman = () => {
                                     {/* Card Footer */}
                                     <div className="px-4 pb-4 pt-2 d-flex justify-content-between align-items-center">
                                         <div className="d-flex" style={{ gap: 6 }}>
-                                            <Button className="btn-default-app btn-light btn-sm" onClick={() => { setPreviewItem(item); setShowPreview(true) }}>
-                                                <span className="material-icons" style={{ fontSize: 14 }}>visibility</span>
+                                            <Button className="btn-default-app btn-light btn-sm" style={cardActionButtonStyle} onClick={() => { setPreviewItem(item); setShowPreview(true) }}>
+                                                <span className="material-icons" style={{ fontSize: 16 }}>visibility</span>
+                                                Lihat
                                             </Button>
-                                            <EditDelete
-                                                data={[
-                                                    { label: "Edit", icon: "edit" },
-                                                    { label: "Hapus", icon: "delete" },
-                                                ]}
-                                                onEdit={() => openForm(item)}
-                                                onDelete={() => deleteData(item)}
-                                            />
+                                            <Button className="btn-default-app btn-warning btn-sm" style={cardActionButtonStyle} onClick={() => openForm(item)}>
+                                                <span className="material-icons" style={{ fontSize: 16 }}>edit</span>
+                                                Edit
+                                            </Button>
+                                            <Button className="btn-default-app btn-danger btn-sm" style={cardActionButtonStyle} onClick={() => {
+                                                if (window.confirm("Anda yakin menghapus pengumuman ini?")) deleteData(item)
+                                            }}>
+                                                <span className="material-icons" style={{ fontSize: 16 }}>delete</span>
+                                                Hapus
+                                            </Button>
                                         </div>
                                         <Button
-                                            className={`btn-default-app btn-sm ${isPublished ? "btn-warning" : "btn-success"}`}
+                                            className={`btn-default-app btn-sm pengumuman-publish-btn ${isPublished ? "btn-warning" : "btn-success"}`}
+                                            style={cardActionButtonStyle}
                                             onClick={() => publishData(item)}
                                         >
                                             <span className="material-icons" style={{ fontSize: 14 }}>{isPublished ? "unpublished" : "publish"}</span>
@@ -418,18 +390,14 @@ const Pengumuman = () => {
                             </div>
                             <div className="col-12">
                                 <label className="font-semibold">Isi Pengumuman <span className="text-danger">*</span></label>
-                                <select className="form-control" value={isiTemplate} onChange={e => handleIsiTemplateChange(e.target.value)} required>
-                                    <option value="">-- Pilih format isi pengumuman --</option>
-                                    {isiPengumumanTemplates.map(template => (
-                                        <option key={template.value} value={template.value}>{template.label}</option>
-                                    ))}
-                                </select>
-                                {form.isi ? (
-                                    <div className="form-control mt-2 bg-light" style={{ minHeight: 110, whiteSpace: "pre-wrap" }}>
-                                        {form.isi}
-                                    </div>
-                                ) : null}
-                                <small className="text-muted">Isi pengumuman mengikuti format yang dipilih dan tidak dapat diketik bebas.</small>
+                                <textarea
+                                    className="form-control"
+                                    rows={6}
+                                    placeholder="Tulis isi pengumuman..."
+                                    value={form.isi || ""}
+                                    onChange={e => setForm({ ...form, isi: e.target.value })}
+                                    required
+                                />
                             </div>
                             <div className="col-12">
                                 <label className="font-semibold">Lampiran</label>

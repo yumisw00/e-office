@@ -393,6 +393,13 @@ const ApplicationMenu = props => {
         const page = pathname_arr[1]
         const page_access = resolvePageAlias(page)
 
+        // Utility page opened from a surat row; it is protected by the
+        // parent surat_keluar access and should not be treated as an unknown menu page.
+        if (page_access === 'informasi_tanda_tangan_surat') {
+            dispatch({ type: VAR_IS_PAGE_404, value: false })
+            return
+        }
+
         if (canUseEofficeAction(page_access, 'view')) {
             dispatch({
                 type: VAR_IS_PAGE_404,
@@ -454,6 +461,11 @@ const ApplicationMenu = props => {
         const pathname_arr = pathname.split('/')
         let pathurl = pathname_arr[1]
         const page_access = resolvePageAlias(pathurl)
+
+        if (page_access === 'informasi_tanda_tangan_surat') {
+            dispatch({ type: VAR_IS_PAGE_404, value: false })
+            return
+        }
 
         if (pathurl == 'dashboard' || pathurl == '') return
         if (canUseEofficeAction(page_access, 'view')) {

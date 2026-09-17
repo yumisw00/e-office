@@ -204,13 +204,6 @@ const Profileedit = props => {
                 label: 'Edit',
                 url: `/profile/edit`
             })
-        } else {
-
-            btn_top.push({
-                icon: 'visibility',
-                label: 'Detail',
-                url: `/profile/detail`
-            })
         }
 
         btn_top.push({
@@ -828,12 +821,7 @@ const Profileedit = props => {
     return (
         <>
             <HeaderApp
-                title={`${path === 'add'
-                    ? 'Tambah'
-                    : path === 'edit'
-                        ? 'Edit'
-                        : ''
-                    } ${titlePage}`}
+                title=""
                 is_loading={is_loading}
                 data_btn={
                     Object.keys(access_method).length > 0
@@ -1096,9 +1084,6 @@ const Profileedit = props => {
                                                                 onError={handleErrors}
                                                             disabled={is_disabled}
                                                         />
-                                                        <button type="button" className="password-visibility-toggle" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}>
-                                                            <span className="material-icons">{showPassword ? 'visibility_off' : 'visibility'}</span>
-                                                        </button>
                                                     </div>
                                                     </FormGroup>
                                                 </div>
@@ -1126,9 +1111,6 @@ const Profileedit = props => {
                                                                 onError={handleErrors}
                                                             disabled={is_disabled}
                                                         />
-                                                        <button type="button" className="password-visibility-toggle" onClick={() => setShowPasswordConfirm(value => !value)} aria-label={showPasswordConfirm ? 'Sembunyikan konfirmasi password' : 'Lihat konfirmasi password'}>
-                                                            <span className="material-icons">{showPasswordConfirm ? 'visibility_off' : 'visibility'}</span>
-                                                        </button>
                                                     </div>
                                                     </FormGroup>
                                                 </div>

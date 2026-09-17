@@ -4,6 +4,7 @@ import HeaderApp from "components/HeaderApp";
 import { Modal } from "react-bootstrap";
 import Pagination from "components/Pagination";
 import Button from "components/Button";
+import EditDelete from "components/EditDelete";
 import IndexPage from "../IndexPage";
 import surat_arsipModel from "hooks/models/surat_arsipModel";
 import SuratArsipEdit from "./[...slug]/page";
@@ -281,15 +282,15 @@ class SuratArsip extends IndexPage {
 
     // Table headers with filter config for EofficeTableWithFilter
     tableHeaders = [
-        { name: 'jenis_pengiriman', label: 'Pengiriman', width: 130, align: 'center', filterType: 'select' },
         { name: 'nomor_surat', label: 'Nomor Surat', width: 230, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
+        { name: 'jenis_pengiriman', label: 'Pengiriman', width: 130, align: 'center', filterType: 'select' },
         { name: 'perihal', label: 'Perihal', width: 330, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
         { name: 'lokasi_fisik', label: 'Lokasi Fisik', width: 240, align: 'center', filterType: 'text', filterPlaceholder: 'Filter...' },
         { name: 'tanggal_arsip', label: 'Tanggal Arsip', width: 150, align: 'center', filterType: 'date' },
-        { name: 'aksi', label: 'Aksi', width: 72, align: 'center', filterType: 'none' },
+        { name: 'aksi', label: 'Aksi', width: 56, align: 'center', filterType: 'none' },
     ]
 
-    tableColgroup = [130, 230, 330, 240, 150, 72]
+    tableColgroup = [230, 130, 330, 240, 150, 56]
 
     renderArsipTable = list => {
         const jenisOptions = this.getJenisOptions()
@@ -297,30 +298,22 @@ class SuratArsip extends IndexPage {
         const canDelete = canUseEofficeAction('surat_arsip', 'delete')
 
         const jenisCol = { name: 'jenis_surat', label: 'Jenis', width: 150, align: 'center', filterType: 'select', filterOptions: jenisOptions }
-        const headersWithOptions = [
-            jenisCol,
-            ...this.tableHeaders.map(header => header.name === 'jenis_pengiriman'
-                ? { ...header, filterOptions: jenisPengirimanOptions }
-                : header),
-        ]
+        const configuredHeaders = this.tableHeaders.map(header => header.name === 'jenis_pengiriman'
+            ? { ...header, filterOptions: jenisPengirimanOptions }
+            : header)
+        const headersWithOptions = [configuredHeaders[0], jenisCol, ...configuredHeaders.slice(1)]
 
         return (
             <EofficeTableWithFilter
                 headers={headersWithOptions}
-                colgroup={[150, 130, 230, 330, 240, 150, 72]}
+                colgroup={[230, 150, 130, 330, 240, 150, 56]}
                 filterValues={this.state.inlineFilterValues}
                 onFilterChange={this.handleInlineFilterChange}
                 align="start"
-                minWidth={1100}
+                minWidth={1286}
             >
                 {list.map((item, i) => (
                     <tr key={item[this.model.primaryKey] || i} className="align-top">
-                        <EofficeTableCell width={150} align="start" wrap>
-                            {jenisReferensi[item.jenis_surat] || item.jenis_surat || '-'}
-                        </EofficeTableCell>
-                        <EofficeTableCell width={130} align="start">
-                            {jenisPengirimanReferensi[item.jenis_pengiriman] || 'Eksternal'}
-                        </EofficeTableCell>
                         <EofficeTableCell width={230} align="start" wrap>
                             <a
                                 href={`/surat_arsip/detail/${item[this.model.primaryKey]}`}
@@ -332,6 +325,12 @@ class SuratArsip extends IndexPage {
                                 {item.nomor_surat || '-'}
                             </a>
                         </EofficeTableCell>
+                        <EofficeTableCell width={150} align="start" wrap>
+                            {jenisReferensi[item.jenis_surat] || item.jenis_surat || '-'}
+                        </EofficeTableCell>
+                        <EofficeTableCell width={130} align="start">
+                            {jenisPengirimanReferensi[item.jenis_pengiriman] || 'Eksternal'}
+                        </EofficeTableCell>
                         <EofficeTableCell width={330} align="start" wrap>{item.perihal || '-'}</EofficeTableCell>
                         <EofficeTableCell width={240} align="start" wrap>
                             {this.renderLokasiFisik(item.lokasi_fisik)}
@@ -339,18 +338,17 @@ class SuratArsip extends IndexPage {
                         <EofficeTableCell width={150} align="center">
                             {item.tanggal_arsip ? formatDateApp(item.tanggal_arsip, 'YYYY-MM-DD') : '-'}
                         </EofficeTableCell>
-                        <EofficeTableCell width={72}>
+                        <EofficeTableCell width={56}>
                             {canDelete ? (
                                 <div className="d-flex align-items-center justify-content-center td-action">
-                                    <Button
-                                        type="button"
-                                        className="btn-default-app btn-danger btn-sm"
-                                        onClick={() => this.handleDeleteArsip(item[this.model.primaryKey])}
-                                        title="Hapus arsip"
-                                        aria-label="Hapus arsip"
-                                    >
-                                        <span className="material-icons" style={{ fontSize: 15 }}>delete</span>
-                                    </Button>
+                                    <EditDelete
+                                        data={[{
+                                            label: 'Hapus',
+                                            icon: 'delete',
+                                            onClick: () => this.handleDeleteArsip(item[this.model.primaryKey]),
+                                        }]}
+                                        id={item[this.model.primaryKey]}
+                                    />
                                 </div>
                             ) : null}
                         </EofficeTableCell>
@@ -362,9 +360,6 @@ class SuratArsip extends IndexPage {
 
     render() {
         const list = this.getFilteredArsipList()
-        const allArsip = Array.isArray(this.state.list) ? this.state.list : []
-        const suratMasukCount = allArsip.filter(item => item.jenis_surat === 'surat_masuk').length
-        const suratKeluarCount = allArsip.filter(item => item.jenis_surat === 'surat_keluar').length
         const hasFilters = Boolean(this.state.quickSearch || Object.values(this.state.inlineFilterValues).some(Boolean))
 
         return (
@@ -377,27 +372,6 @@ class SuratArsip extends IndexPage {
                 />
 
                 <div className="container pl-4 pr-4 pb-4">
-                    <div className="row g-3 mb-1">
-                        <div className="col-md-4">
-                            <div className="arsip-summary-card">
-                                <span className="material-icons arsip-summary-icon">archive</span>
-                                <div><div className="arsip-summary-value">{allArsip.length}</div><div className="arsip-summary-label">Arsip pada halaman ini</div></div>
-                            </div>
-                        </div>
-                        <div className="col-md-4">
-                            <div className="arsip-summary-card">
-                                <span className="material-icons arsip-summary-icon">inbox</span>
-                                <div><div className="arsip-summary-value">{suratMasukCount}</div><div className="arsip-summary-label">Surat masuk</div></div>
-                            </div>
-                        </div>
-                        <div className="col-md-4">
-                            <div className="arsip-summary-card">
-                                <span className="material-icons arsip-summary-icon">outgoing_mail</span>
-                                <div><div className="arsip-summary-value">{suratKeluarCount}</div><div className="arsip-summary-label">Surat keluar</div></div>
-                            </div>
-                        </div>
-                    </div>
-
                     <EofficeCard className="p-3 mb-3">
                         {list.length > 0 ? this.renderArsipTable(list) : (
                             <EofficeEmptyState
@@ -442,10 +416,6 @@ class SuratArsip extends IndexPage {
                 )}
 
                 <style>{`
-                    .arsip-summary-card { display: flex; align-items: center; gap: 12px; min-height: 82px; padding: 16px; border: 1px solid #d9e5e8; border-radius: 10px; background: #fff; box-shadow: 0 2px 5px rgba(15, 116, 128, .06); }
-                    .arsip-summary-icon { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 9px; color: #0f7480; background: #e6f5f6; }
-                    .arsip-summary-value { color: #164e63; font-size: 24px; font-weight: 700; line-height: 1; }
-                    .arsip-summary-label { margin-top: 4px; color: #64748b; font-size: 13px; }
                     .arsip-search-wrap { min-width: min(100%, 410px); }
                     .arsip-search-wrap .form-control { min-width: 220px; }
                     .arsip-jenis { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }

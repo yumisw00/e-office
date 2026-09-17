@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams } from "react-router-dom"
 import HeaderApp from "components/HeaderApp"
 import { EofficeCard } from "components/EofficeModuleUI"
 import { api_services } from "hooks/api_services"
@@ -69,7 +69,7 @@ const InfoItem = ({ label, value, fullWidth = false }) => (
 )
 
 const InformasiTandaTanganSurat = () => {
-    const params = useSearchParams()
+    const [params] = useSearchParams()
     const [data, setData] = useState(emptyData)
     const [loading, setLoading] = useState(true)
     const [signatureUrl, setSignatureUrl] = useState(null)
@@ -95,14 +95,20 @@ const InformasiTandaTanganSurat = () => {
             if (idSurat) {
                 // Fetch from API
                 const service = api_services({ api_path: '/surat_keluar' })
-                const response = await service.getapi_services({ id: idSurat })
+                // Use the resource endpoint so the response is a single surat object,
+                // rather than the paginated list returned by GET /surat_keluar.
+                const response = await service.getapi_servicesid({ id: idSurat })
 
                 if (response?.data) {
-                    const item = response.data
+                    const item = Array.isArray(response.data) ? response.data[0] : response.data
+                    if (!item) {
+                        setLoading(false)
+                        return
+                    }
                     setData({
                         nomor_surat: item.nomor_surat || '',
                         tanggal_surat: item.tanggal_surat || item.tanggal || '',
-                        tanggal_ttd: item.tanggal_ttd || item.tanggal_tanda_tangan || item.tanggal || '',
+                        tanggal_ttd: item.tanggal_ttd || item.tanggal_tanda_tangan || item.signed_at || item.tanggal || '',
                         penandatangan: item.nama_penandatangan || '',
                         jabatan_penandatangan: item.jabatan_penandatangan || '',
                         nip_penandatangan: item.nip_penandatangan || '',
@@ -135,11 +141,25 @@ const InformasiTandaTanganSurat = () => {
 
     return (
         <div className="informasi-ttd-container" style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
-            <HeaderApp
-                title="Informasi Tanda Tangan Surat"
-                is_loading={loading}
-                data_btn={[]}
-            />
+            <div style={{ position: 'relative' }}>
+                <HeaderApp
+                    title="Informasi Tanda Tangan Surat"
+                    is_loading={loading}
+                    data_btn={[]}
+                />
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (window.history.length > 1) window.history.back()
+                        else window.location.href = '/surat_keluar'
+                    }}
+                    className="btn btn-light d-inline-flex align-items-center gap-2"
+                    style={{ position: 'absolute', top: 0, right: 0 }}
+                >
+                    <span className="material-icons" style={{ fontSize: 18 }}>arrow_back</span>
+                    Kembali
+                </button>
+            </div>
 
             <div style={{ marginTop: 20 }}>
                 {/* Header Card */}
@@ -294,7 +314,7 @@ const InformasiTandaTanganSurat = () => {
                                 justifyContent: 'center',
                                 background: '#f9fafb',
                             }}>
-                                {signatureUrl || data.status === 'signed' ? (
+                                {signatureUrl ? (
                                     <img
                                         src={signatureUrl}
                                         alt="Tanda Tangan"
@@ -320,7 +340,11 @@ const InformasiTandaTanganSurat = () => {
                                             color: '#6b7280',
                                             marginTop: 4,
                                         }}>
-                                            {data.status === 'pending' ? 'Menunggu penandatanganan' : 'Status: ' + data.status}
+                                            {data.status === 'signed'
+                                                ? 'Tanda tangan digital tersimpan pada dokumen'
+                                                : data.status === 'pending'
+                                                    ? 'Menunggu penandatanganan'
+                                                    : 'Status: ' + data.status}
                                         </div>
                                     </div>
                                 )}

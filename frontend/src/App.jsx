@@ -86,7 +86,8 @@ PageDinamic["/surat_template"] = lazy(() => import("pages/(app)/surat_template/p
 PageDinamic["/template_surat"] = lazy(() => import("pages/(app)/surat_template/page"));
 PageDinamic["/audit_trail_immutable"] = lazy(() => import("pages/(app)/audit_trail_immutable/page"));
 PageDinamic["/digital_signature"] = lazy(() => import("pages/(app)/digital_signature/page"));
-PageDinamic["/informasi_tanda_tangan_surat"] = lazy(() => import("pages/(app)/informasi_tanda_tangan_surat/page"));
+const InformasiTandaTanganSuratPage = lazy(() => import("pages/(app)/informasi_tanda_tangan_surat/page"));
+PageDinamic["/informasi_tanda_tangan_surat"] = InformasiTandaTanganSuratPage;
 PageDinamic["/ai_document_job"] = lazy(() => import("pages/(app)/ai_document_job/page"));
 PageDinamic["/sys_notification"] = lazy(() => import("pages/(app)/sys_notification/page"));
 PageDinamic["/surat_distribusi"] = lazy(() => import("pages/(app)/surat_distribusi/page"));
@@ -349,6 +350,15 @@ function App() {
             element={
               <AppLayout {...addprops}>
                 <Dashboard {...addprops} />
+              </AppLayout>
+            }
+          />
+          {/* Keep this utility page addressable when opened directly in a new tab. */}
+          <Route
+            path="/informasi_tanda_tangan_surat"
+            element={
+              <AppLayout {...addprops}>
+                <InformasiTandaTanganSuratPage {...addprops} />
               </AppLayout>
             }
           />

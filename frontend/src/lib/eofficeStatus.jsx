@@ -1,7 +1,7 @@
 const labels = {
     new: 'Baru', baru: 'Baru', open: 'Terbuka', pending: 'Menunggu', waiting: 'Menunggu Persetujuan',
     review: 'Dalam Pemeriksaan', 'in review': 'Dalam Pemeriksaan', 'in progress': 'Sedang Diproses',
-    process: 'Diproses', processing: 'Diproses', diproses: 'Diproses', draft: 'Draf', submitted: 'Diajukan',
+    process: 'Diproses', processing: 'Diproses', diproses: 'Diproses', draft: 'Draf', disposisi: 'Disposisi', diarsipkan: 'Diarsipkan', submitted: 'Diajukan',
     diajukan: 'Diajukan', approved: 'Disetujui', disetujui: 'Disetujui', rejected: 'Ditolak', ditolak: 'Ditolak',
     revision: 'Revisi', revisi: 'Revisi', signed: 'Ditandatangani', ditandatangani: 'Ditandatangani', sent: 'Dikirim',
     dikirim: 'Dikirim', distributed: 'Didistribusikan', didistribusikan: 'Didistribusikan', disposed: 'Didisposisikan',

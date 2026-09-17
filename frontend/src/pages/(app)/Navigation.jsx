@@ -81,6 +81,11 @@ const Navigation = ({ user }) => {
     $("body").toggleClass("sidebar-collapsed");
   };
 
+  const toggleMobileNavigation = () => {
+    setOpen((current) => !current);
+    sidebarExpandCollapse();
+  };
+
   const handleExpandCollapseSearch = () => {
     setsearch_open(!search_open);
 
@@ -454,7 +459,6 @@ const Navigation = ({ user }) => {
                       Profile
                     </Link> */}
 
-
                     <Dropdown.Item
                       onClick={() => {
                         router.push(`/profile/detail`)
@@ -469,18 +473,18 @@ const Navigation = ({ user }) => {
                     </Dropdown.Item>
 
                     {is_login_role ? (
-                      <Dropdown.Item
-                        onClick={() => {
-                          setmodalChooseGroup(true)
-                        }}
-                        className="d-flex align-items-center">
-                        <span
-                          className="material-icons"
-                          style={{ fontSize: 18, marginRight: 7 }}>
-                          person
-                        </span>
-                        Login Role
-                      </Dropdown.Item>
+                    <Dropdown.Item
+                      onClick={() => {
+                        setmodalChooseGroup(true)
+                      }}
+                      className="d-flex align-items-center">
+                      <span
+                        className="material-icons"
+                        style={{ fontSize: 18, marginRight: 7 }}>
+                        person
+                      </span>
+                      Login Role
+                    </Dropdown.Item>
                     ) : null}
 
 
@@ -520,7 +524,7 @@ const Navigation = ({ user }) => {
 
             <div className=" flex items-center sm:hidden navbar-right">
               <button
-                onClick={() => setOpen((open) => !open)}
+                onClick={toggleMobileNavigation}
                 className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out"
               >
                 <svg

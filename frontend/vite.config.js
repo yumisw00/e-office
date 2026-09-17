@@ -29,6 +29,9 @@ export default ({ mode }) => {
   return defineConfig({
     appType: 'spa',
     server: {
+      // Allow other devices on the LAN to reach the Vite dev server.
+      host: true,
+      port: 5173,
       hmr: false,
       proxy: {
         '/_backend': backendProxy,
