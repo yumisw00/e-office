@@ -82,7 +82,11 @@ class DigitalSignatureAPIController extends BaseResourceController
                     'source_type' => $signature->source_type,
                     'source_id' => $signature->source_id,
                     'certificate_serial' => $signature->certificate_serial,
-                    'qr_code_path' => $signature->qr_code_path,
+            'qr_code_path' => $signature->qr_code_path,
+            'signature_path' => $signature->signature_path ?? null,
+            'signature_url' => ($signature->signature_path ?? null)
+                ? url('api/getfile/' . ltrim($signature->signature_path, '/'))
+                : null,
                     'qr_code_url' => $signature->qr_code_path
                         ? url('api/getfile/' . ltrim($signature->qr_code_path, '/'))
                         : null,

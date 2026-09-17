@@ -52,16 +52,24 @@ class PengumumanAPIController extends BaseResourceController
                     $activeQuery->whereNull('expired_at')->orWhere('expired_at', '>=', $now);
                 });
 
-            $activeGroupId = $request->session()->get('id_group');
+            $activeGroupId = $request->session()->get('id_group')
+                ?: $request->user()?->id_group;
             $activeGroupName = $activeGroupId
                 ? DB::table('sys_group')->where('id_group', $activeGroupId)->value('nama')
                 : null;
             $legacyRole = strtolower(str_replace([' ', '-'], '_', trim((string) $activeGroupName)));
+            $roleFamily = str_contains($legacyRole, 'admin sistem') || str_contains($legacyRole, 'admin_sistem')
+                ? 'admin_sistem'
+                : (str_contains($legacyRole, 'admin konten') || str_contains($legacyRole, 'admin_konten')
+                    ? 'admin_konten'
+                    : (str_contains($legacyRole, 'pimpinan') || str_contains($legacyRole, 'direksi')
+                        ? 'pimpinan'
+                        : 'pegawai'));
             $roleTargets = array_filter([
                 'semua',
                 $activeGroupId ? 'group:' . $activeGroupId : null,
                 $legacyRole ?: null,
-                str_contains($legacyRole, 'pimpinan') ? 'pegawai' : null,
+                $roleFamily,
             ]);
             $query->whereIn('target_role', $roleTargets);
 
@@ -308,7 +316,8 @@ class PengumumanAPIController extends BaseResourceController
 
     private function currentUserDivisionIds(Request $request): array
     {
-        $employeeId = $request->user()?->id_pegawai;
+        $employeeId = $request->user()?->id_pegawai
+            ?: $request->user()?->user?->id_pegawai;
         if (!$employeeId) {
             return [];
         }

@@ -21,10 +21,11 @@ class SuratApprovalAPIController extends BaseResourceController
     public function index(Request $request): JsonResponse
     {
         $page = max(1, (int) $request->get('page', 1));
-        $pageSize = max(1, (int) $request->get('pagesize', 100));
+        $pageSize = max(1, (int) $request->get('pagesize', 20));
 
         $query = DB::table('surat_approval')
             ->join('surat_keluar', 'surat_approval.id_surat_keluar', '=', 'surat_keluar.id_surat_keluar')
+            ->leftJoin('master_jenis_surat', 'surat_keluar.id_jenis_surat', '=', 'master_jenis_surat.id_jenis_surat')
             ->leftJoin('sys_user as pembuat', 'surat_keluar.created_by', '=', 'pembuat.id_user')
             ->whereNull('surat_approval.deleted_at')
             ->whereNull('surat_keluar.deleted_at')
@@ -32,6 +33,9 @@ class SuratApprovalAPIController extends BaseResourceController
                 'surat_approval.*',
                 'surat_keluar.nomor_surat',
                 'surat_keluar.kode_draft',
+                // Use the saved value, then the master relation as a fallback
+                // for older letters created before jenis was synchronized.
+                DB::raw('COALESCE(surat_keluar.jenis, master_jenis_surat.nama) as jenis_surat'),
                 'surat_keluar.perihal',
                 'surat_keluar.tujuan_nama',
                 'surat_keluar.created_at as tanggal_diajukan',

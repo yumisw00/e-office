@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\ApprovalEmail;
 use App\Mail\SuratKeluarTerkirimEmail;
 use App\Services\ImmutableAuditTrailLogger;
+use App\Services\EOfficeNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -87,7 +88,7 @@ class EOfficeWorkflowController extends Controller
                 }
             }
 
-            $this->updateSuratMasukStatus($surat->id, 'distributed');
+            $this->updateSuratMasukStatus($surat->id, 'dikirim');
 
             return $rows;
         });
@@ -184,7 +185,15 @@ class EOfficeWorkflowController extends Controller
                 $this->audit('surat_distribusi', $before->id_surat_distribusi, 'read', $before, $after);
             }
 
-            $this->updateSuratMasukStatus($surat->id, 'read');
+            $hasDisposition = DB::table('surat_disposisi')
+                ->where('id_surat_masuk', $surat->id)
+                ->whereNull('deleted_at')
+                ->whereNotIn('status', ['selesai', 'dibatalkan'])
+                ->exists();
+            $this->updateSuratMasukStatus($surat->id, $hasDisposition ? 'disposisi' : 'selesai');
+            if (!$hasDisposition && !empty($surat->id_surat_keluar)) {
+                $this->updateSuratKeluarStatus($surat->id_surat_keluar, 'selesai');
+            }
         });
 
         return response()->json([
@@ -258,21 +267,24 @@ class EOfficeWorkflowController extends Controller
 
             $idArsip = DB::table('surat_arsip')->insertGetId([
                 'jenis_surat' => 'surat_masuk',
+                'jenis_pengiriman' => $surat->jenis_pengiriman
+                    ?? (!empty($surat->id_surat_keluar) ? 'internal' : 'eksternal'),
                 'id_surat_masuk' => $surat->id,
                 'nomor_surat' => $surat->nomor_surat,
-                'perihal' => $surat->perihal,
+                'perihal' => $surat->perihal ?: $surat->nomor_surat ?: 'Surat Masuk',
                 'file_path' => $surat->file_surat,
                 'hash_file' => $this->fileHash($surat->file_surat),
                 'lokasi_fisik' => $validated['lokasi_fisik'] ?? null,
                 'tanggal_arsip' => $validated['tanggal_arsip'] ?? now(),
                 'created_by' => auth()->user()?->id_user,
+                'created_by_desc' => auth()->user()?->name,
                 'created_at' => now(),
                 'updated_at' => now(),
             ], 'id_surat_arsip');
 
             $archive = DB::table('surat_arsip')->where('id_surat_arsip', $idArsip)->first();
             $this->audit('surat_arsip', $idArsip, 'archive', null, $archive);
-            $this->updateSuratMasukStatus($surat->id, 'done');
+            $this->updateSuratMasukStatus($surat->id, 'diarsipkan');
 
             return $archive;
         });
@@ -318,6 +330,13 @@ class EOfficeWorkflowController extends Controller
         }
 
         if (!empty($after->id_pemberi)) {
+            $this->createNotification(
+                (int) $after->id_pemberi,
+                'Disposisi telah diselesaikan',
+                'Disposisi yang Anda berikan telah diselesaikan oleh penerima.',
+                '/disposisi/' . $after->id_surat_disposisi,
+                ['id_surat_disposisi' => $after->id_surat_disposisi, 'id_surat_masuk' => $after->id_surat_masuk]
+            );
             $giver = DB::table('sys_user')
                 ->where('id_user', $after->id_pemberi)
                 ->whereNull('deleted_at')
@@ -371,7 +390,7 @@ class EOfficeWorkflowController extends Controller
         }
 
         DB::transaction(function () use ($surat, $approvers) {
-            $this->updateSuratKeluarStatus($surat->id_surat_keluar, 'submitted');
+            $this->updateSuratKeluarStatus($surat->id_surat_keluar, 'diproses');
 
             foreach ($approvers as $index => $idApprover) {
                 DB::table('surat_approval')->insert([
@@ -387,6 +406,7 @@ class EOfficeWorkflowController extends Controller
 
         // Send email notification to approvers
         // Approver berikutnya akan menerima email setelah approver aktif menyetujui.
+        $this->notifyOutgoingApprover($surat, (int) $approvers->first());
         $this->sendApprovalRequestEmails($surat, $approvers->take(1)->toArray());
 
         return response()->json([
@@ -410,8 +430,13 @@ class EOfficeWorkflowController extends Controller
         return $this->actOnOutgoingApproval($request, $id, 'rejected');
     }
 
-    public function signOutgoing(int|string $id): JsonResponse
+    public function signOutgoing(Request $request, int|string $id): JsonResponse
     {
+        $request->validate([
+            'pin_code' => ['nullable', 'string', 'max:128'],
+            'biometric_token' => ['nullable', 'string', 'max:2048'],
+            'signature_data' => ['required', 'string', 'max:2000000'],
+        ]);
         $surat = $this->findSuratKeluar($id);
         if (!$surat) {
             return $this->notFound('Surat keluar tidak ditemukan.');
@@ -421,18 +446,36 @@ class EOfficeWorkflowController extends Controller
             return $this->forbidden();
         }
 
-        if (!in_array($surat->status, ['approved', 'signed'], true)) {
+        if ($surat->status === 'signed' || DB::table('digital_signature')
+            ->where('source_type', 'surat_keluar')
+            ->where('source_id', $surat->id_surat_keluar)
+            ->whereNull('deleted_at')
+            ->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Surat ini sudah ditandatangani.',
+            ], 422);
+        }
+
+        if ($surat->status !== 'approved') {
             return response()->json([
                 'success' => false,
                 'message' => 'Surat keluar harus berstatus approved sebelum ditandatangani.',
             ], 422);
         }
 
-        $signature = DB::transaction(function () use ($surat) {
+        $signatureData = (string) $request->input('signature_data');
+        if (!preg_match('/^data:image\/png;base64,([A-Za-z0-9+\/]+=*)$/', $signatureData, $matches)) {
+            return response()->json(['success' => false, 'message' => 'Data tanda tangan tidak valid.'], 422);
+        }
+
+        $signature = DB::transaction(function () use ($surat, $matches) {
             $verificationCode = Str::uuid()->toString();
             $verificationUrl = url('/verify/signature/' . $verificationCode);
             $qrPath = 'digital_signature/qr_' . $surat->id_surat_keluar . '_' . now()->format('YmdHis') . '.svg';
             $signedFilePath = $surat->file_pdf_path ?: $surat->file_draft_path;
+            $signaturePath = 'digital_signature/signature_' . $surat->id_surat_keluar . '_' . now()->format('YmdHis') . '.png';
+            Storage::put($signaturePath, base64_decode($matches[1]));
             $fileHash = $this->fileHash($signedFilePath) ?: hash('sha256', json_encode([
                 'id_surat_keluar' => $surat->id_surat_keluar,
                 'nomor_surat' => $surat->nomor_surat,
@@ -450,6 +493,7 @@ class EOfficeWorkflowController extends Controller
                 'id_penandatangan' => $surat->id_penandatangan ?: auth()->user()?->id_user,
                 'certificate_serial' => 'EOFFICE-' . now()->format('YmdHis') . '-' . strtoupper(Str::random(10)),
                 'qr_code_path' => $qrPath,
+                'signature_path' => $signaturePath,
                 'signed_file_path' => $signedFilePath,
                 'verification_url' => $verificationUrl,
                 'hash_file' => $fileHash,
@@ -472,6 +516,33 @@ class EOfficeWorkflowController extends Controller
             return $signature;
         });
 
+        $signerId = (int) (auth()->user()?->id_user ?? 0);
+        if (!empty($surat->created_by) && (int) $surat->created_by !== $signerId) {
+            $this->createNotification(
+                (int) $surat->created_by,
+                'Surat keluar telah ditandatangani',
+                'Surat "' . ($surat->perihal ?? $surat->nomor_surat ?? 'Tanpa Perihal') . '" telah ditandatangani.',
+                '/surat_keluar/detail/' . $surat->id_surat_keluar,
+                ['id_surat_keluar' => $surat->id_surat_keluar, 'type' => 'signed']
+            );
+        }
+
+        $signedSurat = $this->findSuratKeluar($surat->id_surat_keluar) ?? $surat;
+        if (($signedSurat->jenis_pengiriman ?? null) === 'internal') {
+            $recipientIds = DB::table('surat_keluar_penerima')
+                ->where('id_surat_keluar', $surat->id_surat_keluar)
+                ->pluck('id_user')
+                ->filter()
+                ->unique();
+            $router = app(SuratKeluarAPIController::class);
+            foreach ($recipientIds as $recipientId) {
+                $router->routeInternalLetterToRecipient((int) $surat->id_surat_keluar, 'internal', (int) $recipientId);
+            }
+        } elseif ($this->featureEnabled($signedSurat->kirim_email_otomatis ?? false)) {
+            $this->sendOutgoingEmail($signedSurat, $signature);
+        }
+        $this->updateSuratKeluarStatus($surat->id_surat_keluar, 'dikirim');
+
         return response()->json([
             'success' => true,
             'message' => 'Tanda tangan digital berhasil dibuat.',
@@ -490,11 +561,39 @@ class EOfficeWorkflowController extends Controller
             return $this->forbidden();
         }
 
-        if (!in_array($surat->status, ['signed', 'sent'], true)) {
+        if (!in_array($surat->status, ['signed', 'dikirim', 'sent'], true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Surat keluar harus berstatus signed sebelum dikirim.',
             ], 422);
+        }
+
+        if (strtolower((string) ($surat->jenis_pengiriman ?? '')) === 'internal') {
+            $recipientIds = DB::table('surat_keluar_penerima')
+                ->where('id_surat_keluar', $surat->id_surat_keluar)
+                ->pluck('id_user')->filter()->unique()->values();
+
+            if ($recipientIds->isEmpty() && !empty($surat->tujuan_id)) {
+                $recipientIds = collect([(int) $surat->tujuan_id]);
+            }
+            if ($recipientIds->isEmpty()) {
+                return response()->json(['success' => false, 'message' => 'Penerima internal belum dipilih.'], 422);
+            }
+
+            $router = app(SuratKeluarAPIController::class);
+            foreach ($recipientIds as $recipientId) {
+                $router->routeInternalLetterToRecipient((int) $surat->id_surat_keluar, 'internal', (int) $recipientId);
+            }
+
+            $this->updateSuratKeluarStatus($surat->id_surat_keluar, 'sent');
+            $payload = [
+                'recipient_ids' => $recipientIds->all(),
+                'message' => 'Surat internal berhasil dikirim ke Surat Masuk penerima.',
+                'sent_at' => now()->format('Y-m-d H:i:s'),
+            ];
+            $this->audit('surat_keluar', $surat->id_surat_keluar, 'internal_send', $surat, $payload);
+
+            return response()->json(['success' => true, 'message' => $payload['message'], 'data' => $payload]);
         }
 
         $recipients = $this->parseEmailList($surat->tujuan_email);
@@ -582,13 +681,15 @@ class EOfficeWorkflowController extends Controller
 
             $idArsip = DB::table('surat_arsip')->insertGetId([
                 'jenis_surat' => 'surat_keluar',
+                'jenis_pengiriman' => $surat->jenis_pengiriman ?: 'eksternal',
                 'id_surat_keluar' => $surat->id_surat_keluar,
                 'nomor_surat' => $surat->nomor_surat,
-                'perihal' => $surat->perihal,
+                'perihal' => $surat->perihal ?: $surat->nomor_surat ?: 'Surat Keluar',
                 'file_path' => $surat->file_pdf_path ?: $surat->file_draft_path,
                 'hash_file' => $this->fileHash($surat->file_pdf_path ?: $surat->file_draft_path),
                 'tanggal_arsip' => now(),
                 'created_by' => auth()->user()?->id_user,
+                'created_by_desc' => auth()->user()?->name,
                 'created_at' => now(),
                 'updated_at' => now(),
             ], 'id_surat_arsip');
@@ -782,21 +883,9 @@ class EOfficeWorkflowController extends Controller
             $this->generateApprovalQrCode($surat->id_surat_keluar);
         }
 
-        // Automatic delivery is tied to final approval, not digital signing.
-        if ($isLastApprover && $action === 'approved' && $this->featureEnabled($surat->kirim_email_otomatis ?? false)) {
-            $approvedSurat = $this->findSuratKeluar($surat->id_surat_keluar) ?? $surat;
-            $signature = DB::table('digital_signature')
-                ->where('source_type', 'surat_keluar_approval')
-                ->where('source_id', $surat->id_surat_keluar)
-                ->whereNull('deleted_at')
-                ->orderByDesc('signed_at')
-                ->first();
-
-            $this->sendOutgoingEmail($approvedSurat, $signature);
-        }
-
         // Send email notifications AFTER the transaction commits (non-critical, wrapped in try-catch)
         try {
+            $this->notifyOutgoingApprovalAction($surat, $action, $nextApproverId, $isLastApprover);
             $this->sendApprovalActionEmails($surat, $approval, $action, $nextApproverId, $isLastApprover);
         } catch (\Throwable $e) {
             Log::warning('Gagal mengirim email notifikasi approval.', [
@@ -826,9 +915,9 @@ class EOfficeWorkflowController extends Controller
     private function updateSuratMasukStatus(int|string $id, string $status): void
     {
         $status = match ($status) {
-            'distributed' => 'menunggu_disposisi',
-            'read' => 'diproses',
-            'done', 'archived' => 'selesai',
+            'distributed' => 'dikirim',
+            'read', 'done' => 'selesai',
+            'archived' => 'diarsipkan',
             default => $status,
         };
 
@@ -918,16 +1007,49 @@ class EOfficeWorkflowController extends Controller
 
     private function createNotification(int $idUser, string $title, ?string $message, ?string $url, array $payload = []): void
     {
-        DB::table('sys_notification')->insert([
-            'id_user' => $idUser,
-            'channel' => 'eoffice',
-            'title' => $title,
-            'message' => $message,
-            'url' => $url,
-            'payload' => json_encode($payload),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        app(EOfficeNotificationService::class)->send($idUser, $title, $message, $url, $payload);
+    }
+
+    private function notifyOutgoingApprover(object $surat, int $approverId): void
+    {
+        $this->createNotification(
+            $approverId,
+            'Persetujuan surat menunggu Anda',
+            'Surat keluar "' . ($surat->perihal ?? $surat->nomor_surat ?? 'Tanpa Perihal') . '" menunggu persetujuan Anda.',
+            '/surat_keluar/detail/' . $surat->id_surat_keluar,
+            ['id_surat_keluar' => $surat->id_surat_keluar, 'type' => 'approval_request']
+        );
+    }
+
+    private function notifyOutgoingApprovalAction(object $surat, string $action, ?int $nextApproverId, bool $isLastApprover): void
+    {
+        $detailUrl = '/surat_keluar/detail/' . $surat->id_surat_keluar;
+        $subject = $surat->perihal ?? $surat->nomor_surat ?? 'Tanpa Perihal';
+
+        $this->createNotification(
+            (int) $surat->created_by,
+            $action === 'approved' ? 'Surat keluar disetujui' : 'Surat keluar ditolak',
+            $action === 'approved'
+                ? ($isLastApprover ? "Surat \"{$subject}\" telah disetujui dan siap ditandatangani." : "Surat \"{$subject}\" telah disetujui dan menunggu approver berikutnya.")
+                : "Surat \"{$subject}\" ditolak dan memerlukan revisi.",
+            $detailUrl,
+            ['id_surat_keluar' => $surat->id_surat_keluar, 'type' => 'approval_' . $action]
+        );
+
+        if ($action === 'approved' && $nextApproverId) {
+            $this->notifyOutgoingApprover($surat, $nextApproverId);
+        }
+
+        if ($action === 'approved' && $isLastApprover && !empty($surat->id_penandatangan)
+            && (int) $surat->id_penandatangan !== (int) $surat->created_by) {
+            $this->createNotification(
+                (int) $surat->id_penandatangan,
+                'Surat siap ditandatangani',
+                "Surat \"{$subject}\" telah disetujui dan menunggu tanda tangan Anda.",
+                $detailUrl,
+                ['id_surat_keluar' => $surat->id_surat_keluar, 'type' => 'sign_request']
+            );
+        }
     }
 
     private function audit(string $table, int|string|null $id, string $action, mixed $oldValues, mixed $newValues): void
@@ -1225,9 +1347,26 @@ class EOfficeWorkflowController extends Controller
      */
     private function isAdminSession(): bool
     {
-        $namaGroup = strtolower(session('nama_group') ?? '');
+        $namaGroup = strtolower(trim((string) (session('nama_group') ?? '')));
+        $normalized = str_replace(['_', '-'], ' ', $namaGroup);
+        if (in_array($normalized, ['admin sistem', 'admin konten', 'admin kontak'], true)) {
+            return true;
+        }
 
-        return in_array($namaGroup, ['admin_sistem', 'admin konten', 'admin_konten'], true);
+        $groupId = session('id_group');
+        $groupQuery = DB::table('sys_group')
+            ->whereNull('deleted_at')
+            ->whereRaw("LOWER(REPLACE(REPLACE(nama, '_', ' '), '-', ' ')) IN ('admin sistem', 'admin konten', 'admin kontak')");
+        if ($groupId && (clone $groupQuery)->where('id_group', $groupId)->exists()) {
+            return true;
+        }
+
+        $userId = auth()->user()?->id_user ?? auth()->id();
+        return $userId && $groupQuery
+            ->join('sys_user_group', 'sys_user_group.id_group', '=', 'sys_group.id_group')
+            ->where('sys_user_group.id_user', $userId)
+            ->whereNull('sys_user_group.deleted_at')
+            ->exists();
     }
 
     private function notFound(string $message): JsonResponse

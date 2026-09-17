@@ -34,6 +34,24 @@ class SuratTemplateAPIController extends BaseResourceController
             $payload['nama'] = $payload['nama_template'];
         }
 
+        // Jenis pada template harus selalu berasal dari Master Jenis Surat
+        // yang masih aktif. Surat keluar kemudian mengambil nilai ini secara
+        // otomatis saat template dipilih.
+        $jenisNama = trim((string) ($payload['jenis_surat'] ?? ''));
+        $jenis = $jenisNama === '' ? null : DB::table('master_jenis_surat')
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->whereRaw('LOWER(nama) = ?', [mb_strtolower($jenisNama)])
+            ->first(['nama']);
+
+        if (!$jenis) {
+            throw ValidationException::withMessages([
+                'jenis_surat' => 'Jenis surat wajib dipilih dari Master Jenis Surat yang aktif.',
+            ]);
+        }
+
+        $payload['jenis_surat'] = $jenis->nama;
+
         if (empty($payload['kode'])) {
             $payload['kode'] = 'TPL-' . now()->format('YmdHis') . '-' . Str::upper(Str::random(4));
         }
@@ -204,48 +222,30 @@ class SuratTemplateAPIController extends BaseResourceController
      */
     public function jenisOptions(): \Illuminate\Http\JsonResponse
     {
-        // Standard letter types
-        $standardTypes = [
-            ['value' => 'Surat Undangan',     'label' => 'Surat Undangan'],
-            ['value' => 'Surat Tugas',        'label' => 'Surat Tugas'],
-            ['value' => 'Surat Keputusan',     'label' => 'Surat Keputusan'],
-            ['value' => 'Surat Edaran',       'label' => 'Surat Edaran'],
-            ['value' => 'Surat Pemberitahuan', 'label' => 'Surat Pemberitahuan'],
-            ['value' => 'Surat Permohonan',    'label' => 'Surat Permohonan'],
-            ['value' => 'Nota Dinas',         'label' => 'Nota Dinas'],
-            ['value' => 'Memo Internal',      'label' => 'Memo Internal'],
-            ['value' => 'Surat Pengantar',    'label' => 'Surat Pengantar'],
-            ['value' => 'Surat Keterangan',   'label' => 'Surat Keterangan'],
-        ];
-
-        // Also include distinct jenis_surat values from database templates
+        // Template hanya boleh menggunakan jenis yang telah didefinisikan
+        // pada Master Jenis Surat. Jangan gabungkan nilai dari template
+        // sebelumnya karena itu menyebabkan opsi ganda/tidak valid.
         try {
-            $dbJenis = \Illuminate\Support\Facades\DB::table('surat_template')
-                ->select('jenis_surat as value', 'jenis_surat as label')
-                ->whereNotNull('jenis_surat')
-                ->where('jenis_surat', '!=', '')
-                ->distinct()
-                ->get()
-                ->toArray();
-
-            // Merge, avoiding duplicates
-            $all = $standardTypes;
-            $existingValues = array_column($standardTypes, 'value');
-            foreach ($dbJenis as $item) {
-                if (!in_array($item->value, $existingValues)) {
-                    $all[] = (array) $item;
-                    $existingValues[] = $item->value;
-                }
-            }
+            $jenis = \Illuminate\Support\Facades\DB::table('master_jenis_surat')
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->orderBy('nama')
+                ->get(['id_jenis_surat', 'nama'])
+                ->map(fn ($item) => [
+                    'value' => $item->nama,
+                    'label' => $item->nama,
+                    'id_jenis_surat' => $item->id_jenis_surat,
+                ])
+                ->all();
 
             return response()->json([
                 'success' => true,
-                'data' => $all,
+                'data' => $jenis,
             ]);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => true,
-                'data' => $standardTypes,
+                'data' => [],
             ]);
         }
     }

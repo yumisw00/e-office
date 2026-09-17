@@ -105,6 +105,16 @@ class FileController extends Controller
                 || DB::table('surat_approval')->where('id_surat_keluar', $outgoing->id_surat_keluar)->where('id_approver', $userId)->whereNull('deleted_at')->exists();
         }
 
+        $signature = DB::table('digital_signature')->where('signature_path', $path)->whereNull('deleted_at')->first();
+        if ($signature && in_array($signature->source_type, ['surat_keluar', 'surat_keluar_approval'], true)) {
+            $surat = DB::table('surat_keluar')->where('id_surat_keluar', $signature->source_id)->whereNull('deleted_at')->first();
+            if ($surat) {
+                return $this->hasGlobalAccess('surat_keluar', 'edit')
+                    || (int) $surat->created_by === (int) $userId
+                    || DB::table('surat_approval')->where('id_surat_keluar', $surat->id_surat_keluar)->where('id_approver', $userId)->whereNull('deleted_at')->exists();
+            }
+        }
+
         $disposition = DB::table('surat_disposisi')->where('file_bukti_path', $path)->whereNull('deleted_at')->first();
         if ($disposition) {
             return $this->hasGlobalAccess('disposisi', 'edit')
@@ -112,9 +122,13 @@ class FileController extends Controller
                 || (int) $disposition->id_pemberi === (int) $userId;
         }
 
-        $archive = DB::table('surat_arsip')->where('file_path', $path)->whereNull('deleted_at')->first();
+        $archive = DB::table('surat_arsip')
+        ->where('file_path', $path)
+        ->whereNull('deleted_at')
+        ->first();
+
         if ($archive) {
-            return $this->hasGlobalAccess('surat_arsip', 'edit') || (int) $archive->created_by === (int) $userId;
+            return true;
         }
 
         return DB::table('surat_template')->where('file_path', $path)->whereNull('deleted_at')->exists()

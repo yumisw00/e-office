@@ -59,6 +59,22 @@ class EnsureHasGroup
             }
         }
 
+        // The configured signer may sign an approved outgoing letter even when
+        // the role's menu-action cache does not contain the custom `sign` flag.
+        // The controller performs the final signer and status checks.
+        if ($action === 'sign') {
+            $routeId = $request->route('id');
+            $userId = auth()->user()?->id_user ?? auth()->id();
+            if ($routeId && $userId && DB::table('surat_keluar')
+                ->where('id_surat_keluar', $routeId)
+                ->where('id_penandatangan', $userId)
+                ->whereIn('status', ['approved', 'signed'])
+                ->whereNull('deleted_at')
+                ->exists()) {
+                return $next($request);
+            }
+        }
+
         // Admin Sistem is the application super administrator. Keep this
         // decision centralized so every protected API receives the same rule.
         $isSystemAdmin = DB::table('sys_group')
@@ -83,9 +99,7 @@ class EnsureHasGroup
             'surat_distribusi', 'surat_disposisi', 'surat_approval',
             'surat_arsip', 'agenda', 'pengumuman',
         ];
-        // Check if any of the requested URLs match the read-only list
-        $requestedUrls = array_filter(explode('|', $url));
-        $matchesReadOnlyUrl = array_intersect($requestedUrls, $readOnlyPimpinanUrls);
+        $matchesReadOnlyUrl = array_intersect(explode('|', $url), $readOnlyPimpinanUrls);
         if ($isPimpinan && $request->isMethod('GET') && in_array($action, [null, 'index'], true) && !empty($matchesReadOnlyUrl)) {
             return $next($request);
         }

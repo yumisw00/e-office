@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -26,9 +27,10 @@ class SuratMasukAPIController extends BaseResourceController
     public function index(Request $request): JsonResponse
     {
         try {
-            $pageSize = max(1, min((int) ($request->get('pagesize') ?? $request->get('per_page') ?? 10), 100));
+            $pageSize = max(1, min((int) ($request->get('pagesize') ?? $request->get('per_page') ?? 20), 100));
 
             $query = $this->scopedQuery($request);
+            $categorySummary = $this->buildCategorySummary(clone $query);
             $this->applyFilters($query, $request);
             $summary = $this->buildSummary($query);
             $this->applyListOrdering($query, $request);
@@ -50,6 +52,7 @@ class SuratMasukAPIController extends BaseResourceController
                 'total_records' => $paginator->total(),
                 'total' => $paginator->total(),
                 'summary' => $summary,
+                'category_summary' => $categorySummary,
             ]);
         } catch (ValidationException $exception) {
             return $this->validationErrorResponse($exception);
@@ -79,25 +82,15 @@ class SuratMasukAPIController extends BaseResourceController
         }
 
         $groupNames = collect($groups)->map(fn ($group) => strtolower($group['name'] ?? $group['nama'] ?? ''))->all();
-        $isAdmin = in_array('admin_sistem', $groupNames, true)
-            || in_array('admin sistem', $groupNames, true)
-            || in_array('admin konten', $groupNames, true)
-            || in_array('admin kontak', $groupNames, true)
-            || in_array('admin_konten', $groupNames, true)
+        $isAdmin = collect($groupNames)->intersect([
+            'admin_sistem', 'admin sistem', 'admin konten', 'admin_konten', 'admin kontak', 'admin_kontak',
+        ])->isNotEmpty()
             || $user?->is_admin === true
             || $user?->is_admin === 1;
-
-        // Pimpinan can view all incoming letters (read-only dashboard role)
-        $isPimpinan = in_array('pimpinan', $groupNames, true);
-        if ($isPimpinan) {
-            return SuratMasuk::query()->withCount('disposisi');
-        }
-
         $query = SuratMasuk::query()->withCount('disposisi');
         if ($isAdmin) {
             return $query;
         }
-
         $userId = $user?->id_user ?? $user?->id;
         $userUnit = $this->getUserUnit($user);
         return $query->whereHas('distribusi', function ($distributionQuery) use ($userId, $userUnit) {
@@ -119,9 +112,30 @@ class SuratMasukAPIController extends BaseResourceController
     {
         return [
             'total' => (clone $query)->count(),
-            'baru' => (clone $query)->whereIn('status', ['baru', 'pending', 'masuk'])->count(),
-            'distribusi' => (clone $query)->whereIn('status', ['didistribusikan', 'didisposisikan', 'diproses', 'proses', 'menunggu_disposisi'])->count(),
-            'selesai' => (clone $query)->whereIn('status', ['selesai', 'arsip'])->count(),
+            'baru' => (clone $query)->whereIn('status', ['draft', 'baru', 'pending', 'masuk'])->count(),
+            'distribusi' => (clone $query)->whereIn('status', ['dikirim', 'disposisi', 'didistribusikan', 'didisposisikan', 'diproses', 'proses', 'menunggu_disposisi'])->count(),
+            'selesai' => (clone $query)->whereIn('status', ['selesai', 'diarsipkan', 'arsip'])->count(),
+        ];
+    }
+
+    private function buildCategorySummary(Builder $query): array
+    {
+        return [
+            'total' => (clone $query)->count(),
+            'internal' => (clone $query)->where(function (Builder $typeQuery) {
+                $typeQuery->whereRaw("LOWER(TRIM(COALESCE(jenis_pengiriman, ''))) = ?", ['internal'])
+                    ->orWhere(function (Builder $legacy) {
+                        $legacy->whereRaw("TRIM(COALESCE(jenis_pengiriman, '')) = ''")
+                            ->whereNotNull('id_surat_keluar');
+                    });
+            })->count(),
+            'eksternal' => (clone $query)->where(function ($typeQuery) {
+                $typeQuery->whereRaw("LOWER(TRIM(COALESCE(jenis_pengiriman, ''))) = ?", ['eksternal'])
+                    ->orWhere(function (Builder $legacy) {
+                        $legacy->whereRaw("TRIM(COALESCE(jenis_pengiriman, '')) = ''")
+                            ->whereNull('id_surat_keluar');
+                    });
+            })->count(),
         ];
     }
 
@@ -166,33 +180,36 @@ class SuratMasukAPIController extends BaseResourceController
             }
         }
 
-        $isAdmin = in_array('admin_sistem', $groupNames)
-            || in_array('admin sistem', $groupNames)
-            || in_array('admin konten', $groupNames)
-            || in_array('admin kontak', $groupNames)
-            || in_array('admin_konten', $groupNames)
+        $isAdmin = collect($groupNames)->intersect([
+            'admin_sistem', 'admin sistem', 'admin konten', 'admin_konten', 'admin kontak', 'admin_kontak',
+        ])->isNotEmpty()
             || $user?->is_admin === true
             || $user?->is_admin === 1;
 
-        if (!$isAdmin) {
-            $isRecipient = DB::table('surat_distribusi')
-                ->where('id_surat_masuk', $id)
-                ->where(function ($q) use ($userId, $userUnit) {
-                    if ($userId) {
-                        $q->orWhere('id_user_tujuan', $userId);
-                    }
-                    if ($userUnit) {
-                        $q->orWhere('id_unit_tujuan', $userUnit);
-                    }
-                })
-                ->exists();
+        if ($isAdmin) {
+            return response()->json([
+                'success' => true,
+                'data' => $this->transformFrontendRecord($record),
+            ]);
+        }
 
-            if (!$isRecipient) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Anda tidak memiliki akses ke surat masuk ini.',
-                ], 403);
-            }
+        $isRecipient = DB::table('surat_distribusi')
+            ->where('id_surat_masuk', $id)
+            ->where(function ($q) use ($userId, $userUnit) {
+                if ($userId) {
+                    $q->orWhere('id_user_tujuan', $userId);
+                }
+                if ($userUnit) {
+                    $q->orWhere('id_unit_tujuan', $userUnit);
+                }
+            })
+            ->exists();
+
+        if (!$isRecipient) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke surat masuk ini.',
+            ], 403);
         }
 
         return response()->json([
@@ -204,6 +221,14 @@ class SuratMasukAPIController extends BaseResourceController
     private function getUserUnit($user): ?string
     {
         if (!$user) return null;
+
+        // Login stores the active organizational scope in the session. This
+        // is the primary source for employees who share the same Pegawai role
+        // but belong to SDM, Keuangan, Operasional, or Pemasaran.
+        $sessionUnit = trim((string) session('id_unit', ''));
+        if ($sessionUnit !== '') {
+            return $sessionUnit;
+        }
 
         // Check multiple possible field names for unit
         $unitFields = ['id_unit', 'id_unit_kerja', 'id_sdm_unit', 'unit_kerja'];
@@ -221,6 +246,46 @@ class SuratMasukAPIController extends BaseResourceController
                     return (string) $nestedUser->$field;
                 }
             }
+        }
+
+        $userId = $user->id_user ?? $user->id ?? null;
+        if (!$userId) return null;
+
+        // Some sessions do not contain id_unit (for example older sessions).
+        // Resolve it from the user's active position as a reliable fallback.
+        $unit = null;
+        if (Schema::hasTable('sys_user_group') && Schema::hasTable('mt_sdm_jabatan')) {
+            $unit = DB::table('sys_user_group')
+                ->join('mt_sdm_jabatan', function ($join) {
+                    $join->on(DB::raw('CAST(mt_sdm_jabatan.id_jabatan AS VARCHAR)'), '=', DB::raw('CAST(sys_user_group.id_jabatan AS VARCHAR)'));
+                })
+                ->where('sys_user_group.id_user', $userId)
+                ->whereNull('sys_user_group.deleted_at')
+                ->whereNotNull('mt_sdm_jabatan.id_unit')
+                ->where('mt_sdm_jabatan.id_unit', '!=', '')
+                ->value('mt_sdm_jabatan.id_unit');
+        }
+
+        if ($unit) {
+            return (string) $unit;
+        }
+
+        // Preserve routing for legacy SDM accounts that were created without
+        // an assigned position but use a dedicated SDM group.
+        $groupName = null;
+        if (Schema::hasTable('sys_user_group') && Schema::hasTable('sys_group')) {
+            $groupName = DB::table('sys_user_group')
+                ->join('sys_group', 'sys_group.id_group', '=', 'sys_user_group.id_group')
+                ->where('sys_user_group.id_user', $userId)
+                ->whereNull('sys_user_group.deleted_at')
+                ->whereNull('sys_group.deleted_at')
+                ->pluck('sys_group.nama')
+                ->map(fn ($name) => strtolower(trim((string) $name)))
+                ->first(fn ($name) => in_array($name, ['sdm', 'hrd', 'pegawai sdm', 'pegawai_sdm'], true));
+        }
+
+        if ($groupName) {
+            return 'DIV-SDM';
         }
 
         return null;
@@ -255,6 +320,7 @@ class SuratMasukAPIController extends BaseResourceController
             }
 
             $payload = $this->resolveRecipientPayload($payload);
+            $payload = $this->resolveJenisSuratPayload($payload);
 
             $payload = $this->suratMasukService->filterFillable($payload, $this->model->fillable);
             $this->validatePayload($payload, true);
@@ -317,6 +383,7 @@ class SuratMasukAPIController extends BaseResourceController
             }
 
             $payload = $this->resolveRecipientPayload($payload, $record);
+            $payload = $this->resolveJenisSuratPayload($payload);
 
             $payload = $this->suratMasukService->filterFillable($payload, $this->model->fillable);
             $this->validatePayload($payload);
@@ -528,6 +595,33 @@ class SuratMasukAPIController extends BaseResourceController
         return $payload;
     }
 
+    private function resolveJenisSuratPayload(array $payload): array
+    {
+        if (!array_key_exists('jenis', $payload) && !array_key_exists('id_jenis_surat', $payload)) {
+            return $payload;
+        }
+
+        $query = DB::table('master_jenis_surat')
+            ->where('is_active', true)
+            ->whereNull('deleted_at');
+
+        if (!empty($payload['id_jenis_surat'])) {
+            $jenis = $query->where('id_jenis_surat', $payload['id_jenis_surat'])->first();
+        } else {
+            $nama = trim((string) ($payload['jenis'] ?? ''));
+            $jenis = $nama === '' ? null : $query->whereRaw('LOWER(nama) = ?', [mb_strtolower($nama)])->first();
+        }
+
+        if (!$jenis) {
+            throw ValidationException::withMessages(['jenis' => 'Jenis surat harus dipilih dari Master Jenis Surat yang aktif.']);
+        }
+
+        $payload['id_jenis_surat'] = $jenis->id_jenis_surat;
+        $payload['jenis'] = $jenis->nama;
+
+        return $payload;
+    }
+
     private function syncIncomingRecipient(int|string $suratId, int|string|null $recipientId): void
     {
         DB::table('surat_distribusi')
@@ -594,6 +688,12 @@ class SuratMasukAPIController extends BaseResourceController
                     continue;
                 }
 
+                // This field needs legacy-aware classification below. Applying
+                // a generic LIKE first would discard NULL/blank legacy rows.
+                if ($field === 'jenis_pengiriman') {
+                    continue;
+                }
+
                 $column = match ($field) {
                     'pengirim' => 'asal_surat',
                     'penerima' => 'kepada_tujuan',
@@ -615,9 +715,9 @@ class SuratMasukAPIController extends BaseResourceController
         $jenisPengiriman = strtolower(trim((string) ($q['jenis_pengiriman'] ?? $request->query('jenis_pengiriman', ''))));
         if (in_array($jenisPengiriman, ['internal', 'eksternal'], true)) {
             $query->where(function (Builder $inner) use ($jenisPengiriman) {
-                $inner->where('jenis_pengiriman', $jenisPengiriman)
+                $inner->whereRaw("LOWER(TRIM(COALESCE(jenis_pengiriman, ''))) = ?", [$jenisPengiriman])
                     ->orWhere(function (Builder $legacy) use ($jenisPengiriman) {
-                        $legacy->whereNull('jenis_pengiriman');
+                        $legacy->whereRaw("TRIM(COALESCE(jenis_pengiriman, '')) = ''");
                         $jenisPengiriman === 'internal'
                             ? $legacy->whereNotNull('id_surat_keluar')
                             : $legacy->whereNull('id_surat_keluar');

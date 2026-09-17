@@ -26,7 +26,6 @@ class EOfficeNotificationService
                 'updated_at' => now(),
             ]);
             app(FirebasePushService::class)->sendToUser($userId, $title, $message, $payload + ['url' => $url]);
-            app(FirebasePushService::class)->sendToUser($userId, $title, $message, $payload + ['url' => $url]);
         } catch (\Throwable $exception) {
             // A notification must never undo a completed workflow action.
             Log::warning('Gagal membuat notifikasi E-Office.', [

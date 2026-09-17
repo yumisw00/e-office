@@ -19,7 +19,7 @@ class BaseResourceController extends ResourceController
      *
      * @var int limit data to show
      */
-    protected $limit = 10;
+    protected $limit = 20;
 
     protected $data = [];
 
