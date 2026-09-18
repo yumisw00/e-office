@@ -5,9 +5,15 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../constants/app_config.dart';
 import 'api_endpoints.dart';
 
-const _storage = FlutterSecureStorage();
+final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
+  return const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
+});
 
 final dioProvider = Provider<Dio>((ref) {
+  final storage = ref.watch(secureStorageProvider);
   final dio = Dio(
     BaseOptions(
       baseUrl: AppConfig.baseUrl,
@@ -18,7 +24,8 @@ final dioProvider = Provider<Dio>((ref) {
         'Content-Type': 'application/json',
       },
       validateStatus: (status) {
-        return status != null && status < 500;
+        // FIXED: HTTP status >= 400 di-treat sebagai exception agar tertangkap di onError
+        return status != null && status < 400;
       },
     ),
   );
@@ -26,7 +33,7 @@ final dioProvider = Provider<Dio>((ref) {
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final token = await _storage.read(key: AppConfig.authTokenKey);
+        final token = await storage.read(key: AppConfig.authTokenKey);
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
@@ -50,33 +57,74 @@ final dioProvider = Provider<Dio>((ref) {
         }
         handler.next(response);
       },
-      onError: (error, handler) async {
+      onError: (DioException error, handler) async {
+        final response = error.response;
+        final statusCode = response?.statusCode;
+        final responseData = response?.data;
+
         if (AppConfig.enableLogging) {
           debugPrint('❌ ERROR[${error.type}] => ${error.requestOptions.uri}');
-          debugPrint('   Message: ${error.message}');
-          debugPrint('   Status: ${error.response?.statusCode}');
+          debugPrint('   Status Code: $statusCode');
+          debugPrint('   Body: $responseData');
         }
 
-        // Handle 401 Unauthorized - Token expired atau invalid
-        if (error.response?.statusCode == 401) {
-          // Hapus token dari storage
-          await _storage.delete(key: AppConfig.authTokenKey);
-          await _storage.delete(key: AppConfig.userDataKey);
+        String computedMessage = 'Terjadi kesalahan sistem (${statusCode ?? "Koneksi"}).';
+
+        // Penanganan Logout / Unauthenticated Otomatis (401)
+        if (statusCode == 401) {
+          await storage.delete(key: AppConfig.authTokenKey);
+          await storage.delete(key: AppConfig.userDataKey);
+          computedMessage = 'Sesi Anda telah berakhir, silakan login kembali.';
+        }
+
+        if (responseData is Map<String, dynamic>) {
+          final errorCode = responseData['error_code']?.toString();
           
-          if (AppConfig.enableLogging) {
-            debugPrint('⚠️ Token tidak valid, silakan login ulang');
+          if (errorCode != null) {
+            // Pola A: Custom Exception Handler
+            final msg = responseData['message']?.toString();
+            final errors = responseData['errors'];
+
+            if (errors is Map) {
+              final parsedErrors = errors.values.expand((v) => v is Iterable ? v : [v]).join(', ');
+              computedMessage = parsedErrors.isNotEmpty ? parsedErrors : (msg ?? computedMessage);
+            } else {
+              computedMessage = msg ?? computedMessage;
+            }
+          } else {
+            // Pola B: Default Laravel Handler (NO error_code)
+            if (statusCode == 429) {
+              computedMessage = 'Terlalu banyak percobaan percobaan, coba lagi dalam beberapa saat.';
+            } else if (statusCode == 500) {
+              computedMessage = 'Internal Server Error (500). Silakan hubungi admin.';
+            } else if (statusCode == 404) {
+              computedMessage = 'Endpoint tidak ditemukan di server (404).';
+            } else if (responseData.containsKey('message')) {
+              computedMessage = responseData['message'].toString();
+            }
+          }
+        } else {
+          // Fallback Generic Berdasarkan HTTP Status Code jika body kosong / bukan json
+          if (error.type == DioExceptionType.connectionTimeout ||
+              error.type == DioExceptionType.receiveTimeout) {
+            computedMessage = 'Koneksi ke server timeout. Silakan periksa jaringan Anda.';
+          } else if (statusCode == 429) {
+            computedMessage = 'Terlalu banyak percobaan percobaan, coba lagi dalam beberapa saat.';
+          } else if (statusCode == 403) {
+            computedMessage = 'Anda tidak memiliki hak akses untuk fitur ini (403).';
           }
         }
 
-        // Handle 422 Validation Error
-        if (error.response?.statusCode == 422) {
-          final errors = error.response?.data['errors'];
-          if (errors != null) {
-            debugPrint('⚠️ Validation Errors: $errors');
-          }
-        }
+        // Bungkus pesan yang sudah diformat ke dalam custom DioException agar ditangkap secara seragam oleh UI / Repo
+        final updatedException = DioException(
+          requestOptions: error.requestOptions,
+          response: error.response,
+          type: error.type,
+          error: Exception(computedMessage),
+          message: computedMessage,
+        );
 
-        handler.next(error);
+        handler.next(updatedException);
       },
     ),
   );

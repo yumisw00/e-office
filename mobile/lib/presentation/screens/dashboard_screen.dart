@@ -20,6 +20,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(suratSummaryProvider.notifier).refresh();
+      ref.read(suratMasukProvider.notifier).refresh();
     });
   }
 
@@ -39,16 +40,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Scaffold(
       appBar: const CustomAppBar(
-        title: 'Dashboard',
+        title: 'Dashboard E-Office',
       ),
       body: RefreshIndicator(
-        onRefresh: () async => ref.read(suratSummaryProvider.notifier).refresh(),
+        onRefresh: () async {
+          await ref.read(suratSummaryProvider.notifier).refresh();
+          await ref.read(suratMasukProvider.notifier).refresh();
+        },
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Card
+              // User Identity Card
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -83,6 +87,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ],
                         ),
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.logout_outlined, color: Colors.grey),
+                        onPressed: () => _confirmLogout(context),
+                      ),
                     ],
                   ),
                 ),
@@ -91,7 +99,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               
               // Statistik Section
               Text(
-                'Statistik Surat',
+                'Statistik Organisasi',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -101,47 +109,40 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               summaryAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (err, stack) => EmptyStateView(
-                  message: 'Gagal memuat statistik: $err',
+                  message: 'Gagal memuat statistik: ${err.toString().replaceAll('Exception: ', '')}',
                   icon: Icons.error_outline_rounded,
                 ),
                 data: (summary) {
-                  if (summary == null) {
-                    return const EmptyStateView(
-                      message: 'Belum ada data statistik',
-                      icon: Icons.analytics_outlined,
-                    );
-                  }
-                  
                   return GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisCount: 2,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    childAspectRatio: 1.5,
+                    childAspectRatio: 1.4,
                     children: [
                       _StatCard(
-                        title: 'Total Surat',
-                        count: summary.total,
-                        icon: Icons.folder_open_outlined,
+                        title: 'Surat Masuk',
+                        count: summary.suratMasukCount,
+                        icon: Icons.move_to_inbox_outlined,
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       _StatCard(
-                        title: 'Surat Baru',
-                        count: summary.baru,
-                        icon: Icons.mail_outline_rounded,
+                        title: 'Surat Keluar',
+                        count: summary.suratKeluarCount,
+                        icon: Icons.outbox_outlined,
                         color: const Color(0xFFE67E22),
                       ),
                       _StatCard(
-                        title: 'Disposisi',
-                        count: summary.disposisi,
-                        icon: Icons.share_outlined,
+                        title: 'Disposisi Pending',
+                        count: summary.disposisiPendingCount,
+                        icon: Icons.assignment_late_outlined,
                         color: Theme.of(context).colorScheme.secondary,
                       ),
                       _StatCard(
-                        title: 'Selesai',
-                        count: summary.selesai,
-                        icon: Icons.check_circle_outline_rounded,
+                        title: 'Agenda Hari Ini',
+                        count: summary.agendaTodayCount,
+                        icon: Icons.today_outlined,
                         color: const Color(0xFF27AE60),
                       ),
                     ],
@@ -162,7 +163,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => context.go('/surat-masuk'),
+                    onPressed: () => context.push('/surat-masuk'),
                     child: const Text('Lihat Semua'),
                   ),
                 ],
@@ -170,7 +171,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(height: 8),
               ref.watch(suratMasukProvider).when(
                 loading: () => const Center(child: LinearProgressIndicator()),
-                error: (err, st) => Text('Gagal memuat surat: $err'),
+                error: (err, st) => Text('Gagal memuat surat terbaru.'),
                 data: (list) {
                   if (list.isEmpty) return const Text('Tidak ada surat terbaru');
                   final recent = list.take(3).toList();
@@ -190,40 +191,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
               const SizedBox(height: 24),
               
-              // Section Agenda
-              Text(
-                'Agenda Kerja',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.event_note_outlined, size: 40, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Fitur Agenda Segera Hadir',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              
-              // Tombol Aksi Cepat
+              // Tombol Aksi Cepat Berbasis Role Cerdas (Kontrak Poin 7)
               Text(
                 'Aksi Cepat',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -231,30 +199,65 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => context.go('/surat-masuk'),
-                      icon: const Icon(Icons.inbox_outlined),
-                      label: const Text('Lihat Surat Masuk'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+              summaryAsync.maybeWhen(
+                data: (summary) {
+                  final isPimpinan = summary.role.toLowerCase().contains('pimpinan') || 
+                                     summary.role.toLowerCase().contains('direksi') ||
+                                     userRole.toLowerCase().contains('pimpinan');
+                  
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => context.push('/surat-masuk'),
+                          icon: const Icon(Icons.inbox_outlined),
+                          label: const Text('Surat Masuk'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Hanya pimpinan yang melihat tombol persetujuan (approval) secara adaptif
+                      if (isPimpinan)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => context.push('/approval'),
+                            icon: const Icon(Icons.gavel_outlined),
+                            label: const Text('Persetujuan (Sign)'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.teal.shade700,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => context.push('/disposisi'),
+                            icon: const Icon(Icons.share_outlined),
+                            label: const Text('Disposisi'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+                orElse: () => Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => context.push('/surat-masuk'),
+                        icon: const Icon(Icons.inbox_outlined),
+                        label: const Text('Surat Masuk'),
+                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.go('/approval'),
-                      icon: const Icon(Icons.gavel_outlined),
-                      label: const Text('Approval'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -307,25 +310,30 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 2,
+      elevation: 1,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: color, size: 32),
-            const Spacer(),
-            Text(
-              count.toString(),
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(icon, color: color, size: 28),
+                Text(
+                  count.toString(),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 8),
             Text(
               title,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

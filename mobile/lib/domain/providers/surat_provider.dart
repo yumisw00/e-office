@@ -79,11 +79,20 @@ class ApprovalQueueNotifier extends AsyncNotifier<List<SuratModel>> {
     await fetchApprovalQueue();
   }
 
-  Future<void> signSurat(String id) async {
+  Future<Map<String, dynamic>?> signSurat(String id) async {
     final repository = ref.read(suratRepositoryProvider);
-    await repository.signSuratKeluar(id);
-    await repository.logAuditTrail('sign_surat', {'id_surat': id});
-    await fetchApprovalQueue();
+    try {
+      final result = await repository.signSuratKeluar(id);
+      return result;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Error signing surat: $e');
+      }
+      rethrow;
+    } finally {
+      // REMOVED: audit trail logging - NOT NEEDED per contract
+      await fetchApprovalQueue();
+    }
   }
 
   Future<void> rejectSurat(String id, String notes) async {
@@ -137,12 +146,25 @@ class NotificationNotifier extends AsyncNotifier<List<dynamic>> {
     return repository.getNotifications();
   }
 
-  Future<void> refresh() async {
+  Future<void> loadNotifications({bool? unread, int page = 1, int perPage = 15}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(suratRepositoryProvider);
-      return repository.getNotifications();
+      return repository.getNotifications(unread: unread, page: page, perPage: perPage);
     });
   }
-}
 
+  Future<void> markRead(String id) async {
+    final repository = ref.read(suratRepositoryProvider);
+    await repository.markNotificationRead(id);
+  }
+
+  Future<void> markAllRead() async {
+    final repository = ref.read(suratRepositoryProvider);
+    await repository.markAllNotificationsRead();
+  }
+
+  Future<void> refresh() async {
+    await loadNotifications();
+  }
+}

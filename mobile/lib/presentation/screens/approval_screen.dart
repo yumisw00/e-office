@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/providers/surat_provider.dart';
@@ -139,6 +140,70 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
     );
   }
 
+  void _showSignatureSuccessDialog(BuildContext context, Map<String, dynamic> data) {
+    final qrBase64 = data['qr_code_base64']?.toString() ?? '';
+    final verificationUrl = data['verification_url']?.toString() ?? '';
+    final message = data['message'] ?? 'Surat berhasil ditandatangani';
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Penandatanganan Sukses'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(message, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              if (qrBase64.isNotEmpty) ...[
+                const Text('QR Code Tanda Tangan Resmi Backend:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Image.memory(
+                    base64Decode(qrBase64),
+                    height: 180,
+                    width: 180,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const SizedBox(
+                      height: 180,
+                      child: Center(child: Text('Gagal me-render QR Code resmi')),
+                    ),
+                  ),
+                ),
+              ],
+              if (verificationUrl.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'URL Verifikasi:\n$verificationUrl',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11, color: Colors.blueGrey),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Selesai'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showApproveDialog(BuildContext context, String idSurat, {bool canSign = false}) {
     showDialog(
       context: context,
@@ -154,14 +219,23 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
               Navigator.pop(ctx);
               try {
                 if (canSign) {
-                  await ref.read(approvalQueueProvider.notifier).signSurat(idSurat);
+                  final result = await ref.read(approvalQueueProvider.notifier).signSurat(idSurat);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Surat berhasil di-approve dan status menjadi "signed"')),
-                    );
+                    if (result != null) {
+                      _showSignatureSuccessDialog(context, result);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Surat berhasil ditandatangani dan berstatus "signed"')),
+                      );
+                    }
                   }
                 } else {
                   await ref.read(approvalQueueProvider.notifier).approveSurat(idSurat);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Surat berhasil disetujui')),
+                    );
+                  }
                 }
               } catch (e) {
                  if (context.mounted) {

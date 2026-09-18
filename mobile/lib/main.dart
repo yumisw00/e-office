@@ -31,7 +31,7 @@ class EOfficeApp extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
     
     return MaterialApp.router(
-      title: 'E-Office PT ABC',
+      title: 'E-Office',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

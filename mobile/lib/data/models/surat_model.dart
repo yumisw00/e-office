@@ -8,6 +8,9 @@ class SuratModel {
   final String status; 
   final String ringkasan;
   final String? filePdf;
+  final String? draftFilePath;
+  final String? signedFilePath;
+  final List<dynamic> attachments;
   final int disposisiCount;
   final String? pengirim;
   final DateTime? tanggalSurat;
@@ -22,13 +25,49 @@ class SuratModel {
     required this.status,
     required this.ringkasan,
     this.filePdf,
+    this.draftFilePath,
+    this.signedFilePath,
+    this.attachments = const [],
     this.disposisiCount = 0,
     this.pengirim,
     this.tanggalSurat,
     this.pemohon,
   });
 
+  /// Mengambil path dokumen aktif sesuai kontrak:
+  /// - Surat Keluar 'signed' -> signed_file_path (fallback draft_file_path)
+  /// - Surat Keluar draft -> draft_file_path
+  /// - Surat Masuk -> file_path
+  /// - Disposisi -> attachments[0]['file_path'] jika ada
+  String? get activeFilePath {
+    if (status.toLowerCase() == 'signed' && signedFilePath != null && signedFilePath!.isNotEmpty) {
+      return signedFilePath;
+    }
+    if (draftFilePath != null && draftFilePath!.isNotEmpty) {
+      return draftFilePath;
+    }
+    if (filePdf != null && filePdf!.isNotEmpty) {
+      return filePdf;
+    }
+    if (attachments.isNotEmpty) {
+      final first = attachments.first;
+      if (first is Map && first['file_path'] != null) {
+        return first['file_path'].toString();
+      }
+    }
+    return null;
+  }
+
   factory SuratModel.fromJsonApi(Map<String, dynamic> json) {
+    List<dynamic> parsedAttachments = [];
+    if (json['attachments'] != null && json['attachments'] is List) {
+      parsedAttachments = json['attachments'] as List;
+    }
+
+    final rawDraftPath = json['draft_file_path'];
+    final rawSignedPath = json['signed_file_path'];
+    final rawFilePath = json['file_path'] ?? json['file_surat'];
+
     return SuratModel(
       id: (json['id'] ?? json['id_surat_masuk'] ?? json['uuid'] ?? '').toString(),
       nomorSurat: json['nomor_surat'] ?? json['nomor_agenda'] ?? '-',
@@ -37,7 +76,10 @@ class SuratModel {
       tanggalDiterima: _parseDate(json['tanggal_diterima'] ?? json['created_at'] ?? DateTime.now()),
       status: _mapStatus(json['status'] ?? json['status_surat'] ?? 'belum_dibaca'),
       ringkasan: json['isi_ringkas'] ?? json['ringkasan'] ?? json['deskripsi'] ?? '',
-      filePdf: json['file_surat'] ?? json['file_path'],
+      filePdf: rawFilePath,
+      draftFilePath: rawDraftPath,
+      signedFilePath: rawSignedPath,
+      attachments: parsedAttachments,
       disposisiCount: json['disposisi_count'] ?? 0,
       pengirim: json['pengirim'] ?? json['nama_pengirim'],
       tanggalSurat: _parseDateOrNull(json['tanggal_surat']),
@@ -170,37 +212,37 @@ class TimelineEvent {
 }
 
 class SuratSummary {
-  final int total;
-  final int baru;
-  final int disposisi;
-  final int selesai;
-  final int arsip;
+  final int suratMasukCount;
+  final int suratKeluarCount;
+  final int disposisiPendingCount;
+  final int agendaTodayCount;
+  final String role;
 
   SuratSummary({
-    required this.total,
-    required this.baru,
-    required this.disposisi,
-    required this.selesai,
-    this.arsip = 0,
+    required this.suratMasukCount,
+    required this.suratKeluarCount,
+    required this.disposisiPendingCount,
+    required this.agendaTodayCount,
+    required this.role,
   });
 
   factory SuratSummary.fromJsonApi(Map<String, dynamic> json) {
     return SuratSummary(
-      total: json['total'] ?? 0,
-      baru: json['baru'] ?? json['new'] ?? 0,
-      disposisi: json['disposisi'] ?? json['distribusi'] ?? 0,
-      selesai: json['selesai'] ?? json['completed'] ?? 0,
-      arsip: json['arsip'] ?? json['archived'] ?? 0,
+      suratMasukCount: json['surat_masuk_count'] ?? json['surat_masuk'] ?? 0,
+      suratKeluarCount: json['surat_keluar_count'] ?? json['surat_keluar'] ?? 0,
+      disposisiPendingCount: json['disposisi_pending_count'] ?? json['disposisi_pending'] ?? 0,
+      agendaTodayCount: json['agenda_today_count'] ?? json['agenda_today'] ?? 0,
+      role: json['role']?.toString() ?? '',
     );
   }
 
   factory SuratSummary.empty() {
     return SuratSummary(
-      total: 0,
-      baru: 0,
-      disposisi: 0,
-      selesai: 0,
-      arsip: 0,
+      suratMasukCount: 0,
+      suratKeluarCount: 0,
+      disposisiPendingCount: 0,
+      agendaTodayCount: 0,
+      role: '',
     );
   }
 }

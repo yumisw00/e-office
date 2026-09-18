@@ -4,9 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../domain/providers/auth_provider.dart';
 
 class MfaScreen extends ConsumerStatefulWidget {
-  final String mfaToken;
+  final String mfaChallengeToken;
 
-  const MfaScreen({super.key, required this.mfaToken});
+  const MfaScreen({super.key, required this.mfaChallengeToken});
 
   @override
   ConsumerState<MfaScreen> createState() => _MfaScreenState();
@@ -15,22 +15,24 @@ class MfaScreen extends ConsumerStatefulWidget {
 class _MfaScreenState extends ConsumerState<MfaScreen> {
   final _otpController = TextEditingController();
   bool _isLoading = false;
+  String? _errorMessage;
 
   Future<void> _handleVerify() async {
-    if (_otpController.text.length < 4) {
+    if (_otpController.text.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Masukkan kode OTP dengan benar')),
+        const SnackBar(content: Text('Masukkan 6 digit kode OTP')),
       );
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     try {
       await ref.read(authProvider.notifier).verifyMfa(
-        widget.mfaToken,
+        widget.mfaChallengeToken,
         _otpController.text.trim(),
       );
       
@@ -38,13 +40,33 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
         context.go('/dashboard');
       }
     } catch (e) {
+      final errorMsg = e.toString().replaceAll('Exception: ', '');
+      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        // Handle AUTH_002: Sesi OTP kadaluarsa - arahkan login ulang
+        if (errorMsg.contains('kadaluarsa') || errorMsg.contains('expired')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMsg),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              action: SnackBarAction(
+                label: 'Login Ulang',
+                onPressed: () => context.go('/login'),
+              ),
+            ),
+          );
+        } else {
+          // Handle AUTH_004: OTP salah - biarkan coba lagi
+          setState(() {
+            _errorMessage = errorMsg;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMsg),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
       }
     } finally {
       if (mounted) {
@@ -91,10 +113,12 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: '000000',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
+                errorText: _errorMessage,
               ),
+              maxLength: 6,
             ),
             const SizedBox(height: 24),
             ElevatedButton(

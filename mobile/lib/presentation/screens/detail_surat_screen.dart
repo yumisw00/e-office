@@ -17,11 +17,6 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(suratRepositoryProvider).logAuditTrail('view_surat_detail', {
-        'id_surat': widget.idSurat,
-      });
-    });
   }
 
   @override
@@ -299,11 +294,16 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: () {
-                context.push(
-                  '/pdf',
-                  extra:
-                      'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-                );
+                final filePath = currentSurat.activeFilePath;
+                if (filePath != null && filePath.isNotEmpty) {
+                  context.push('/pdf', extra: filePath);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Dokumen file belum tersedia untuk surat ini.'),
+                    ),
+                  );
+                }
               },
               icon: const Icon(Icons.picture_as_pdf_outlined),
               label: const Text('Lihat Dokumen'),

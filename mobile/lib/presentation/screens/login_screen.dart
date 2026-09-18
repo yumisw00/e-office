@@ -50,27 +50,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      String fcmToken = '';
-      try {
-        fcmToken = await FirebaseMessaging.instance.getToken() ?? '';
-      } catch (e) {
-        debugPrint('⚠️ Gagal mengambil FCM token: $e');
-      }
-
+      // FIXED: fcm_token REMOVED dari login payload per kontrak
+      // FCM registration will be handled separately in Langkah 9
       final deviceName = Platform.isAndroid ? 'Android Device' : 'iOS Device';
 
-      // Login langsung (captchaToken diputus sementara)
       final result = await ref.read(authProvider.notifier).login(
             _emailController.text.trim(),
             _passwordController.text.trim(),
             deviceName,
-            fcmToken,
-            // captchaToken: _captchaToken,
           );
 
       if (mounted) {
-        if (result != null && result['mfa_required'] == true) {
-          context.push('/mfa', extra: result['mfa_token']);
+        // FIXED: Per kontrak, check 'requires_mfa' dan 'mfa_challenge_token' (bukan 'mfa_required' & 'mfa_token')
+        if (result != null && result['requires_mfa'] == true) {
+          context.push('/mfa', extra: result['mfa_challenge_token']);
         } else {
           context.go('/dashboard');
         }

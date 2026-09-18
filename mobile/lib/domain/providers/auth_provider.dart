@@ -19,23 +19,18 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     String email,
     String password,
     String deviceName,
-    String fcmToken, {
-    String? captchaToken,
-  }) async {
+  ) async {
     state = const AsyncValue.loading();
     try {
       final dio = _ref.read(dioProvider);
 
+      // FIXED: Per kontrak, body hanya { email, password, device_name }
+      // fcm_token REMOVED dari login payload (handled separately in Langkah 9)
       final loginData = {
         'email': email,
         'password': password,
         'device_name': deviceName,
-        'fcm_token': fcmToken,
       };
-
-      if (captchaToken != null && captchaToken.isNotEmpty) {
-        loginData['captcha_token'] = captchaToken;
-      }
 
       final response = await dio.post(
         ApiEndpoints.login,
@@ -44,17 +39,28 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
 
       final responseData = response.data;
 
-      // Handle MFA Required - ASUMSI-API
-      if (responseData != null && responseData['mfa_required'] == true) {
+      // Handle 429 Rate Limiting - khusus untuk login
+      // Contract: 429 returns default Laravel format (NO error_code)
+      // FIXED: Check this before other conditions
+
+      // Handle MFA Required - FIXED FIELD NAMES PER CONTRACT
+      // Contract: { "message": "MFA verification required", "requires_mfa": true, "mfa_challenge_token": "<JWT>", "user": {...} }
+      final rawMfaRequired = responseData != null && (responseData['requires_mfa'] == true || responseData['mfa_required'] == true);
+      final rawMfaChallengeToken = responseData?['mfa_challenge_token'] ?? responseData?['mfa_token'];
+
+      if (rawMfaRequired) {
         state = const AsyncValue.data(null);
         return {
-          'mfa_required': true,
-          'mfa_token': responseData['mfa_token'],
+          'requires_mfa': true,
+          'mfa_challenge_token': rawMfaChallengeToken,
+          'message': responseData?['message'] ?? 'MFA verification required',
+          'user': responseData?['user'],
         };
       }
 
-      if (responseData != null && responseData['token'] != null) {
-        final token = responseData['token'].toString();
+      final rawToken = responseData?['access_token'] ?? responseData?['token'];
+      if (responseData != null && rawToken != null) {
+        final token = rawToken.toString();
         const storage = FlutterSecureStorage();
         
         await storage.write(
@@ -80,6 +86,16 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       }
     } on DioException catch (e) {
       final responseData = e.response?.data;
+      
+      // FIXED: Handle 429 Rate Limit untuk login - tampilkan pesan khusus
+      if (e.response?.statusCode == 429) {
+        state = AsyncValue.error(
+          Exception('Terlalu banyak percobaan login, coba lagi dalam beberapa saat.'),
+          StackTrace.current,
+        );
+        throw Exception('Terlalu banyak percobaan login, coba lagi dalam beberapa saat.');
+      }
+
       String errorMessage = 'Login Gagal';
 
       if (e.response == null) {
@@ -87,7 +103,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
             e.type == DioExceptionType.receiveTimeout) {
           errorMessage = 'Koneksi ke server timeout. Pastikan server aktif dan IP benar.';
         } else {
-          errorMessage = 'Tidak dapat terhubung ke server. Periksa IP dan pastikan Laravel berjalan';
+          errorMessage = 'Tidak dapat terhubung ke server. Periksa IP dan pastikan Laravel berjalan.';
         }
       }
 
@@ -102,6 +118,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       }
 
       if (responseData is Map) {
+        // Contract Point 9: Two error formats
+        // Pola A (custom handler): has 'error_code' field
+        // Pola B (default Laravel): NO 'error_code', just rely on HTTP status
+        
         final messages = responseData['messages'];
         if (messages != null) {
           if (messages is Map) {
@@ -131,21 +151,25 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     }
   }
 
-  Future<void> verifyMfa(String mfaToken, String otp) async {
+  Future<void> verifyMfa(String mfaChallengeToken, String otpCode) async {
     state = const AsyncValue.loading();
     try {
       final dio = _ref.read(dioProvider);
+      // FIXED: Per kontrak, request body field names changed:
+      // { "mfa_challenge_token": string required, "otp_code": string required exactly 6 digit }
       final response = await dio.post(
         ApiEndpoints.verifyMfa,
         data: {
-          'mfa_token': mfaToken,
-          'otp': otp,
+          'mfa_challenge_token': mfaChallengeToken,
+          'otp_code': otpCode,
         },
       );
 
       final responseData = response.data;
-      if (responseData != null && responseData['token'] != null) {
-        final token = responseData['token'].toString();
+      final rawVerifyToken = responseData?['access_token'] ?? responseData?['token'];
+      
+      if (responseData != null && rawVerifyToken != null) {
+        final token = rawVerifyToken.toString();
         const storage = FlutterSecureStorage();
         
         await storage.write(
@@ -169,13 +193,32 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
         );
       }
     } on DioException catch (e) {
-       // standard error handling (could refactor to shared method)
-       final msg = e.response?.data?['message'] ?? 'Gagal memverifikasi OTP';
-       state = AsyncValue.error(Exception(msg), StackTrace.current);
-       throw Exception(msg);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-      rethrow;
+      final responseData = e.response?.data;
+      
+      // FIXED: Handle MFA-specific 422 errors per contract point 2
+      // AUTH_002: token expired/invalid → arahkan user untuk login ulang dari awal
+      // AUTH_004: OTP salah → biarkan user coba input ulang OTP-nya
+      final errorCode = responseData?['error_code']?.toString();
+      
+      if (errorCode == 'AUTH_002') {
+        state = AsyncValue.error(
+          Exception('Sesi OTP telah kadaluarsa, silakan login ulang dari awal.'),
+          StackTrace.current,
+        );
+        throw Exception('Sesi OTP telah kadaluarsa, silakan login ulang dari awal.');
+      } else if (errorCode == 'AUTH_004') {
+        // OTP salah - biarkan user coba lagi dengan token yang sama
+        state = AsyncValue.error(
+          Exception('Kode OTP salah, silakan coba lagi.'),
+          StackTrace.current,
+        );
+        throw Exception('Kode OTP salah, silakan coba lagi.');
+      }
+      
+      // Fallback untuk error lain
+      final msg = e.response?.data?['message'] ?? 'Gagal memverifikasi OTP';
+      state = AsyncValue.error(Exception(msg.toString()), StackTrace.current);
+      throw Exception(msg.toString());
     }
   }
 
@@ -186,6 +229,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       final token = await storage.read(key: AppConfig.authTokenKey);
       if (token != null) {
         final dio = _ref.read(dioProvider);
+        // FIXED: Using correct endpoint /logout per contract
         await dio.post(ApiEndpoints.logout);
       }
     } catch (e) {

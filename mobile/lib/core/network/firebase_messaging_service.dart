@@ -158,6 +158,7 @@ class FirebaseMessagingService {
     try {
       if (_dio == null || fcmToken.isEmpty) return;
       
+      // // BUTUH-BACKEND: Endpoint POST /register-fcm belum ada di backend dev dan kolom fcm_token sys_user belum pasti di-migration
       await _dio.post(
         ApiEndpoints.registerFcm,
         data: {'fcm_token': fcmToken},

@@ -51,9 +51,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/mfa',
         pageBuilder: (context, state) {
-          final mfaToken = state.extra as String? ?? '';
+          final mfaChallengeToken = state.extra as String? ?? '';
           return NoTransitionPage(
-            child: MfaScreen(mfaToken: mfaToken),
+            child: MfaScreen(mfaChallengeToken: mfaChallengeToken),
           );
         },
       ),
