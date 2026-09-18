@@ -51,6 +51,57 @@ class GoogleDriveService
         ];
     }
 
+    /**
+     * Duplicate a Google Docs template. The source document is never edited;
+     * Drive creates a distinct file ID for the outgoing letter.
+     *
+     * @return array{file_id: string, name: string, web_url: string, drive_url: string}
+     */
+    public function copyGoogleDocument(string $sourceUrl, string $targetFileName): array
+    {
+        $this->assertConfigured();
+        $sourceFileId = $this->extractGoogleFileId($sourceUrl);
+        if (!$sourceFileId) {
+            throw new RuntimeException('Link Google Docs template tidak valid.');
+        }
+
+        $metadata = ['name' => $targetFileName];
+        if ($folderId = config('google_drive.folder_id')) {
+            $metadata['parents'] = [$folderId];
+        }
+
+        $response = $this->client->post(sprintf(
+            'https://www.googleapis.com/drive/v3/files/%s/copy',
+            rawurlencode($sourceFileId)
+        ), [
+            // This is harmless for My Drive and required when either the
+            // source document or destination folder belongs to a Shared Drive.
+            'query' => ['supportsAllDrives' => 'true'],
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->accessToken(),
+                'Accept' => 'application/json',
+            ],
+            'json' => $metadata,
+        ]);
+
+        $payload = $this->decodeResponse(
+            $response->getStatusCode(),
+            (string) $response->getBody(),
+            'Gagal menyalin Google Docs template.'
+        );
+        $fileId = $payload['id'] ?? null;
+        if (!$fileId) {
+            throw new RuntimeException('Google Drive tidak mengembalikan ID dokumen hasil copy.');
+        }
+
+        return [
+            'file_id' => $fileId,
+            'name' => $payload['name'] ?? $targetFileName,
+            'web_url' => $this->createSharingLink($fileId),
+            'drive_url' => sprintf('https://drive.google.com/file/d/%s/view', $fileId),
+        ];
+    }
+
     private function uploadFile(string $absolutePath, string $targetFileName, ?string $mimeType = null): string
     {
         $folderId = config('google_drive.folder_id');
@@ -68,6 +119,7 @@ class GoogleDriveService
         $url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
 
         $response = $this->client->post($url, [
+            'query' => ['supportsAllDrives' => 'true'],
             'headers' => [
                 'Authorization' => 'Bearer ' . $this->accessToken(),
                 'Content-Type' => 'multipart/related; boundary=' . $boundary,
@@ -92,6 +144,7 @@ class GoogleDriveService
         );
 
         $response = $this->client->post($url, [
+            'query' => ['supportsAllDrives' => 'true'],
             'headers' => [
                 'Authorization' => 'Bearer ' . $this->accessToken(),
                 'Accept' => 'application/json',
@@ -107,6 +160,21 @@ class GoogleDriveService
 
         // Return the edit link
         return sprintf('https://docs.google.com/document/d/%s/edit', $fileId);
+    }
+
+    private function extractGoogleFileId(string $url): ?string
+    {
+        foreach ([
+            '/docs\\.google\\.com\\/document\\/d\\/([a-zA-Z0-9_-]+)/',
+            '/drive\\.google\\.com\\/file\\/d\\/([a-zA-Z0-9_-]+)/',
+            '/[?&]id=([a-zA-Z0-9_-]+)/',
+        ] as $pattern) {
+            if (preg_match($pattern, $url, $matches)) {
+                return $matches[1];
+            }
+        }
+
+        return null;
     }
 
     private function accessToken(): string
@@ -161,6 +229,15 @@ class GoogleDriveService
         $message = $payload['error']['message']
             ?? $payload['error_description']
             ?? $fallbackMessage;
+
+        // Google sometimes returns the unhelpful "Bad Request" summary but
+        // includes a more actionable reason in its structured error details.
+        $detail = data_get($payload, 'error.errors.0.message')
+            ?? data_get($payload, 'error.errors.0.reason');
+        if ($detail && $detail !== $message) {
+            $message .= ' (' . $detail . ')';
+        }
+
         throw new RuntimeException($message);
     }
 

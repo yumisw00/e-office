@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Modal } from "react-bootstrap"
 import Button from "components/Button"
 import EofficeStatusBadge from "components/EofficeStatusBadge"
@@ -68,6 +68,115 @@ const cardActionButtonStyle = {
     fontSize: 12,
 }
 
+const RichTextEditor = ({ value, onChange }) => {
+    const editorRef = useRef(null)
+    const [formatMenu, setFormatMenu] = useState(false)
+    const [activeMenu, setActiveMenu] = useState(null)
+
+    useEffect(() => {
+        if (editorRef.current && editorRef.current.innerHTML !== (value || "")) {
+            editorRef.current.innerHTML = value || ""
+        }
+    }, [value])
+
+    const format = command => {
+        editorRef.current?.focus()
+        document.execCommand(command, false)
+        onChange(editorRef.current?.innerHTML || "")
+    }
+
+    const insertLink = () => {
+        const url = window.prompt("Masukkan URL tautan")
+        if (url) {
+            editorRef.current?.focus()
+            document.execCommand("createLink", false, url)
+            onChange(editorRef.current?.innerHTML || "")
+        }
+    }
+
+    const changeBlock = value => {
+        editorRef.current?.focus()
+        const command = value.startsWith("justify") ? value : "formatBlock"
+        document.execCommand(command, false, value.startsWith("justify") ? undefined : value)
+        onChange(editorRef.current?.innerHTML || "")
+        setFormatMenu(false)
+    }
+
+    const insertImage = () => {
+        const url = window.prompt("Masukkan URL gambar")
+        if (url) {
+            editorRef.current?.focus()
+            document.execCommand("insertImage", false, url)
+            onChange(editorRef.current?.innerHTML || "")
+        }
+    }
+
+    const handleInput = event => onChange(event.currentTarget.innerHTML)
+    const toggleList = type => {
+        editorRef.current?.focus()
+        if (!editorRef.current?.innerText.trim()) {
+            editorRef.current.innerHTML = type === "ol" ? "<ol><li><br></li></ol>" : "<ul><li><br></li></ul>"
+        } else {
+            document.execCommand(type === "ol" ? "insertOrderedList" : "insertUnorderedList", false)
+        }
+        onChange(editorRef.current?.innerHTML || "")
+    }
+
+    const menuItems = { File: [['Simpan', 'save']], Edit: [['Urungkan', 'undo'], ['Ulangi', 'redo'], ['Pilih semua', 'selectAll']], View: [['Tampilan fokus', 'fullscreen']], Insert: [['Sisipkan tautan', 'link'], ['Sisipkan gambar', 'image']], Format: [['Hapus format', 'removeFormat']], Tools: [['Hitung karakter', 'count']], Table: [['Sisipkan tabel', 'table']], Help: [['Panduan editor', 'help']] }
+    const runMenu = command => {
+        setActiveMenu(null)
+        if (command === 'link') return insertLink()
+        if (command === 'image') return insertImage()
+        if (command === 'count') return window.alert(`Jumlah karakter: ${editorRef.current?.innerText.length || 0}`)
+        if (command === 'help') return window.alert('Gunakan toolbar untuk memformat isi pengumuman.')
+        if (command === 'save') return window.alert('Gunakan tombol Simpan Pengumuman untuk menyimpan.')
+        if (command === 'table') {
+            editorRef.current?.focus()
+            document.execCommand('insertHTML', false, '<table border="1" style="border-collapse:collapse;width:100%"><tbody><tr><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr></tbody></table><p><br></p>')
+            return onChange(editorRef.current?.innerHTML || '')
+        }
+        if (command === 'fullscreen') return editorRef.current?.requestFullscreen?.()
+        format(command)
+    }
+
+    return (
+        <div className="border rounded" style={{ overflow: "hidden" }}>
+            <div className="d-flex align-items-center gap-1 px-3 py-1 bg-white border-bottom" role="menubar">
+                {Object.keys(menuItems).map(menu => <div key={menu} className="position-relative"><button type="button" className="btn btn-sm btn-link text-dark text-decoration-none px-2" onClick={() => setActiveMenu(activeMenu === menu ? null : menu)}>{menu}</button>{activeMenu === menu && <div className="position-absolute bg-white border rounded shadow-sm" style={{ zIndex: 30, top: '100%', left: 0, minWidth: 150 }}>{menuItems[menu].map(([label, command]) => <button key={command} type="button" className="btn btn-sm btn-link text-dark text-left w-100 d-block px-3 py-2" onClick={() => runMenu(command)}>{label}</button>)}</div>}</div>)}
+            </div>
+            <div className="d-flex flex-wrap align-items-center gap-1 px-2 py-2 bg-light border-bottom" role="toolbar" aria-label="Format isi pengumuman">
+                <button type="button" className="btn btn-sm btn-link text-secondary" onClick={() => format('undo')} aria-label="Urungkan"><span className="material-icons">undo</span></button>
+                <button type="button" className="btn btn-sm btn-link text-secondary" onClick={() => format('redo')} aria-label="Ulangi"><span className="material-icons">redo</span></button>
+                <div className="position-relative ml-2">
+                    <button type="button" className="btn btn-sm bg-white border d-flex align-items-center justify-content-between" style={{ width: 130 }} onClick={() => setFormatMenu(open => !open)} aria-expanded={formatMenu}>Bold <span className="material-icons" style={{ fontSize: 16 }}>expand_more</span></button>
+                    {formatMenu && <div className="position-absolute bg-white border rounded shadow-sm" style={{ zIndex: 20, top: "100%", left: 0, width: 140, marginTop: 3 }}>
+                        {[['Headings', [['h1', 'Heading 1'], ['h2', 'Heading 2'], ['h3', 'Heading 3']]], ['Inline', [['bold', 'Bold'], ['italic', 'Italic'], ['underline', 'Underline']]], ['Blocks', [['p', 'Paragraph'], ['blockquote', 'Quote']]], ['Align', [['justifyLeft', 'Left'], ['justifyCenter', 'Center'], ['justifyRight', 'Right'], ['justifyFull', 'Justify']]]].map(([group, items]) => <div key={group} className="border-bottom last:border-0">
+                            <div className="d-flex align-items-center justify-content-between px-3 py-2 text-secondary" style={{ fontSize: 13 }}>{group}<span className="material-icons" style={{ fontSize: 16 }}>chevron_right</span></div>
+                            <div className="px-2 pb-1">{items.map(([command, label]) => <button key={command} type="button" className="btn btn-sm btn-link d-block text-left text-dark w-100 py-1" onClick={() => ['bold', 'italic', 'underline'].includes(command) ? format(command) : changeBlock(command)}>{label}</button>)}</div>
+                        </div>)}
+                    </div>}
+                </div>
+                {[['bold', 'B'], ['italic', 'I'], ['underline', 'U'], ['strikeThrough', 'S']].map(([command, label]) => (
+                    <button key={command} type="button" className="btn btn-sm btn-outline-secondary" onMouseDown={event => event.preventDefault()} onClick={() => format(command)} aria-label={command}>
+                        <span style={{ fontWeight: command === 'bold' ? 700 : 400, fontStyle: command === 'italic' ? 'italic' : 'normal', textDecoration: command === 'underline' ? 'underline' : command === 'strikeThrough' ? 'line-through' : 'none' }}>{label}</span>
+                    </button>
+                ))}
+                {['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull'].map((command, index) => <button key={command} type="button" className="btn btn-sm btn-link text-dark" onMouseDown={event => event.preventDefault()} onClick={() => format(command)} aria-label={command}><span className="material-icons" style={{ fontSize: 18 }}>{['format_align_left', 'format_align_center', 'format_align_right', 'format_align_justify'][index]}</span></button>)}
+                <button type="button" className="btn btn-sm btn-link text-dark" onMouseDown={event => event.preventDefault()} onClick={() => toggleList('ul')} aria-label="Daftar berpoin"><span className="material-icons" style={{ fontSize: 18 }}>format_list_bulleted</span></button>
+                <button type="button" className="btn btn-sm btn-link text-dark" onMouseDown={event => event.preventDefault()} onClick={() => toggleList('ol')} aria-label="Daftar bernomor"><span className="material-icons" style={{ fontSize: 18 }}>format_list_numbered</span></button>
+                <button type="button" className="btn btn-sm btn-link text-dark" onClick={() => format('outdent')} aria-label="Kurangi indent">☷</button>
+                <button type="button" className="btn btn-sm btn-link text-dark" onClick={() => format('indent')} aria-label="Tambah indent">☷</button>
+                <button type="button" className="btn btn-sm btn-link text-dark" onMouseDown={event => event.preventDefault()} onClick={insertLink} aria-label="Sisipkan tautan"><span className="material-icons" style={{ fontSize: 18 }}>link</span></button>
+                <button type="button" className="btn btn-sm btn-link text-dark" onMouseDown={event => event.preventDefault()} onClick={insertImage} aria-label="Sisipkan gambar"><span className="material-icons" style={{ fontSize: 18 }}>image</span></button>
+            </div>
+            <div className="position-relative">
+                {!value && <span className="text-muted position-absolute p-3" style={{ pointerEvents: "none" }}>Tulis isi pengumuman...</span>}
+                <div ref={editorRef} contentEditable role="textbox" aria-multiline="true" onInput={handleInput} className="p-3" style={{ minHeight: 170, outline: "none", whiteSpace: "pre-wrap" }} />
+            </div>
+        </div>
+    )
+}
+
 const Pengumuman = () => {
     const [list, setList] = useState([])
     const [isLoading, setIsLoading] = useState(false)
@@ -81,6 +190,7 @@ const Pengumuman = () => {
     const [pagination, setPagination] = useState({ page: 1, pagesize: 12, total_records: 0, total_page: 1 })
     const [loadError, setLoadError] = useState("")
     const [activeKategori, setActiveKategori] = useState("semua")
+
 
     const service = useMemo(() => api_services({ api_path: "/pengumuman" }), [])
 
@@ -390,14 +500,8 @@ const Pengumuman = () => {
                             </div>
                             <div className="col-12">
                                 <label className="font-semibold">Isi Pengumuman <span className="text-danger">*</span></label>
-                                <textarea
-                                    className="form-control"
-                                    rows={6}
-                                    placeholder="Tulis isi pengumuman..."
-                                    value={form.isi || ""}
-                                    onChange={e => setForm({ ...form, isi: e.target.value })}
-                                    required
-                                />
+                                <RichTextEditor value={form.isi || ""} onChange={isi => setForm(current => ({ ...current, isi }))} />
+                                <input type="text" value={form.isi || ""} onChange={() => {}} required aria-hidden="true" tabIndex={-1} style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 1, height: 1 }} />
                             </div>
                             <div className="col-12">
                                 <label className="font-semibold">Lampiran</label>
@@ -442,9 +546,7 @@ const Pengumuman = () => {
                                 </div>
                             </div>
                             <hr />
-                            <div className="text-slate-700 mt-3" style={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}>
-                                {previewItem?.isi || "-"}
-                            </div>
+                            <div className="text-slate-700 mt-3" style={{ lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: previewItem?.isi || "-" }} />
                             {previewItem?.lampiran && (
                                 <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
                                     <div className="text-xs font-semibold text-slate-500 mb-1">

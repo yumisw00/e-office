@@ -5,10 +5,12 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\BaseResourceController;
 use App\Http\Controllers\API\Concerns\RespondsWithFrontendFormat;
 use App\Services\EOffice\MicrosoftGraphService;
+use App\Services\EOffice\GoogleDriveService;
 use App\Services\EOfficeNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -261,13 +263,14 @@ class SuratKeluarAPIController extends BaseResourceController
             $payload['perihal'] = $payload['nomor_surat'] ?? 'Surat Keluar';
         }
 
-        $payload = $this->resolveTemplateJenisSuratPayload($payload);
+        $payload = $this->resolveTemplateJenisSuratPayload($payload, $mode);
         $payload = $this->resolveJenisSuratPayload($payload);
+        $payload = $this->attachGoogleDocumentCopyToPayload($payload, $mode);
 
         // Workflow status and Office links are set only by their dedicated
         // server-side workflows. A client may only attach a file stored by the
         // outgoing-letter upload endpoint.
-        unset($payload['status'], $payload['office365_document_url'], $payload['created_by'], $payload['created_by_desc']);
+        unset($payload['status'], $payload['office365_document_url'], $payload['google_drive_copy_token'], $payload['created_by'], $payload['created_by_desc']);
 
         if ($mode === 'store') {
             $creatorId = auth()->user()?->id_user
@@ -323,7 +326,7 @@ class SuratKeluarAPIController extends BaseResourceController
      * prevents a browser request from saving a type that differs from the
      * template selected by the user.
      */
-    private function resolveTemplateJenisSuratPayload(array $payload): array
+    private function resolveTemplateJenisSuratPayload(array $payload, string $mode): array
     {
         $templateId = $payload['id_surat_template'] ?? null;
         if (!$templateId) {
@@ -338,7 +341,7 @@ class SuratKeluarAPIController extends BaseResourceController
             ->where(function ($query) {
                 $query->whereNull('is_active')->orWhere('is_active', true);
             })
-            ->first(['jenis_surat', 'nama']);
+            ->first(['jenis_surat', 'nama', 'metadata', 'deskripsi', 'drive_document_url', 'office365_document_url']);
 
         if (!$template) {
             throw ValidationException::withMessages([
@@ -367,7 +370,31 @@ class SuratKeluarAPIController extends BaseResourceController
         $payload['jenis'] = $templateJenis;
         unset($payload['id_jenis_surat']);
 
+        if ($mode === 'store') {
+            $templateDriveUrl = trim((string) ($template->drive_document_url ?: $template->office365_document_url));
+            $isGoogleDocsTemplate = (bool) preg_match('/(?:drive|docs)\.google\.com/i', $templateDriveUrl);
+
+            // Google Docs templates are copied by the Drive workflow after
+            // creation; their body must never be copied into the HTML editor.
+            if (!$isGoogleDocsTemplate && empty(trim((string) ($payload['isi_surat'] ?? '')))) {
+                $payload['isi_surat'] = $this->templateContent($template);
+            }
+            $payload['template_nama'] = $template->nama;
+        }
+
         return $payload;
+    }
+
+    /** Extract the template body without modifying the master record. */
+    private function templateContent(object $template): string
+    {
+        $metadata = $template->metadata ?? null;
+        if (!is_array($metadata)) {
+            $metadata = json_decode((string) $metadata, true);
+        }
+        $metadata = is_array($metadata) ? $metadata : [];
+
+        return (string) ($metadata['isi_template'] ?? $metadata['content'] ?? $template->deskripsi ?? '');
     }
 
     public function createOfficeLink(Request $request, int|string $id, MicrosoftGraphService $graph)
@@ -423,7 +450,6 @@ class SuratKeluarAPIController extends BaseResourceController
     public function store(Request $request): JsonResponse
     {
         $this->prepareDeliveryPayload($request);
-        $this->syncGoogleDriveUrlFromTemplate($request);
 
         // Step 1: Create surat_keluar inside a transaction (atomic)
         $result = DB::transaction(function () use ($request) {
@@ -465,6 +491,10 @@ class SuratKeluarAPIController extends BaseResourceController
                 'penerima_ids' => $this->normalizedUserIds($request->input('penerima_ids', [$request->input('tujuan_id')])),
             ];
         });
+
+        if ($result['suratId'] && $request->filled('google_drive_copy_token')) {
+            Cache::forget($this->googleDriveCopyCacheKey((string) $request->input('google_drive_copy_token')));
+        }
 
         // Step 2: Route internal letter AFTER transaction commits (non-blocking)
         // This is a secondary feature — surat_keluar is already saved successfully
@@ -709,7 +739,9 @@ class SuratKeluarAPIController extends BaseResourceController
     public function update($id = null, Request $request): JsonResponse
     {
         $this->prepareDeliveryPayload($request, $id);
-        $this->syncGoogleDriveUrlFromTemplate($request);
+        // The Drive URL belongs to the copy created at store time. Never
+        // replace it with the selected template's master URL on an update.
+        $request->request->remove('google_drive_document_url');
         $response = $this->updateFrontend($id, $request);
 
         if ($response->getStatusCode() < 400) {
@@ -861,19 +893,14 @@ class SuratKeluarAPIController extends BaseResourceController
         ]);
     }
 
-    private function syncGoogleDriveUrlFromTemplate(Request $request): void
+    /**
+     * Make a separate Google Docs file as soon as a template is selected.
+     * The generated cache token later proves that the URL submitted on store
+     * is this user's copy, rather than the master template or an arbitrary URL.
+     */
+    public function copyGoogleTemplate(Request $request, GoogleDriveService $googleDrive): JsonResponse
     {
-        $hasGoogleDriveColumn = Schema::hasColumn('surat_keluar', 'google_drive_document_url');
-
-        if (!$hasGoogleDriveColumn) {
-            $request->request->remove('google_drive_document_url');
-        }
-
-        if (!$request->has('id_surat_template')) {
-            // Jangan izinkan URL Drive dikirim langsung dari klien.
-            $request->merge(['google_drive_document_url' => null]);
-            return;
-        }
+        $request->validate(['id_surat_template' => ['required', 'integer']]);
 
         $template = $this->findTemplate($request->input('id_surat_template'));
         $googleDriveUrl = trim((string) ($template->drive_document_url ?? ''));
@@ -885,18 +912,109 @@ class SuratKeluarAPIController extends BaseResourceController
             }
         }
 
-        if ($hasGoogleDriveColumn) {
-            $request->merge([
-                'google_drive_document_url' => $googleDriveUrl ?: null,
+        if (!$template || $googleDriveUrl === '' || !preg_match('/(?:drive|docs)\.google\.com/i', $googleDriveUrl)) {
+            throw ValidationException::withMessages([
+                'id_surat_template' => 'Template yang dipilih belum terhubung ke Google Docs.',
             ]);
+        }
+
+        $this->ensureGoogleDriveTemplateCanBeCopied($template->id_surat_template);
+
+        try {
+            $document = $googleDrive->copyGoogleDocument(
+                $googleDriveUrl,
+                $this->googleDriveDraftDocumentName($template)
+            );
+            $token = Str::random(64);
+            Cache::put($this->googleDriveCopyCacheKey($token), [
+                'template_id' => (int) $template->id_surat_template,
+                'user_id' => $this->currentUserId(),
+                'document' => $document,
+            ], now()->addHours(4));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Salinan Google Docs berhasil dibuat. Silakan edit dokumen tersebut sebelum menyimpan surat.',
+                'data' => $document,
+                'google_drive_document_id' => $document['file_id'],
+                'google_drive_document_url' => $document['web_url'],
+                'google_drive_copy_token' => $token,
+            ]);
+        } catch (\Throwable $exception) {
+            \Log::error('Gagal membuat salinan template Google Docs.', ['error' => $exception->getMessage()]);
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    private function attachGoogleDocumentCopyToPayload(array $payload, string $mode): array
+    {
+        if ($mode !== 'store') {
+            // Existing documents retain their saved URL; never accept a URL
+            // supplied by the browser during an update.
+            unset($payload['google_drive_document_url']);
+            return $payload;
+        }
+
+        $template = $this->findTemplate($payload['id_surat_template'] ?? null);
+        $sourceUrl = trim((string) ($template->drive_document_url ?? $template->office365_document_url ?? ''));
+        if (!preg_match('/(?:drive|docs)\.google\.com/i', $sourceUrl)) {
+            unset($payload['google_drive_document_url']);
+            return $payload;
+        }
+
+        $token = (string) ($payload['google_drive_copy_token'] ?? '');
+        $copy = $token === '' ? null : Cache::get($this->googleDriveCopyCacheKey($token));
+        $documentUrl = $copy['document']['web_url'] ?? null;
+        if (!$copy || (int) ($copy['template_id'] ?? 0) !== (int) $template->id_surat_template
+            || (int) ($copy['user_id'] ?? 0) !== $this->currentUserId() || !is_string($documentUrl)) {
+            throw ValidationException::withMessages([
+                'id_surat_template' => 'Pilih template dan tunggu salinan Google Docs selesai dibuat sebelum menyimpan surat.',
+            ]);
+        }
+
+        $payload['google_drive_document_url'] = $documentUrl;
+        return $payload;
+    }
+
+    /** Fail before copying if the selected Google Docs master cannot be copied. */
+    private function ensureGoogleDriveTemplateCanBeCopied($templateId): void
+    {
+        $template = $this->findTemplate($templateId);
+        $sourceUrl = trim((string) ($template->drive_document_url ?? $template->office365_document_url ?? ''));
+
+        if (!preg_match('/(?:drive|docs)\.google\.com/i', $sourceUrl)) {
             return;
         }
 
-        // Compatibility for databases that have not run the latest migration.
-        // The field was previously used by the frontend to retain template links.
-        $request->merge([
-            'office365_document_url' => $googleDriveUrl ?: null,
-        ]);
+        if (!Schema::hasColumn('surat_keluar', 'google_drive_document_url')) {
+            throw ValidationException::withMessages([
+                'id_surat_template' => 'Penyimpanan dokumen Google Docs belum tersedia. Jalankan migrasi terbaru.',
+            ]);
+        }
+
+        if (!app(GoogleDriveService::class)->isConfigured()) {
+            throw ValidationException::withMessages([
+                'id_surat_template' => 'Konfigurasi Google Drive belum lengkap. Hubungi administrator untuk melengkapi kredensial Google Drive.',
+            ]);
+        }
+    }
+
+    private function googleDriveDraftDocumentName($template): string
+    {
+        $title = trim((string) ($template->nama ?: 'Surat Keluar'));
+        $title = preg_replace('/[\\\\\/:*?"<>|]+/', '-', $title) ?: 'Surat Keluar';
+
+        return trim($title) . ' - Draft ' . now()->format('YmdHis');
+    }
+
+    private function googleDriveCopyCacheKey(string $token): string
+    {
+        return 'surat_keluar_google_drive_copy:' . $token;
+    }
+
+    private function currentUserId(): int
+    {
+        return (int) (auth()->user()?->id_user ?? auth()->user()?->id ?? request()->session()->get('id_user') ?? 0);
     }
 
     private function generateNomorAgenda(): string
@@ -1079,10 +1197,6 @@ class SuratKeluarAPIController extends BaseResourceController
         if (!empty($data['id_surat_template'])) {
             $template = $this->findTemplate($data['id_surat_template']);
             $driveUrl = trim((string) ($template->drive_document_url ?? ''));
-
-            if (empty($data['google_drive_document_url']) && $driveUrl !== '') {
-                $data['google_drive_document_url'] = $driveUrl;
-            }
 
             if (empty($data['template_nama']) && $template) {
                 $data['template_nama'] = $template->nama ?? null;

@@ -23,6 +23,28 @@ const normalizeList = response => {
     return []
 }
 
+// Used only by templates that are not linked to Google Docs.
+const templateContent = template => {
+    let metadata = template?.metadata
+
+    if (typeof metadata === 'string') {
+        try {
+            metadata = JSON.parse(metadata)
+        } catch (_) {
+            metadata = null
+        }
+    }
+
+    return String(
+        template?.isi_template
+        ?? template?.content
+        ?? metadata?.isi_template
+        ?? metadata?.content
+        ?? template?.deskripsi
+        ?? ''
+    )
+}
+
 const kualifikasiOptions = [
     { label: 'Surat Dinas', value: 'dinas' },
     { label: 'Surat Resmi', value: 'resmi' },
@@ -50,6 +72,8 @@ class Surat_keluar_edit extends EditPage {
         signLoading: false,
         showSignaturePad: false,
         signatureData: '',
+        googleDocsCopyLoading: false,
+        googleDocsCopyError: '',
     }
 
     componentDidMount() {
@@ -442,9 +466,10 @@ class Surat_keluar_edit extends EditPage {
         </FormGroup>
     )
 
-    applyTemplate = templateId => {
+    applyTemplate = async templateId => {
         const template = this.state.templates.find(item => String(item?.id_surat_template || item?.id) === String(templateId))
         if (!template) return
+        this.pendingGoogleDocsTemplateId = String(templateId)
 
         // Parse multi-value kualifikasi from template
         const templateKualifikasi = template?.kualifikasi || template?.kualifikasi_surat || ''
@@ -460,24 +485,76 @@ class Surat_keluar_edit extends EditPage {
         )
         const templateJenis = String(matchedJenis?.value || template?.jenis_surat || template?.jenis || '').trim()
         const templateGoogleDriveUrl = template?.drive_document_url || template?.google_drive_url || template?.drive_url || template?.google_drive_link || template?.office365_document_url || ''
+        const isGoogleDocsTemplate = this.isGoogleDriveUrl(templateGoogleDriveUrl)
+        const copiedContent = isGoogleDocsTemplate ? '' : templateContent(template)
+
+        // Browsers can occasionally emit the same select event twice. Reuse
+        // the active request instead of creating a second Drive document.
+        if (isGoogleDocsTemplate && this.googleDocsCopyRequest?.templateId === String(templateId)) return
+        const requestId = Symbol('google-docs-copy')
+        this.googleDocsCopyRequest = isGoogleDocsTemplate ? { templateId: String(templateId), requestId } : null
 
         this.setState(state => ({
             datainsert: {
                 ...state.datainsert,
                 id_surat_template: templateId,
                 template_nama: templateName,
-                // Copy template values into this new surat draft. Do not keep
-                // the previous draft values when the selected template is empty.
-                isi_surat: template?.isi_template ?? template?.content ?? '',
+                // A Google Docs master is never placed in the HTML editor.
+                isi_surat: copiedContent,
                 ringkasan: template?.deskripsi ?? '',
                 template_file_path: template?.file_path ?? template?.file_draft_path ?? '',
-                template_google_drive_url: templateGoogleDriveUrl,
+                template_google_drive_url: '',
+                google_drive_document_url: '',
+                google_drive_copy_token: '',
                 // Jenis surat mengikuti jenis yang didefinisikan pada template.
                 jenis: templateJenis,
                 klasifikasi: kualifikasiList.join(', '),
             },
             selectedKualifikasi: kualifikasiList.length ? kualifikasiList : state.selectedKualifikasi,
+            googleDocsCopyLoading: isGoogleDocsTemplate,
+            googleDocsCopyError: '',
         }))
+
+        if (!isGoogleDocsTemplate) {
+            showToastr(copiedContent.trim() ? 'success' : 'warning', copiedContent.trim()
+                ? 'Isi template telah disalin ke Editor Surat. Anda dapat mengeditnya sebelum menyimpan.'
+                : 'Template dipilih, tetapi belum memiliki isi yang dapat disalin ke Editor Surat.')
+            return
+        }
+
+        try {
+            const response = await axios.post('/api/surat_keluar/copy-google-template', {
+                id_surat_template: templateId,
+            })
+            const document = response?.data?.data || {}
+            const documentUrl = response?.data?.google_drive_document_url || document.web_url
+            const copyToken = response?.data?.google_drive_copy_token
+            if (!documentUrl || !copyToken) throw new Error('URL salinan Google Docs tidak diterima.')
+
+            // Ignore a slow response if the user has selected another template.
+            if (this.pendingGoogleDocsTemplateId !== String(templateId) || this.googleDocsCopyRequest?.requestId !== requestId) return
+            this.setState(state => ({
+                googleDocsCopyLoading: false,
+                googleDocsCopyError: '',
+                datainsert: {
+                    ...state.datainsert,
+                    template_google_drive_url: documentUrl,
+                    google_drive_document_url: documentUrl,
+                    google_drive_copy_token: copyToken,
+                },
+            }))
+            showToastr('success', 'Salinan Google Docs siap. Edit dokumen tersebut sebelum menyimpan Surat Keluar.')
+        } catch (error) {
+            if (this.pendingGoogleDocsTemplateId !== String(templateId) || this.googleDocsCopyRequest?.requestId !== requestId) return
+            const validationMessage = Object.values(error?.response?.data?.errors || {}).flat().find(Boolean)
+            const message = validationMessage
+                || error?.response?.data?.message
+                || error?.response?.data?.messages?.errors
+                || error?.message
+                || 'Gagal membuat salinan Google Docs.'
+            this.setState({ googleDocsCopyLoading: false, googleDocsCopyError: message })
+            showToastr('error', message)
+        }
     }
 
     handleKualifikasiToggle = (value) => {
@@ -514,11 +591,18 @@ class Surat_keluar_edit extends EditPage {
     }
 
     getTemplateGoogleDriveUrl = () => {
-        const templateDriveUrl = this.state.datainsert?.template_google_drive_url
+        const templateDriveUrl = this.state.datainsert?.google_drive_document_url || this.state.datainsert?.template_google_drive_url
         const templateFilePath = this.state.datainsert?.template_file_path
         if (templateDriveUrl) return templateDriveUrl
         if (templateFilePath && this.isGoogleDriveUrl(templateFilePath)) return templateFilePath
         return null
+    }
+
+    selectedTemplateUsesGoogleDocs = () => {
+        const templateId = this.state.datainsert?.id_surat_template
+        const template = this.state.templates.find(item => String(item?.id_surat_template || item?.id) === String(templateId))
+        const masterUrl = template?.drive_document_url || template?.google_drive_url || template?.drive_url || template?.google_drive_link || template?.office365_document_url || ''
+        return this.isGoogleDriveUrl(masterUrl)
     }
 
     getPreviewUrl = () => {
@@ -627,7 +711,19 @@ class Surat_keluar_edit extends EditPage {
                     </div>
                     <div style={{ flex: '1 1 42%', minWidth: 300 }}>
                         <div className="border rounded p-3 h-100" style={{ background: '#fff' }}>
-                            <div className="font-semibold mb-2"><span className="material-icons" style={{ fontSize: 16, verticalAlign: 'middle' }}>attach_file</span> Lampiran Surat</div>
+                            <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <div className="font-semibold"><span className="material-icons" style={{ fontSize: 16, verticalAlign: 'middle' }}>attach_file</span> Lampiran Surat</div>
+                                {data.google_drive_document_url && (
+                                    <a
+                                        href={data.google_drive_document_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-primary btn-sm"
+                                    >
+                                        Edit di Google Docs
+                                    </a>
+                                )}
+                            </div>
                             {previewUrl ? <iframe title="Pratinjau surat keluar" src={previewUrl} style={{ width: '100%', height: 'calc(100vh - 230px)', minHeight: 480, border: '1px solid #d6dce1', borderRadius: 4 }} /> : <div className="d-flex align-items-center justify-content-center text-muted" style={{ minHeight: 480 }}>Belum ada lampiran surat.</div>}
                         </div>
                     </div>
@@ -731,6 +827,10 @@ class Surat_keluar_edit extends EditPage {
     renderTemplateSelector = () => {
         const selectedTemplate = this.state.datainsert?.id_surat_template
         const templateDriveUrl = this.getTemplateGoogleDriveUrl()
+        const isTemplateLocked = this.state.is_disabled || Boolean(this.id)
+        const isGoogleDocsTemplate = this.selectedTemplateUsesGoogleDocs()
+        const isCopyLoading = this.state.googleDocsCopyLoading
+        const copyError = this.state.googleDocsCopyError
 
         return (
             <div className="col-12">
@@ -742,7 +842,7 @@ class Surat_keluar_edit extends EditPage {
                                 className="form-control"
                                 value={this.state.datainsert.id_surat_template || ''}
                                 onChange={event => this.applyTemplate(event.target.value)}
-                                disabled={this.state.is_disabled}
+                                disabled={isTemplateLocked}
                                 required
                             >
                                 <option value="">Pilih template surat</option>
@@ -752,24 +852,43 @@ class Surat_keluar_edit extends EditPage {
                                     </option>
                                 ))}
                             </select>
+                            {selectedTemplate && isGoogleDocsTemplate && (
+                                <div className="d-flex align-items-center gap-1 mt-2 small text-primary">
+                                    <span className="material-icons" style={{ fontSize: 16 }}>{isCopyLoading ? 'sync' : 'description'}</span>
+                                    {isCopyLoading
+                                        ? 'Membuat salinan Google Docs dari template…'
+                                        : 'Gunakan dokumen hasil salinan di bawah. Template master tidak akan dibuka atau diubah.'}
+                                </div>
+                            )}
                         </div>
                         {selectedTemplate && this.state.datainsert.template_nama && (
                             <div className="col-12">
-                                {templateDriveUrl ? (
-                                    <div className="p-3 rounded" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
-                                        <div className="d-flex align-items-center gap-2 mb-2">
-                                            <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
-                                                <path d="M6 39.5C6 33.7 10.7 28.8 16.5 28.8L35.5 28.8C38.5 28.8 41 31.3 41 34.3C41 37.3 38.5 39.8 35.5 39.8L16.5 39.8C8.4 39.8 1.5 32.9 1.5 24.8C1.5 20.6 3.8 16.8 7.4 14.5L6 9.4C6 9.4 6 9.4 6 39.5Z" fill="#0066DA"/>
-                                                <path d="M42 9.8L32.5 9.8L32.5 19.3C32.5 22.3 30 24.8 27 24.8C24 24.8 21.5 22.3 21.5 19.3L21.5 9.8L12 9.8C12 9.8 42 5.3 42 9.8Z" fill="#00AC47"/>
-                                                <path d="M21.5 34.3L21.5 24.8C21.5 21.8 24 19.3 27 19.3C30 19.3 32.5 21.8 32.5 24.8L32.5 34.3C32.5 37.3 30 39.8 27 39.8C24 39.8 21.5 37.3 21.5 34.3Z" fill="#EA4335"/>
-                                                <path d="M12 34.3L12 24.8C12 21.8 14.5 19.3 17.5 19.3C20.5 19.3 23 21.8 23 24.8L23 34.3C23 37.3 20.5 39.8 17.5 39.8C14.5 39.8 12 37.3 12 34.3Z" fill="#00832D"/>
-                                                <path d="M9.8 28.8L18.3 28.8L18.3 39.8C18.3 39.8 8.8 33.9 9.8 28.8Z" fill="#2684FC"/>
-                                                <path d="M29.8 28.8L38.3 28.8C37.3 33.9 47.8 39.8 47.8 39.8L47.8 28.8H29.8Z" fill="#FFBA00"/>
-                                            </svg>
-                                            <span className="fw-bold" style={{ color: '#1d4ed8' }}>Template terhubung ke Google Docs</span>
-                                        </div>
+                                {isGoogleDocsTemplate ? (
+                                    templateDriveUrl ? (
+                                        <a
+                                            href={templateDriveUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="btn btn-primary d-inline-flex align-items-center gap-1"
+                                        >
+                                            <span className="material-icons" style={{ fontSize: 17 }}>edit_document</span>
+                                            Edit di Google Docs
+                                        </a>
+                                    ) : isCopyLoading ? (
+                                        <span className="text-muted small">Sedang membuat salinan Google Docs…</span>
+                                    ) : copyError ? (
+                                        <span className="text-danger small">Gagal membuat salinan: {copyError}</span>
+                                    ) : (
+                                        <span className="text-muted small">Menunggu salinan Google Docs dibuat.</span>
+                                    )
+                                ) : templateDriveUrl ? (
+                                    <details className="rounded" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+                                        <summary className="px-3 py-2 fw-semibold" style={{ color: '#1d4ed8', cursor: 'pointer' }}>
+                                            Lihat Template Master (Read-only)
+                                        </summary>
+                                        <div className="px-3 pb-3">
                                         <div className="mb-2" style={{ fontSize: 12, color: '#1e40af' }}>
-                                            <strong>Langkah:</strong> Klik tombol di bawah → edit surat di Google Docs → kembali ke sini → lengkapi data → Kirim.
+                                            <strong>Referensi:</strong> Lihat template di bawah → isi Surat Keluar disalin ke editor ini → lengkapi data → Kirim.
                                         </div>
                                         <a
                                             href={templateDriveUrl.replace(/\/edit(?:\?.*)?$/i, '/preview')}
@@ -786,7 +905,8 @@ class Surat_keluar_edit extends EditPage {
                                             </svg>
                                             Lihat Template (Read-only)
                                         </a>
-                                    </div>
+                                        </div>
+                                    </details>
                                 ) : (
                                     <span className="badge bg-success d-inline-flex align-items-center gap-1">
                                         <span className="material-icons" style={{ fontSize: 14 }}>check_circle</span>
@@ -826,51 +946,6 @@ class Surat_keluar_edit extends EditPage {
                             </label>
                         )
                     })}
-                </div>
-            </FormGroup>
-        </div>
-    )
-
-    renderEditor = () => (
-        <div className="col-12">
-            <FormGroup
-                label="Editor Surat"
-                message_error={this.state.errors.isi_surat}
-                disabled={this.state.is_disabled}
-                formCol
-                noMb
-            >
-                <div className="border rounded overflow-hidden mt-1">
-                    {!this.state.is_disabled ? (
-                        <div className="d-flex align-items-center flex-wrap px-2 py-2" style={{ background: '#eef7f8', gap: 6 }}>
-                            {[
-                                ['format_bold', 'Bold'],
-                                ['format_italic', 'Italic'],
-                                ['format_align_left', 'Align'],
-                                ['format_list_bulleted', 'List'],
-                                ['table_chart', 'Table'],
-                            ].map(([icon, title]) => (
-                                <button
-                                    key={icon}
-                                    type="button"
-                                    className="btn btn-light btn-sm"
-                                    title={title}
-                                    onClick={() => showToastr('success', `${title} siap disambungkan ke editor dokumen.`)}
-                                >
-                                    <span className="material-icons" style={{ fontSize: 16 }}>{icon}</span>
-                                </button>
-                            ))}
-                        </div>
-                    ) : null}
-                    <textarea
-                        className="form-control border-0"
-                        rows={10}
-                        value={this.state.datainsert.isi_surat || ''}
-                        onChange={event => this.handleChange('isi_surat', event.target.value)}
-                        disabled={this.state.is_disabled}
-                        placeholder="Isi surat"
-                        style={{ resize: 'vertical', borderRadius: 0 }}
-                    />
                 </div>
             </FormGroup>
         </div>
@@ -1246,11 +1321,11 @@ class Surat_keluar_edit extends EditPage {
                         <button
                             type="button"
                             className="btn-default-app inline-flex items-center py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150"
-                            disabled={this.state.btn_loading}
+                            disabled={this.state.btn_loading || this.state.googleDocsCopyLoading}
                             onClick={this.handleSubmit}
                         >
-                            {this.state.btn_loading ? (
-                                "Loading..."
+                            {this.state.btn_loading || this.state.googleDocsCopyLoading ? (
+                                this.state.googleDocsCopyLoading ? 'Membuat salinan Google Docs...' : 'Loading...'
                             ) : (
                                 <>
                                     <span className="material-icons icon-btn-left mr-1">

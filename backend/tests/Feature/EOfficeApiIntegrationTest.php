@@ -26,7 +26,26 @@ class EOfficeApiIntegrationTest extends TestCase
             'password' => 'secret',
         ]);
 
-        $this->actingAs($user);
+        // Exercise protected endpoints as the system administrator. The
+        // production middleware correctly requires an active group session;
+        // an authenticated user without one is expected to receive 403.
+        $groupId = DB::table('sys_group')->insertGetId([
+            'nama' => 'Admin Sistem',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('sys_user_group')->insert([
+            'id_user' => $user->id_user,
+            'id_group' => $groupId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($user)->withSession([
+            'id_user' => $user->id_user,
+            'id_group' => $groupId,
+            'nama_group' => 'Admin Sistem',
+        ]);
     }
 
     public function test_upload_surat_dengan_ocr_berhasil(): void
@@ -44,6 +63,7 @@ class EOfficeApiIntegrationTest extends TestCase
 
         $response = $this->post('/api/surat_masuk', [
             'run_ocr' => true,
+            'jenis' => 'Umum',
             'file_surat' => $this->fakePdf(),
         ]);
 
@@ -66,6 +86,8 @@ class EOfficeApiIntegrationTest extends TestCase
 
         $response = $this->post('/api/surat_masuk', [
             'run_ocr' => true,
+            'jenis' => 'Umum',
+            'perihal' => 'Surat manual',
             'nomor_surat' => 'MANUAL/001',
             'pengirim' => 'Unit Manual',
             'file_surat' => $this->fakePdf(),
@@ -87,6 +109,7 @@ class EOfficeApiIntegrationTest extends TestCase
     {
         $response = $this->postJson('/api/surat_masuk', [
             'nomor_surat' => 'MANUAL/002',
+            'jenis' => 'Umum',
             'tanggal_surat' => '2026-07-07',
             'pengirim' => 'Rektorat',
             'penerima' => 'Pegawai',
@@ -295,7 +318,10 @@ class EOfficeApiIntegrationTest extends TestCase
 
         $this->actingAs($pegawai)
             ->withSession(['nama_group' => 'Pegawai'])
-            ->getJson('/api/pengumuman')
+            ->postJson('/api/pengumuman', [
+                'judul' => 'Tidak boleh dibuat',
+                'isi' => 'Tidak boleh dibuat oleh pegawai.',
+            ])
             ->assertForbidden()
             ->assertJsonPath('success', false);
     }
@@ -354,7 +380,9 @@ class EOfficeApiIntegrationTest extends TestCase
     {
         foreach ([
             'surat_disposisi',
+            'surat_distribusi',
             'surat_masuk',
+            'master_jenis_surat',
             'ai_document_job',
             'audit_trail_immutable',
             'sys_notification',
@@ -425,6 +453,10 @@ class EOfficeApiIntegrationTest extends TestCase
 
         Schema::create('surat_masuk', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->unsignedBigInteger('id_surat_keluar')->nullable();
+            $table->unsignedBigInteger('id_penerima')->nullable();
+            $table->string('jenis_pengiriman', 20)->nullable();
+            $table->unsignedBigInteger('id_jenis_surat')->nullable();
             $table->string('nomor_agenda', 100)->nullable();
             $table->string('nomor_surat', 100)->nullable();
             $table->string('jenis', 100)->nullable();
@@ -450,6 +482,31 @@ class EOfficeApiIntegrationTest extends TestCase
             $table->string('created_by_desc', 200)->nullable();
             $table->string('updated_by_desc', 200)->nullable();
             $table->string('deleted_by_desc', 200)->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('master_jenis_surat', function (Blueprint $table) {
+            $table->bigIncrements('id_jenis_surat');
+            $table->string('nama', 150);
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+        DB::table('master_jenis_surat')->insert([
+            'nama' => 'Umum',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Schema::create('surat_distribusi', function (Blueprint $table) {
+            $table->bigIncrements('id_surat_distribusi');
+            $table->unsignedBigInteger('id_surat_masuk')->nullable();
+            $table->unsignedBigInteger('id_user_tujuan')->nullable();
+            $table->string('status', 50)->nullable();
+            $table->timestamp('tanggal_distribusi')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

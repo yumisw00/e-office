@@ -100,6 +100,7 @@ PageDinamic["/notifikasi"] = lazy(() => import("pages/(app)/notifikasi/page"));
 PageDinamic["/agenda"] = lazy(() => import("pages/(app)/agenda/page"));
 PageDinamic["/agenda_kegiatan"] = lazy(() => import("pages/(app)/agenda/page"));
 PageDinamic["/pengumuman"] = lazy(() => import("pages/(app)/pengumuman/page"));
+PageDinamic["/pengumuman/...slug"] = lazy(() => import("pages/(app)/pengumuman/page"));
 PageDinamic["/news_announcement"] = lazy(() => import("pages/(app)/pengumuman/page"));
 PageDinamic["/sys_user/...slug"] = lazy(() =>
   import("pages/(app)/sys_user/[...slug]/page")
@@ -201,6 +202,7 @@ function App() {
   // console.log(pathnameimport)
   pathnameimport = pathnameimport
     .replace("/add", "/...slug/add")
+    .replace("/tambah", "/...slug")
     .replace("/edit", "/...slug/edit")
     .replace("/detail", "/...slug/detail");
   const paramarr = pathnameimport.split("/...slug/");

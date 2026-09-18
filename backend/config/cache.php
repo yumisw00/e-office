@@ -15,7 +15,10 @@ return [
     |
     */
 
-    'default' => null,
+    // Google Docs copy tokens must survive the separate browser request that
+    // saves the outgoing letter. Respect the configured store/driver instead
+    // of falling back to Laravel's in-memory cache.
+    'default' => env('CACHE_STORE', env('CACHE_DRIVER', 'file')),
 
     /*
     |--------------------------------------------------------------------------

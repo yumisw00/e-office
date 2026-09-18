@@ -195,6 +195,7 @@ Route::post('surat_keluar/{id}/sign', [App\Http\Controllers\API\EOfficeWorkflowC
 Route::post('surat_keluar/{id}/send', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'sendOutgoing'])->middleware('EnsureHasGroup:surat_keluar,send');
 Route::post('surat_keluar/{id}/archive', [App\Http\Controllers\API\EOfficeWorkflowController::class, 'archiveOutgoing'])->middleware('EnsureHasGroup:surat_keluar,archive');
 Route::post('surat_keluar/{id}/create-office-link', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'createOfficeLink'])->middleware('EnsureHasGroup:surat_keluar,edit');
+Route::post('surat_keluar/copy-google-template', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'copyGoogleTemplate'])->middleware('EnsureHasGroup:surat_keluar,add');
 Route::post('surat_keluar/upload', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'uploadAttachment'])->middleware('EnsureHasGroup:surat_keluar,add');
 Route::get('surat_keluar/nomor-agenda-preview', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'nomorAgendaPreview'])->middleware('EnsureHasGroup:surat_keluar,index');
 Route::get('surat_keluar/recipients', [App\Http\Controllers\API\SuratKeluarAPIController::class, 'recipients'])->middleware('EnsureHasGroup:surat_keluar,index');

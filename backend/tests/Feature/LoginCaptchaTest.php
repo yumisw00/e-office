@@ -25,7 +25,9 @@ class LoginCaptchaTest extends TestCase
         config(['cache.default' => 'array']);
         config([
             'security.admin_2fa_enabled' => true,
-            'security.admin_2fa_all_groups' => true,
+            // Direct-login cases below verify the policy when 2FA is not
+            // assigned to any group. OTP flows use explicit fixtures.
+            'security.admin_2fa_all_groups' => false,
             'security.admin_2fa_group_ids' => [],
             'mail.default' => 'smtp',
             'mail.mailers.smtp.host' => 'smtp.example.test',
