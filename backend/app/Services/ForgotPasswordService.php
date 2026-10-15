@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\File;
 
 class ForgotPasswordService
 {
@@ -52,14 +51,16 @@ class ForgotPasswordService
                 'email' => $email,
             ],
         ]);
-        File::put(storage_path("otp.txt"), '');
-        File::append(storage_path("otp.txt"), $token);
-
         try {
             // Send email with raw token
             Mail::to($user->email)->send(new PasswordResetEmail($user, $token));
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Failed to send password reset email: ' . $e->getMessage());
+
+            // Token tidak boleh tetap aktif apabila email reset gagal dikirim.
+            $user->password_reset_token = null;
+            $user->password_reset_expires = null;
+            $user->save();
 
             return [
                 'success' => false,

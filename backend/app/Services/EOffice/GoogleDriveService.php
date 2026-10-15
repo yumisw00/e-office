@@ -84,11 +84,15 @@ class GoogleDriveService
             'json' => $metadata,
         ]);
 
-        $payload = $this->decodeResponse(
-            $response->getStatusCode(),
-            (string) $response->getBody(),
-            'Gagal menyalin Google Docs template.'
-        );
+        try {
+            $payload = $this->decodeResponse(
+                $response->getStatusCode(),
+                (string) $response->getBody(),
+                'Gagal menyalin Google Docs template.'
+            );
+        } catch (RuntimeException $exception) {
+            throw new RuntimeException('Tahap penyalinan Google Drive gagal: ' . $exception->getMessage(), 0, $exception);
+        }
         $fileId = $payload['id'] ?? null;
         if (!$fileId) {
             throw new RuntimeException('Google Drive tidak mengembalikan ID dokumen hasil copy.');
@@ -156,7 +160,11 @@ class GoogleDriveService
             ],
         ]);
 
-        $payload = $this->decodeResponse($response->getStatusCode(), (string) $response->getBody(), 'Gagal membuat link Google Drive.');
+        try {
+            $this->decodeResponse($response->getStatusCode(), (string) $response->getBody(), 'Gagal membuat link Google Drive.');
+        } catch (RuntimeException $exception) {
+            throw new RuntimeException('Tahap pengaturan akses dokumen Google Drive gagal: ' . $exception->getMessage(), 0, $exception);
+        }
 
         // Return the edit link
         return sprintf('https://docs.google.com/document/d/%s/edit', $fileId);
@@ -194,10 +202,14 @@ class GoogleDriveService
                     ],
                 ]);
             } catch (GuzzleException $exception) {
-                throw new RuntimeException('Gagal mengambil token Google Drive: ' . $exception->getMessage(), 0, $exception);
+                throw new RuntimeException('Tahap OAuth Google gagal menghubungi layanan token: ' . $exception->getMessage(), 0, $exception);
             }
 
-            $payload = $this->decodeResponse($response->getStatusCode(), (string) $response->getBody(), 'Gagal mengambil token Google Drive.');
+            try {
+                $payload = $this->decodeResponse($response->getStatusCode(), (string) $response->getBody(), 'Gagal mengambil token Google Drive.');
+            } catch (RuntimeException $exception) {
+                throw new RuntimeException('Tahap OAuth Google gagal memperbarui access token: ' . $exception->getMessage(), 0, $exception);
+            }
 
             if (empty($payload['access_token'])) {
                 throw new RuntimeException('Token Google Drive tidak ditemukan pada response.');

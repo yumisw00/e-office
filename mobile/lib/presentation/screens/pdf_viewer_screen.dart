@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -16,6 +17,7 @@ class PdfViewerScreen extends ConsumerStatefulWidget {
 class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   String? _authToken;
   bool _isLoadingToken = true;
+  bool _headerLogged = false; // DEBUG ONLY
 
   @override
   void initState() {
@@ -67,6 +69,15 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       headers['Authorization'] = 'Bearer $_authToken';
     }
 
+    // DEBUG ONLY: token tidak dicetak, hanya status terpasang/tidak
+    if (kDebugMode && !_headerLogged) {
+      _headerLogged = true;
+      debugPrint('📑 PDF VIEWER pdfUrl(raw): ${widget.pdfUrl}');
+      debugPrint('📑 PDF VIEWER fullUrl: $fullUrl');
+      debugPrint('📑 PDF VIEWER Authorization header terpasang: ${headers.containsKey('Authorization')}');
+      debugPrint('📑 PDF VIEWER header keys: ${headers.keys.toList()}');
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dokumen Surat'),
@@ -75,6 +86,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
         fullUrl,
         headers: headers,
         onDocumentLoadFailed: (details) {
+          if (kDebugMode) {
+            debugPrint('📑 PDF VIEWER load failed: error=${details.error} | description=${details.description}');
+          }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Gagal memuat PDF: ${details.description}'),

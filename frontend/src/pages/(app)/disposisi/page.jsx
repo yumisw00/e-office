@@ -4,7 +4,7 @@ import HeaderApp from "components/HeaderApp";
 import Pagination from "components/Pagination";
 import Button from "components/Button";
 import EditDelete from "components/EditDelete";
-import JenisSuratTabs from "components/JenisSuratTabs";
+import JenisSuratTabs, { getJenisSuratCounts } from "components/JenisSuratTabs";
 import IndexPage from "../IndexPage";
 import surat_disposisiModel from "hooks/models/surat_disposisiModel";
 import { formatDateApp } from "pages/Utils";
@@ -387,7 +387,7 @@ class Disposisi extends IndexPage {
                     title={this.titlePage}
                     is_loading={this.state.is_loading}
                     data_btn={[]}
-                    filterTabs={<div className="disposisi-pengiriman-tabs" role="tablist" aria-label="Filter pengiriman disposisi">{[['semua', 'Semua Disposisi', 'description'], ['internal', 'Internal', 'business'], ['eksternal', 'Eksternal', 'account_balance']].map(([value, label, icon]) => <button key={value} type="button" role="tab" aria-selected={this.state.jenisPengirimanTab === value} className={this.state.jenisPengirimanTab === value ? 'active' : ''} onClick={() => this.setState(state => ({ jenisPengirimanTab: value, datafilter: { ...state.datafilter, paginate: { ...state.datafilter.paginate, page: 1 } } }), this.get)}><span className="material-icons" aria-hidden="true">{icon}</span><span>{label} ({suratCounts[value] || 0})</span></button>)}<JenisSuratTabs value={this.state.jenisSuratTab} onChange={value => this.setState({ jenisSuratTab: value })} /></div>}
+                    filterTabs={<div className="disposisi-pengiriman-tabs" role="tablist" aria-label="Filter pengiriman disposisi">{[['semua', 'Semua Disposisi', 'description'], ['internal', 'Internal', 'business'], ['eksternal', 'Eksternal', 'account_balance']].map(([value, label, icon]) => <button key={value} type="button" role="tab" aria-selected={this.state.jenisPengirimanTab === value} className={this.state.jenisPengirimanTab === value ? 'active' : ''} onClick={() => this.setState(state => ({ jenisPengirimanTab: value, datafilter: { ...state.datafilter, paginate: { ...state.datafilter.paginate, page: 1 } } }), this.get)}><span className="material-icons" aria-hidden="true">{icon}</span><span>{label} ({suratCounts[value] || 0})</span></button>)}<JenisSuratTabs counts={getJenisSuratCounts(this.state.list)} value={this.state.jenisSuratTab} onChange={value => this.setState({ jenisSuratTab: value })} /></div>}
                     btnCustom={
                         <div className="surat-header-actions disposisi-header-actions" style={{ marginTop: 0, marginBottom: 0 }}>
                         <EofficeToolbar>

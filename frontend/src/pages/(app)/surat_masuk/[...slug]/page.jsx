@@ -89,9 +89,11 @@ class Surat_masukedit extends EditPage {
             'pegawai_operasional', 'pegawai_pemasaran',
         ]
 
-        this.props.router.push(
-            employeeInboxRoles.includes(role) ? '/surat_masuk_pegawai' : '/surat_masuk'
-        )
+        const inboxPath = employeeInboxRoles.includes(role) ? '/surat_masuk_pegawai' : '/surat_masuk'
+        window.close()
+        window.setTimeout(() => {
+            if (!window.closed) this.props.router.push(inboxPath)
+        }, 120)
     }
 
     getInitialInsertData = () => {

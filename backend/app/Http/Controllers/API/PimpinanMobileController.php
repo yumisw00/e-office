@@ -31,7 +31,7 @@ class PimpinanMobileController
     {
         $userId = (int) $request->user()->id_user;
         if (!$this->isPimpinan($userId)) return $this->forbidden();
-        $rows = collect(DB::table('surat_disposisi as d')->join('surat_masuk as m', 'm.id', '=', 'd.id_surat_masuk')->where('d.id_penerima', $userId)->whereIn('d.status', ['baru', 'diproses', 'proses'])->whereNull('d.deleted_at')->select('m.id', 'm.nomor_surat', 'm.perihal', 'd.status', DB::raw("'disposisi' as action_type"))->get())
+        $rows = collect(DB::table('surat_disposisi as d')->join('surat_masuk as m', 'm.id', '=', 'd.id_surat_masuk')->where('d.id_penerima', $userId)->whereIn('d.status', ['baru', 'diproses', 'proses'])->whereNull('d.deleted_at')->select('m.id', 'd.id_surat_disposisi as id_disposisi', 'm.nomor_surat', 'm.perihal', 'd.status', DB::raw("'disposisi' as action_type"))->get())
             ->merge(DB::table('surat_approval as a')->join('surat_keluar as k', 'k.id_surat_keluar', '=', 'a.id_surat_keluar')->where('a.id_approver', $userId)->whereIn('a.status', ['waiting', 'pending', 'review'])->whereNull('a.deleted_at')->select('k.id_surat_keluar as id', 'k.nomor_surat', 'k.perihal', 'a.status', DB::raw("'approval' as action_type"))->get());
 
         $pageSize = max(1, min((int) $request->input('pagesize', 10), 50));
@@ -62,9 +62,14 @@ class PimpinanMobileController
             return response()->json(['success' => false, 'message' => 'Surat tidak ditemukan.'], 404);
         }
 
-        $canTrack = ($incoming && DB::table('surat_distribusi')->where('id_surat_masuk', $incoming->id)->where('id_user_tujuan', $userId)->whereNull('deleted_at')->exists())
+        $canTrack = ($incoming && (
+                DB::table('surat_distribusi')->where('id_surat_masuk', $incoming->id)->where('id_user_tujuan', $userId)->whereNull('deleted_at')->exists()
+                || DB::table('surat_disposisi')->where('id_surat_masuk', $incoming->id)->where('id_penerima', $userId)->whereNull('deleted_at')->exists()
+            ))
             || ($outgoing && ((int) $outgoing->created_by === $userId || DB::table('surat_approval')->where('id_surat_keluar', $outgoing->id_surat_keluar)->where('id_approver', $userId)->whereNull('deleted_at')->exists()));
-        if (!$canTrack) return $this->forbidden();
+        if (!$canTrack) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses untuk melacak surat ini.'], 403);
+        }
 
         $events = collect();
         if ($outgoing) {

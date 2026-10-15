@@ -18,13 +18,25 @@ class EnsureHasGroup
      */
     public function handle(Request $request, Closure $next, string $url, ?string $action = null): Response
     {
-        if (!auth()->check()) {
+        // Mobile requests authenticate through Sanctum and do not populate the
+        // web session. Prefer the token-authenticated user, then fall back to
+        // the default guard used by the web application.
+        $user = auth()->guard('sanctum')->user() ?? auth()->user();
+        if (!$user) {
             return response()->json([
                 'message' => 'Unauthenticated.',
             ], 401);
         }
 
-        $groupId = session('id_group');
+        // Token-authenticated requests do not have a web session. Use an
+        // explicit group on the user when available, then the web session, and
+        // finally the user's group membership for mobile users.
+        $groupId = $user->id_group
+            ?? session('id_group')
+            ?? DB::table('sys_user_group')
+                ->where('id_user', $user->id_user)
+                ->whereNull('deleted_at')
+                ->value('id_group');
         if (!$groupId) {
             return response()->json([
                 'message' => 'Forbidden.',
@@ -90,9 +102,17 @@ class EnsureHasGroup
         // absent during deployments, but dashboard/list endpoints must remain
         // available; write actions still require explicit menu permissions.
         $isPimpinan = DB::table('sys_group')
-            ->where('id_group', $groupId)
             ->whereNull('deleted_at')
             ->whereRaw("LOWER(REPLACE(nama, '_', ' ')) = 'pimpinan'")
+            ->where(function ($query) use ($groupId, $user) {
+                $query->where('id_group', $groupId)
+                    ->orWhereIn('id_group', function ($subquery) use ($user) {
+                        $subquery->select('id_group')
+                            ->from('sys_user_group')
+                            ->where('id_user', $user->id_user)
+                            ->whereNull('deleted_at');
+                    });
+            })
             ->exists();
         $readOnlyPimpinanUrls = [
             'surat_masuk', 'surat_masuk_pegawai', 'surat_keluar',
@@ -100,7 +120,11 @@ class EnsureHasGroup
             'surat_arsip', 'agenda', 'pengumuman',
         ];
         $matchesReadOnlyUrl = array_intersect(explode('|', $url), $readOnlyPimpinanUrls);
-        if ($isPimpinan && $request->isMethod('GET') && in_array($action, [null, 'index'], true) && !empty($matchesReadOnlyUrl)) {
+        $pimpinanReadActions = [null, 'index'];
+        if (in_array('surat_masuk', $matchesReadOnlyUrl, true) || in_array('surat_keluar', $matchesReadOnlyUrl, true)) {
+            $pimpinanReadActions[] = 'show';
+        }
+        if ($isPimpinan && $request->isMethod('GET') && in_array($action, $pimpinanReadActions, true) && !empty($matchesReadOnlyUrl)) {
             return $next($request);
         }
 

@@ -327,7 +327,55 @@ class SuratDisposisiAPIController extends BaseResourceController
             $data['tanggal_disposisi'] = $data['created_at'];
         }
 
+        // Surat internal lama dapat belum memiliki file_surat pada record
+        // surat_masuk, meskipun dokumennya tersimpan pada surat_keluar asal.
+        // Endpoint detail surat masuk sudah menangani kasus ini, tetapi relasi
+        // Eloquent di respons disposisi sebelumnya dikirim mentah sehingga
+        // penerima disposisi melihat panel lampiran kosong.
+        foreach (['surat_masuk', 'suratMasuk'] as $relation) {
+            if (!empty($data[$relation]) && is_array($data[$relation])) {
+                $data[$relation] = $this->hydrateIncomingLetterAttachment($data[$relation]);
+            }
+        }
+
         return $data;
+    }
+
+    private function hydrateIncomingLetterAttachment(array $surat): array
+    {
+        if (!empty($surat['file_surat'])) {
+            $surat['lampiran'] = $surat['lampiran'] ?? $surat['file_surat'];
+            return $surat;
+        }
+
+        if (empty($surat['id_surat_keluar'])) {
+            return $surat;
+        }
+
+        $outgoing = DB::table('surat_keluar')
+            ->where('id_surat_keluar', $surat['id_surat_keluar'])
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (!$outgoing) {
+            return $surat;
+        }
+
+        foreach ([
+            $outgoing->file_draft_path ?? null,
+            $outgoing->file_pdf_path ?? null,
+            $outgoing->lampiran_path ?? null,
+            $outgoing->google_drive_document_url ?? null,
+            $outgoing->office365_document_url ?? null,
+        ] as $attachment) {
+            if (is_string($attachment) && trim($attachment) !== '') {
+                $surat['file_surat'] = trim($attachment);
+                $surat['lampiran'] = $surat['file_surat'];
+                break;
+            }
+        }
+
+        return $surat;
     }
 
     private function prepareDisposisiPayload(Request $request, string $mode): array

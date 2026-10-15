@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import HeaderApp from "components/HeaderApp"
 import { EofficeCard } from "components/EofficeModuleUI"
 import { api_services } from "hooks/api_services"
 import { formatDateApp } from "pages/Utils"
@@ -141,12 +140,7 @@ const InformasiTandaTanganSurat = () => {
 
     return (
         <div className="informasi-ttd-container" style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
-            <div style={{ position: 'relative' }}>
-                <HeaderApp
-                    title="Informasi Tanda Tangan Surat"
-                    is_loading={loading}
-                    data_btn={[]}
-                />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
                 <button
                     type="button"
                     onClick={() => {
@@ -154,14 +148,13 @@ const InformasiTandaTanganSurat = () => {
                         else window.location.href = '/surat_keluar'
                     }}
                     className="btn btn-light d-inline-flex align-items-center gap-2"
-                    style={{ position: 'absolute', top: 0, right: 0 }}
                 >
                     <span className="material-icons" style={{ fontSize: 18 }}>arrow_back</span>
                     Kembali
                 </button>
             </div>
 
-            <div style={{ marginTop: 20 }}>
+            <div>
                 {/* Header Card */}
                 <EofficeCard className="p-4 mb-3">
                     <div style={{

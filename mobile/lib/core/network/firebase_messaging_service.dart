@@ -106,6 +106,14 @@ class FirebaseMessagingService {
       }
       _handleNotificationTap(initialMessage.data);
     }
+
+    // Listen to token refresh
+    messaging.onTokenRefresh.listen((newToken) {
+      if (kDebugMode) {
+        print('🔑 FCM Token Refreshed: $newToken');
+      }
+      registerFcmToken(newToken);
+    });
   }
   
   /// Handle navigasi deep linking dari notifikasi
@@ -156,20 +164,19 @@ class FirebaseMessagingService {
   /// Registrasikan FCM token ke backend setelah login
   Future<void> registerFcmToken(String fcmToken) async {
     try {
-      if (_dio == null || fcmToken.isEmpty) return;
-      
-      // // BUTUH-BACKEND: Endpoint POST /register-fcm belum ada di backend dev dan kolom fcm_token sys_user belum pasti di-migration
-      await _dio.post(
-        ApiEndpoints.registerFcm,
-        data: {'fcm_token': fcmToken},
-      );
+      // Simpan token baru secara lokal
+      await _storage.write(key: AppConfig.fcmTokenKey, value: fcmToken);
+
+      // // BUTUH-BACKEND: tidak ada endpoint update fcm_token di luar proses login, 
+      // token baru hanya tersimpan lokal sampai user login ulang.
+      // Jika kelak ada endpoint, tambahkan di sini.
       
       if (kDebugMode) {
-        print('✅ FCM token registered to backend');
+        print('✅ FCM token saved locally (Refresh)');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error registering FCM token: $e');
+        print('❌ Error saving FCM token: $e');
       }
     }
   }

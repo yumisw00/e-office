@@ -54,6 +54,22 @@ static void my_application_activate(GApplication* application) {
 
   gtk_window_set_default_size(window, 1280, 720);
 
+  // Set the window icon using the logo from assets
+  g_autoptr(GError) error = nullptr;
+  gchar* exe_path = g_file_read_link("/proc/self/exe", &error);
+  if (exe_path != nullptr) {
+    gchar* dir = g_path_get_dirname(exe_path);
+    gchar* icon_path = g_build_filename(dir, "data", "flutter_assets", "assets", "images", "logo.png", nullptr);
+    GdkPixbuf* icon = gdk_pixbuf_new_from_file(icon_path, nullptr);
+    if (icon != nullptr) {
+      gtk_window_set_icon(window, icon);
+      g_object_unref(icon);
+    }
+    g_free(icon_path);
+    g_free(dir);
+    g_free(exe_path);
+  }
+
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(
       project, self->dart_entrypoint_arguments);

@@ -3,7 +3,7 @@
 import HeaderApp from "components/HeaderApp";
 import Pagination from "components/Pagination";
 import EditDelete from "components/EditDelete";
-import JenisSuratTabs from "components/JenisSuratTabs";
+import JenisSuratTabs, { getJenisSuratCounts } from "components/JenisSuratTabs";
 import EofficeTimelineModal from "components/EofficeTimelineModal";
 import surat_masukModel from "hooks/models/surat_masukModel";
 import Surat_masukedit from "./[...slug]/page";
@@ -771,7 +771,7 @@ class Surat_masuk extends IndexPage {
                             <span className="material-icons" aria-hidden="true">{icon}</span>
                             <span>{label} ({value === 'semua' ? categorySummary.total : categorySummary[value] || 0})</span>
                         </button>
-                    ))}<JenisSuratTabs value={this.state.jenisSuratTab} onChange={value => this.setState({ jenisSuratTab: value })} /></div>}
+                    ))}<JenisSuratTabs counts={getJenisSuratCounts(this.state.list)} value={this.state.jenisSuratTab} onChange={value => this.setState({ jenisSuratTab: value })} /></div>}
                     btnCustom={
                         <div className="surat-header-actions surat-masuk-header-actions" style={{ marginTop: 0, marginBottom: 0 }}>
                         <EofficeToolbar>

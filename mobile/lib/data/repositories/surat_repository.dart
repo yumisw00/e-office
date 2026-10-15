@@ -1,579 +1,431 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/surat_model.dart';
-import '../../core/constants/app_config.dart';
 import '../../core/network/api_endpoints.dart';
 
+/// Exception berpesan untuk endpoint tracking (403/404).
+/// [message] diambil apa adanya dari body.message server.
+class TrackingException implements Exception {
+  final int? statusCode;
+  final String message;
+  TrackingException(this.message, {this.statusCode});
+
+  @override
+  String toString() => message;
+}
+
+/// DEBUG ONLY: cetak teks panjang per potongan agar tidak terpotong logcat.
+void _debugLogLong(String label, Object? value) {
+  if (!kDebugMode) return;
+  String text;
+  try {
+    text = const JsonEncoder.withIndent('  ').convert(value);
+  } catch (_) {
+    text = value.toString();
+  }
+  const chunk = 800;
+  for (var i = 0; i < text.length; i += chunk) {
+    final end = (i + chunk < text.length) ? i + chunk : text.length;
+    debugPrint('$label ${text.substring(i, end)}');
+  }
+}
+
+/// DEBUG ONLY: cetak key top-level & key di dalam 'data' pada response detail.
+void _debugLogDetailKeys(String label, dynamic body) {
+  if (!kDebugMode) return;
+  if (body is Map) {
+    debugPrint('🔎 $label TOP-LEVEL KEYS: ${body.keys.toList()}');
+    final inner = body['data'];
+    if (inner is Map) {
+      debugPrint('🔎 $label DATA KEYS: ${inner.keys.toList()}');
+    } else {
+      debugPrint('🔎 $label DATA bukan Map (type: ${inner.runtimeType})');
+    }
+  } else {
+    debugPrint('🔎 $label body bukan Map (type: ${body.runtimeType})');
+  }
+}
+
 abstract class SuratRepository {
-  Future<List<SuratModel>> getSuratMasuk({int page = 1, int pageSize = 20});
-  Future<List<SuratModel>> getSuratKeluar({int page = 1, int limit = 20});
-  Future<SuratModel?> getSuratMasukDetail(String id);
-  Future<List<TimelineEvent>> getSuratMasukTimeline(String id);
-  Future<SuratSummary> getSuratMasukSummary();
-  Future<void> createDisposisi({
-    required String idSuratMasuk,
-    required String idPenerima,
-    required String instruksi,
-    DateTime? tanggalJatuhTempo,
-  });
-  Future<void> uploadDisposisiAttachment(String id, dynamic file, String? description);
-  Future<void> completeDisposisi(String id, String statusRealisasi, DateTime realisasiDate, String? notes);
-  Future<void> approveSuratKeluar(String id);
-  Future<void> rejectSuratKeluar(String id, String catatanRevisi);
-  Future<Map<String, dynamic>> signSuratKeluar(String id);
+  Future<PimpinanDashboard> getDashboard();
+  Future<List<SuratModel>> getMyActions({int page = 1, int pageSize = 15});
+  Future<List<TimelineEvent>> getTracking(String id, String? actionType);
+  Future<void> approveSurat(String id);
+  Future<void> rejectSurat(String id, String reason);
+  Future<Map<String, dynamic>> signSurat(String id, {required String signatureData});
+  Future<void> completeDisposisi(String id, {required String catatan, String? fileBuktiPath});
+  Future<Map<String, dynamic>> uploadAttachment(String id, dynamic file);
+  Future<List<Map<String, dynamic>>> getDisposisiList({String? status, int page = 1, int pageSize = 20});
+  Future<Map<String, dynamic>?> getDisposisiForSurat(String idSuratMasuk);
   Future<void> submitSuratKeluar(String id);
-  Future<List<SuratModel>> getApprovalQueue({int page = 1, int pageSize = 20});
-  Future<List<dynamic>> getDisposisiList({int page = 1, int pageSize = 20});
-  Future<void> forwardDisposisi(String id, Map<String, dynamic> data);
-  Future<List<dynamic>> getNotifications({bool? unread, int page = 1, int perPage = 15});
+  
+  // Notifikasi
+  Future<List<dynamic>> getNotifications({int page = 1, int perPage = 15});
   Future<void> markNotificationRead(String id);
   Future<void> markAllNotificationsRead();
+
+  // Detail
+  Future<SuratModel?> getSuratMasukDetail(String id);
+  Future<SuratModel?> getSuratKeluarDetail(String id);
+
+  // Dashboard Tambahan
+  Future<List<PengumumanModel>> getPengumuman({int limit = 5});
+  Future<List<AgendaModel>> getAgenda({int limit = 5});
 }
 
 class ApiSuratRepository implements SuratRepository {
   final Dio _dio;
-  
+
   ApiSuratRepository(this._dio);
 
   @override
-  Future<List<SuratModel>> getSuratMasuk({int page = 1, int pageSize = 20}) async {
+  Future<PimpinanDashboard> getDashboard() async {
     try {
-      final response = await _dio.get(
-        ApiEndpoints.suratMasukList,
-        queryParameters: {
-          'page': page,
-          'pagesize': pageSize,
-          'filter[status]': 'baru',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-        List<dynamic> suratList;
-        
-        if (data is Map && data.containsKey('data')) {
-          suratList = data['data'] as List;
-        } else if (data is List) {
-          suratList = data;
-        } else {
-          suratList = [];
-        }
-
-        return suratList
-            .map((json) => SuratModel.fromJsonApi(json))
-            .toList();
-      }
-
-      throw DioException(
-        requestOptions: response.requestOptions,
-        response: response,
-        type: DioExceptionType.badResponse,
-      );
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting surat masuk: ${e.message}');
-      }
-      
-      // Handle 403 Forbidden - User tidak memiliki akses
-      if (e.response?.statusCode == 403) {
-        debugPrint('⚠️ Error 403: User bukan Pimpinan atau tidak memiliki akses');
-        return [];
-      }
-      
+      final response = await _dio.get(ApiEndpoints.pimpinanDashboard);
+      return PimpinanDashboard.fromJsonApi(response.data);
+    } catch (e) {
+      if (kDebugMode) print('❌ GetDashboard Error: $e');
       rethrow;
     }
   }
 
   @override
-  Future<List<SuratModel>> getSuratKeluar({int page = 1, int limit = 20}) async {
+  Future<List<SuratModel>> getMyActions({int page = 1, int pageSize = 15}) async {
     try {
       final response = await _dio.get(
-        ApiEndpoints.suratKeluarList,
-        queryParameters: {
-          'page': page,
-          'limit': limit,
-        },
+        ApiEndpoints.myActions,
+        queryParameters: {'page': page, 'pagesize': pageSize},
       );
+      
+      final rawData = response.data;
+      List<dynamic> listData = [];
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        List<dynamic> suratList;
-        
-        if (data is Map && data.containsKey('data')) {
-          suratList = data['data'] as List;
-        } else if (data is List) {
-          suratList = data;
-        } else {
-          suratList = [];
+      if (rawData is Map<String, dynamic>) {
+        if (rawData['data'] is List) {
+          listData = rawData['data'];
+        } else if (rawData['items'] is List) {
+          listData = rawData['items'];
+        } else if (rawData['results'] is List) {
+          listData = rawData['results'];
         }
-
-        return suratList
-            .map((json) => SuratModel.fromJsonApi(json))
-            .toList();
+      } else if (rawData is List) {
+        listData = rawData;
       }
 
-      throw DioException(
-        requestOptions: response.requestOptions,
-        response: response,
-        type: DioExceptionType.badResponse,
-      );
+      if (kDebugMode) {
+        dynamic firstDisp;
+        dynamic firstAppr;
+        for (final item in listData) {
+          if (item is Map) {
+            final at = item['action_type']?.toString();
+            if (at == 'disposisi' && firstDisp == null) firstDisp = item;
+            if (at == 'approval' && firstAppr == null) firstAppr = item;
+          }
+        }
+        _debugLogLong('📋 [RAW_LOG] MY-ACTIONS ITEM (action_type=disposisi):', firstDisp ?? '(tidak ada)');
+        _debugLogLong('📋 [RAW_LOG] MY-ACTIONS ITEM (action_type=approval):', firstAppr ?? '(tidak ada)');
+      }
+
+      return listData.map((json) => SuratModel.fromJsonApi(json)).toList();
+    } catch (e) {
+      if (kDebugMode) print('❌ GetMyActions Error: $e');
+      rethrow;
+    }
+  }
+
+  /// Kontrak backend: {"success":true,"data":[{type,title,status,created_at}, ...]}
+  /// 403/404: {"success":false,"message":"..."} -> dilempar sebagai [TrackingException].
+  /// Error lain di-rethrow (tidak ditelan).
+  @override
+  Future<List<TimelineEvent>> getTracking(String id, String? actionType) async {
+    try {
+      final response = await _dio.get(ApiEndpoints.tracking(id));
+      final body = response.data;
+      final rawList = body is Map ? body['data'] : null;
+
+      if (rawList is! List) {
+        if (kDebugMode) {
+          debugPrint('⚠️ GetTracking: body["data"] bukan List (type: ${rawList.runtimeType})');
+        }
+        return [];
+      }
+
+      return rawList
+          .whereType<Map>()
+          .map((e) => TimelineEvent.fromJsonApi(Map<String, dynamic>.from(e)))
+          .toList();
     } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting surat keluar: ${e.message}');
+      final statusCode = e.response?.statusCode;
+      final body = e.response?.data;
+      final serverMessage =
+          (body is Map && body['message'] is String) ? body['message'] as String : null;
+
+      if (kDebugMode) debugPrint('❌ GetTracking Error [$statusCode]: ${serverMessage ?? e.message}');
+
+      if (statusCode == 403 || statusCode == 404) {
+        throw TrackingException(
+          serverMessage ??
+              (statusCode == 403
+                  ? 'Anda tidak memiliki akses ke riwayat ini (403).'
+                  : 'Riwayat tidak ditemukan (404).'),
+          statusCode: statusCode,
+        );
       }
       rethrow;
     }
+  }
+
+  @override
+  Future<void> approveSurat(String id) async {
+    await _dio.post(ApiEndpoints.suratKeluarApprove(id));
+  }
+
+  @override
+  Future<void> rejectSurat(String id, String reason) async {
+    await _dio.post(
+      ApiEndpoints.suratKeluarReject(id),
+      data: {
+        'catatan_revisi': reason,
+        'reason': reason,
+      },
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> signSurat(String id, {required String signatureData}) async {
+    final response = await _dio.post(
+      ApiEndpoints.suratKeluarSign(id),
+      data: {
+        'signature_data': signatureData,
+        'signature': signatureData,
+      },
+    );
+    return response.data is Map<String, dynamic> ? response.data : {'message': 'Success'};
+  }
+
+  @override
+  Future<void> completeDisposisi(String id, {required String catatan, String? fileBuktiPath}) async {
+    final payload = <String, dynamic>{
+      'catatan_penyelesaian': catatan,
+      if (fileBuktiPath != null && fileBuktiPath.isNotEmpty)
+        'file_bukti_path': fileBuktiPath,
+    };
+
+    await _dio.post(
+      ApiEndpoints.disposisiComplete(id),
+      data: payload,
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> uploadAttachment(String id, dynamic file) async {
+    String? filePath;
+    String? fileName;
+    if (file is String) {
+      filePath = file;
+      fileName = filePath.split('/').last;
+    }
+    
+    final formData = FormData.fromMap({
+      if (filePath != null)
+        'file': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+
+    final response = await _dio.post(
+      ApiEndpoints.disposisiUploadAttachment(id),
+      data: formData,
+    );
+    final data = response.data;
+    if (data is Map<String, dynamic>) {
+      if (data['data'] is Map<String, dynamic>) {
+        return Map<String, dynamic>.from(data['data']);
+      }
+      return data;
+    }
+    return {};
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getDisposisiList({String? status, int page = 1, int pageSize = 20}) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.disposisi,
+        queryParameters: {
+          if (status != null && status.isNotEmpty) 'status': status,
+          'page': page,
+          'pagesize': pageSize,
+        },
+      );
+      final rawData = response.data;
+      List<dynamic> items = [];
+      if (rawData is Map<String, dynamic>) {
+        if (rawData['data'] is List) {
+          items = rawData['data'];
+        } else if (rawData['result'] is List) {
+          items = rawData['result'];
+        }
+      } else if (rawData is List) {
+        items = rawData;
+      }
+      return items.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (e) {
+      if (kDebugMode) print('❌ getDisposisiList Error: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getDisposisiForSurat(String idSuratMasuk) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.disposisi,
+        queryParameters: {
+          'id_surat_masuk': idSuratMasuk,
+          'pagesize': 5,
+        },
+      );
+      final rawData = response.data;
+      List<dynamic> items = [];
+      if (rawData is Map<String, dynamic>) {
+        if (rawData['data'] is List) {
+          items = rawData['data'];
+        } else if (rawData['result'] is List) {
+          items = rawData['result'];
+        }
+      }
+      if (items.isNotEmpty) {
+        final active = items.firstWhere(
+          (element) {
+            final st = (element['status'] ?? '').toString().toLowerCase();
+            return st != 'selesai' && st != 'dibatalkan';
+          },
+          orElse: () => items.first,
+        );
+        return Map<String, dynamic>.from(active as Map);
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) print('❌ getDisposisiForSurat Error: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<void> submitSuratKeluar(String id) async {
+    await _dio.post('/surat_keluar/$id/submit');
+  }
+
+  @override
+  Future<List<dynamic>> getNotifications({int page = 1, int perPage = 15}) async {
+    final response = await _dio.get(
+      ApiEndpoints.notifications,
+      queryParameters: {'page': page, 'per_page': perPage},
+    );
+
+    // DEBUG ONLY: log mentah (tidak mengubah parsing di bawah)
+    if (kDebugMode) {
+      final body = response.data;
+      if (body is Map) {
+        final rawItems = body['data'];
+        if (rawItems is List) {
+          _debugLogLong('🔔 [RAW_LOG] NOTIFIKASI ITEM 1:', rawItems.isNotEmpty ? rawItems[0] : '(kosong)');
+          _debugLogLong('🔔 [RAW_LOG] NOTIFIKASI ITEM 2:', rawItems.length > 1 ? rawItems[1] : '(kosong)');
+        }
+      }
+    }
+
+    return response.data['data'] as List? ?? [];
+  }
+
+  @override
+  Future<void> markNotificationRead(String id) async {
+    await _dio.post(ApiEndpoints.notificationMarkRead(id));
+  }
+
+  @override
+  Future<void> markAllNotificationsRead() async {
+    await _dio.post(ApiEndpoints.notificationsMarkAllRead);
   }
 
   @override
   Future<SuratModel?> getSuratMasukDetail(String id) async {
     try {
       final response = await _dio.get(ApiEndpoints.suratMasukDetail(id));
-      
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data != null) {
-          return SuratModel.fromJsonApi(data);
+      if (kDebugMode) {
+        _debugLogLong('📥 [RAW_LOG] GET /surat_masuk/$id RAW BODY:', response.data);
+      }
+      final data = response.data['data'] ?? response.data;
+      if (data != null && data is Map<String, dynamic>) {
+        final model = SuratModel.fromJsonApi(data);
+        if (model.activeFilePath == null) {
+          _debugLogDetailKeys('SURAT MASUK $id (activeFilePath null)', response.data);
         }
+        return model;
       }
       return null;
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting surat detail: ${e.message}');
-      }
-      rethrow;
+    } catch (e) {
+      if (kDebugMode) print('❌ GetSuratMasukDetail Error: $e');
+      return null;
     }
   }
 
   @override
-  Future<List<TimelineEvent>> getSuratMasukTimeline(String id) async {
+  Future<SuratModel?> getSuratKeluarDetail(String id) async {
     try {
-      final response = await _dio.get(ApiEndpoints.suratMasukTimeline(id));
-      
-      if (response.statusCode == 200) {
-        final data = response.data;
-        List<dynamic> timelineList;
-        
-        if (data is Map && data.containsKey('timeline')) {
-          timelineList = data['timeline'] as List;
-        } else if (data is Map && data.containsKey('data') && data['data'] is Map && data['data'].containsKey('timeline')) {
-          timelineList = data['data']['timeline'] as List;
-        } else if (data is List) {
-          timelineList = data;
-        } else {
-          timelineList = [];
-        }
-
-        return timelineList
-            .map((json) => TimelineEvent.fromJsonApi(json))
-            .toList();
+      final response = await _dio.get(ApiEndpoints.suratKeluarDetail(id));
+      if (kDebugMode) {
+        _debugLogLong('📤 [RAW_LOG] GET /surat_keluar/$id RAW BODY:', response.data);
       }
-      
+      final data = response.data['data'] ?? response.data;
+      if (data != null && data is Map<String, dynamic>) {
+        final model = SuratModel.fromJsonApi(data);
+        if (model.activeFilePath == null) {
+          _debugLogDetailKeys('SURAT KELUAR $id (activeFilePath null)', response.data);
+        }
+        return model;
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) print('❌ GetSuratKeluarDetail Error: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<List<PengumumanModel>> getPengumuman({int limit = 5}) async {
+    try {
+      final response = await _dio.get(ApiEndpoints.pengumuman, queryParameters: {'pagesize': limit, 'page': 1});
+      final rawData = response.data;
+      List<dynamic> listData = [];
+      if (rawData is Map<String, dynamic>) {
+        listData = rawData['data'] is List ? rawData['data'] : (rawData['data']?['data'] ?? []);
+      } else if (rawData is List) {
+        listData = rawData;
+      }
+      return listData.map((e) => PengumumanModel.fromJsonApi(e)).toList();
+    } catch (e) {
+      if (kDebugMode) print('❌ GetPengumuman Error: $e');
       return [];
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting timeline: ${e.message}');
-      }
-      rethrow;
     }
   }
 
   @override
-  Future<SuratSummary> getSuratMasukSummary() async {
+  Future<List<AgendaModel>> getAgenda({int limit = 5}) async {
     try {
-      final response = await _dio.get(ApiEndpoints.suratMasukSummary);
-      
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data != null) {
-          // Contract: response has summary fields directly, possibly nested in 'data' key
-          final summaryData = data is Map && data.containsKey('data') ? data['data'] : data;
-          return SuratSummary.fromJsonApi(summaryData as Map<String, dynamic>);
-        }
+      final response = await _dio.get(ApiEndpoints.agendaKegiatan, queryParameters: {'pagesize': limit, 'page': 1});
+      final rawData = response.data;
+      List<dynamic> listData = [];
+      if (rawData is Map<String, dynamic>) {
+        listData = rawData['data'] is List ? rawData['data'] : (rawData['data']?['data'] ?? []);
+      } else if (rawData is List) {
+        listData = rawData;
       }
-      
-      // Return default jika gagal
-      return SuratSummary.empty();
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting summary: ${e.message}');
-      }
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> createDisposisi({ // BUTUH-BACKEND: endpoint tidak ada di backend
-    required String idSuratMasuk,
-    required String idPenerima,
-    required String instruksi,
-    DateTime? tanggalJatuhTempo,
-  }) async {
-    try {
-      const storage = FlutterSecureStorage();
-      final userDataStr = await storage.read(key: AppConfig.userDataKey);
-      String? idPemberi;
-      if (userDataStr != null) {
-        final idMatch = RegExp(r"'id_user':\s*'?([a-zA-Z0-9_-]+)'?").firstMatch(userDataStr) ??
-            RegExp(r"'id':\s*'?([a-zA-Z0-9_-]+)'?").firstMatch(userDataStr);
-        if (idMatch != null) {
-          idPemberi = idMatch.group(1);
-        }
-      }
-
-      final payload = {
-        'id_surat_masuk': idSuratMasuk,
-        if (idPemberi != null) 'id_pemberi': idPemberi,
-        'id_penerima': idPenerima,
-        'instruksi': instruksi,
-        'status': 'baru',
-        if (tanggalJatuhTempo != null)
-          'tanggal_jatuh_tempo': tanggalJatuhTempo.toIso8601String(),
-      };
-
-      // BUTUH-BACKEND: POST /disposisi (endpoint tidak ada di route/controller Laravel)
-      final response = await _dio.post(
-        ApiEndpoints.disposisiCreate,
-        data: payload,
-      );
-
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          type: DioExceptionType.badResponse,
-        );
-      }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404 || e.response?.statusCode == 501) {
-        throw Exception('Fitur buat disposisi belum tersedia di server.');
-      }
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error creating disposisi: ${e.message}');
-      }
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> uploadDisposisiAttachment(String id, dynamic file, String? description) async {
-    try {
-      final formData = FormData.fromMap({
-        'file': file,
-        if (description != null) 'description': description,
-      });
-      
-      // CONFIRMED EXISTS: POST /disposisi/{id}/upload-attachment
-      final response = await _dio.post(
-        ApiEndpoints.disposisiUploadAttachment(id),
-        data: formData,
-      );
-      
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          type: DioExceptionType.badResponse,
-        );
-      }
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error uploading disposisi attachment: ${e.message}');
-      }
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> completeDisposisi(String id, String statusRealisasi, DateTime realisasiDate, String? notes) async {
-    try {
-      // CONFIRMED EXISTS: POST /disposisi/{id}/complete
-      // Body { notes: optional, realisasi_date: Y-m-d (required), status_realisasi: "tepat_waktu"|"terlambat" (required) }
-      final payload = {
-        'realisasi_date': realisasiDate.toIso8601String().split('T').first, // Format Y-m-d
-        'status_realisasi': statusRealisasi,
-        if (notes != null) 'notes': notes,
-      };
-      
-      final response = await _dio.post(
-        ApiEndpoints.disposisiComplete(id),
-        data: payload,
-      );
-      
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          type: DioExceptionType.badResponse,
-        );
-      }
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error completing disposisi: ${e.message}');
-      }
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> approveSuratKeluar(String id) async {
-    try {
-      final response = await _dio.post(ApiEndpoints.suratKeluarApprove(id));
-      
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          type: DioExceptionType.badResponse,
-        );
-      }
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error approving surat: ${e.message}');
-      }
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> rejectSuratKeluar(String id, String catatanRevisi) async {
-    try {
-      final response = await _dio.post(
-        ApiEndpoints.suratKeluarReject(id),
-        data: {
-          'catatan_revisi': catatanRevisi,
-        },
-      );
-
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          type: DioExceptionType.badResponse,
-        );
-      }
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error rejecting surat: ${e.message}');
-      }
-      rethrow;
-    }
-  }
-
-  @override
-  Future<Map<String, dynamic>> signSuratKeluar(String id) async {
-    try {
-      // FIXED: Using correct endpoint /surat-keluar/{id}/sign per contract
-      final response = await _dio.post(ApiEndpoints.suratKeluarSign(id));
-      
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = response.data;
-        if (data != null && data is Map) {
-          // Contract response:
-          // { "message": "...",
-          //   "data": { "surat": { "id","nomor_surat","perihal","status":"signed","signed_at","signed_by","signer_name","updated_at" },
-          //             "qr_code_content": "...", "qr_code_base64": "<PNG base64>", "verification_url": "..." } }
-          final responseData = data['data'] ?? data;
-          return responseData as Map<String, dynamic>;
-        }
-        return {'data': {}};
-      }
-      
-      throw _handleAssumedEndpointError(response);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404 || e.response?.statusCode == 501) {
-        throw Exception('Fitur tanda tangan digital belum tersedia di server.');
-      }
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error signing surat: ${e.message}');
-      }
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> submitSuratKeluar(String id) async {
-    try {
-      final response = await _dio.post(ApiEndpoints.suratKeluarSubmit(id));
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw _handleAssumedEndpointError(response);
-      }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404 || e.response?.statusCode == 501) {
-        throw Exception('Fitur submit surat keluar belum tersedia di server.');
-      }
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> forwardDisposisi(String id, Map<String, dynamic> data) async { // BUTUH-BACKEND
-    try {
-      final response = await _dio.post( // FIXED: POST instead of PUT
-        ApiEndpoints.disposisiForward(id), 
-        data: data,
-      );
-      if (response.statusCode != 200 && response.statusCode != 204) {
-        throw _handleAssumedEndpointError(response);
-      }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404 || e.response?.statusCode == 501) {
-        throw Exception('Fitur teruskan disposisi belum tersedia di server.');
-      }
-      rethrow;
-    }
-  }
-
-  @override
-  Future<List<dynamic>> getNotifications({bool? unread, int page = 1, int perPage = 15}) async {
-    try {
-      final Map<String, dynamic> queryParameters = {
-        'page': page,
-        'per_page': perPage,
-      };
-      if (unread != null) {
-        queryParameters['unread'] = unread ? 1 : 0;
-      }
-      
-      // FIXED: using /eoffice/notifications per contract
-      final response = await _dio.get(
-        ApiEndpoints.notifications,
-        queryParameters: queryParameters,
-      );
-      
-      if (response.statusCode == 200) {
-        // Contract: { id, type, notifiable_type, notifiable_id, data: {...}, read_at, created_at, updated_at }
-        final data = response.data;
-        if (data is Map && data.containsKey('data')) {
-          return data['data'] as List;
-        } else if (data is List) {
-          return data;
-        }
-        return [];
-      }
+      return listData.map((e) => AgendaModel.fromJsonApi(e)).toList();
+    } catch (e) {
+      if (kDebugMode) print('❌ GetAgenda Error: $e');
       return [];
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting notifications: ${e.message}');
-      }
-      rethrow;
-    }
-  }
-  
-  @override
-  Future<void> markNotificationRead(String id) async {
-    try {
-      // CONFIRMED EXISTS: PATCH /eoffice/notifications/{id}/read
-      final response = await _dio.patch(ApiEndpoints.notificationMarkRead(id));
-      if (response.statusCode != 200 && response.statusCode != 204) {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          type: DioExceptionType.badResponse,
-        );
-      }
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error marking notification read: ${e.message}');
-      }
-      rethrow;
-    }
-  }
-  
-  @override
-  Future<void> markAllNotificationsRead() async {
-    try {
-      // CONFIRMED EXISTS: POST /eoffice/notifications/read-all
-      final response = await _dio.post(ApiEndpoints.notificationsMarkAllRead);
-      if (response.statusCode != 200 && response.statusCode != 204) {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          type: DioExceptionType.badResponse,
-        );
-      }
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error marking all notifications read: ${e.message}');
-      }
-      rethrow;
-    }
-  }
-
-  @override
-  Future<List<dynamic>> getDisposisiList({int page = 1, int pageSize = 20}) async {
-    try {
-      final response = await _dio.get(
-        ApiEndpoints.disposisiList,
-        queryParameters: {
-          'page': page,
-          'pagesize': pageSize,
-        },
-      );
-      
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data is Map && data.containsKey('data')) {
-          return data['data'] as List;
-        } else if (data is List) {
-          return data;
-        }
-        return [];
-      }
-      return [];
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting disposisi list: ${e.message}');
-      }
-      rethrow;
-    }
-  }
-
-  // REMOVED: logAuditTrail method - NOT NEEDED per contract (auto via backend observers)
-  // @override
-  // Future<void> logAuditTrail(String action, Map<String, dynamic> metadata) async {
-  //   ...
-  // }
-
-  Exception _handleAssumedEndpointError(Response response) {
-    if (response.statusCode == 404 || response.statusCode == 501) {
-      return Exception('Fitur ini sedang dikembangkan di backend.');
-    }
-    return Exception('Gagal memproses permintaan (Error ${response.statusCode})');
-  }
-
-  @override
-  Future<List<SuratModel>> getApprovalQueue({int page = 1, int pageSize = 20}) async {
-    try {
-      final response = await _dio.get(
-        ApiEndpoints.approvalQueue,
-        queryParameters: {
-          'page': page,
-          'limit': pageSize,
-        },
-      );
-      
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data != null && data['data'] != null) {
-          return (data['data'] as List)
-              .map((json) => SuratModel.fromJsonApi(json))
-              .toList();
-        }
-        return [];
-      }
-      
-      throw DioException(
-        requestOptions: response.requestOptions,
-        response: response,
-        type: DioExceptionType.badResponse,
-      );
-    } on DioException catch (e) {
-      if (AppConfig.enableLogging) {
-        debugPrint('❌ Error getting approval queue: ${e.message}');
-      }
-      rethrow;
     }
   }
 }

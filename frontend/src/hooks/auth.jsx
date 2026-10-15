@@ -388,32 +388,40 @@ export const useAuth = ({ middleware, redirectIfAuthenticated, ...useAuthParams 
     }
 
     const forgotPassword = async ({ setErrors, setStatus, ...props }) => {
-        await csrf()
-
         setErrors([])
         if (setStatus) setStatus(null)
 
-        axios
-            .post('/forgot-password', { email: props.email })
-            .then(response => {
-                if (props.onSuccess) {
-                    props.onSuccess(response.data.message)
-                }
-                showToastr('success', response.data.message || 'Link reset password sudah dikirim ke email Anda')
-                if (props.onRequestDone) {
-                    props.onRequestDone()
-                }
-            })
-            .catch(error => {
-                if (error.response.status !== 422) throw error
-                if (error.response.data.messages && error.response.data.messages.errors) {
-                    showToastr('error', error.response.data.messages.errors)
-                }
-                setErrors(error.response.data.errors)
-                if (props.onRequestDone) {
-                    props.onRequestDone()
-                }
-            })
+        try {
+            await csrf()
+
+            const response = await axios.post(
+                '/forgot-password',
+                { email: props.email },
+                { timeout: 30000 }
+            )
+
+            if (props.onSuccess) {
+                props.onSuccess(response.data.message)
+            }
+            showToastr('success', response.data.message || 'Link reset password sudah dikirim ke email Anda')
+        } catch (error) {
+            const response = error.response
+            const responseErrors = response?.data?.errors || response?.data?.messages?.errors
+            const message = typeof responseErrors === 'string'
+                ? responseErrors
+                : response?.data?.message || 'Gagal mengirim email reset password. Silakan coba lagi.'
+
+            if (response?.status === 422 && responseErrors && typeof responseErrors === 'object') {
+                setErrors(responseErrors)
+            }
+
+            showToastr('error', message)
+        } finally {
+            // Selalu tutup modal loading, termasuk saat SMTP/API gagal atau timeout.
+            if (props.onRequestDone) {
+                props.onRequestDone()
+            }
+        }
     }
 
     const resetPassword = async ({ setErrors, setStatus, ...props }) => {

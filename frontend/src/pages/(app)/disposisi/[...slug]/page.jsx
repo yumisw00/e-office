@@ -16,12 +16,10 @@ import {
 } from 'components/EofficeModuleUI';
 
 const statusOptions = [
-    { label: 'Terbuka', value: 'open' },
-    { label: 'Dikirim', value: 'dikirim' },
-    { label: 'Dibaca', value: 'dibaca' },
-    { label: 'Proses', value: 'proses' },
+    { label: 'Baru', value: 'baru' },
+    { label: 'Diproses', value: 'diproses' },
     { label: 'Selesai', value: 'selesai' },
-    { label: 'Arsip', value: 'arsip' },
+    { label: 'Dibatalkan', value: 'dibatalkan' },
 ]
 
 const capitalizeFirst = str => {
@@ -98,9 +96,16 @@ class Disposisi_edit extends EditPage {
             }
         }
 
-        this.setState({ detailData: { ...initialData, ...response }, datainsert: { ...datainsert, ...data } })
-        this.handlegetInlineTracking()
-        this.handlegetAttachments()
+        // Attachment extraction depends on the newly received surat_masuk
+        // relation. Run it from the setState callback so it cannot read the
+        // previous (incomplete) detail state.
+        this.setState({
+            detailData: { ...initialData, ...response },
+            datainsert: { ...datainsert, ...data },
+        }, () => {
+            this.handlegetInlineTracking()
+            this.handlegetAttachments()
+        })
     }
 
     handlegetAttachments = async () => {
@@ -111,7 +116,9 @@ class Disposisi_edit extends EditPage {
         // Check surat_masuk attachments
         const fileFields = ['file_surat', 'lampiran', 'lampiran_2', 'lampiran_3', 'file_path']
         fileFields.forEach((field, idx) => {
-            const value = surat?.[field] || data?.[field]
+            const value = surat?.[field]
+                || data?.[field]
+                || (idx === 0 ? (surat?.file_surat_info?.path || surat?.lampiran_info?.path) : '')
             if (value) {
                 attachments.push({
                     file: value,
@@ -120,6 +127,17 @@ class Disposisi_edit extends EditPage {
                 })
             }
         })
+
+        // Bukti tindak lanjut adalah lampiran milik disposisi, bukan milik
+        // surat masuk. Sebelumnya field ini tersimpan tetapi tidak pernah
+        // dimasukkan ke daftar preview sehingga panel terlihat kosong.
+        if (data?.file_bukti_path) {
+            attachments.push({
+                file: data.file_bukti_path,
+                name: data.file_bukti_name || 'Bukti penyelesaian disposisi',
+                type: 'completion-proof',
+            })
+        }
 
         this.setState({ attachments })
     }
@@ -177,7 +195,7 @@ class Disposisi_edit extends EditPage {
     create = async () => {
         const body = {
             ...this.state.datainsert,
-            status: this.state.datainsert.status || 'dikirim'
+            status: this.state.datainsert.status || 'baru'
         }
 
         this.setState({ btn_loading: true })

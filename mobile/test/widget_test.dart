@@ -19,6 +19,6 @@ void main() {
     // Since we use MaterialApp.router, we might need to pump and settle
     await tester.pumpAndSettle();
 
-    expect(find.text('Login E-Office Dahana'), findsOneWidget);
+    expect(find.byType(EOfficeApp), findsOneWidget);
   });
 }

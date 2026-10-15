@@ -6,7 +6,7 @@ class AppTheme {
   AppTheme._();
 
   static ThemeData get lightTheme {
-    return FlexThemeData.light(
+    final baseData = FlexThemeData.light(
       colors: const FlexSchemeColor(
         primary: AppColors.primary,
         primaryContainer: Color(0xFFC0EBF0),
@@ -26,10 +26,10 @@ class AppTheme {
         useM2StyleDividerInM3: true,
         alignedDropdown: true,
         useInputDecoratorThemeInDialogs: true,
-        defaultRadius: 16.0,
-        cardRadius: 16.0,
-        dialogRadius: 20.0,
-        bottomSheetRadius: 24.0,
+        defaultRadius: 20.0,
+        cardRadius: 20.0,
+        dialogRadius: 24.0,
+        bottomSheetRadius: 28.0,
         inputDecoratorBorderType: FlexInputBorderType.outline,
         inputDecoratorUnfocusedBorderIsColored: false,
       ),
@@ -38,11 +38,24 @@ class AppTheme {
       swapColors: false,
       scaffoldBackground: AppColors.surface,
     );
+
+    return baseData.copyWith(
+      cardTheme: baseData.cardTheme.copyWith(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.0),
+          side: BorderSide(
+            color: baseData.colorScheme.outlineVariant.withValues(alpha: 0.35),
+            width: 1.0,
+          ),
+        ),
+      ),
+    );
   }
 
   static ThemeData get darkTheme {
-    return FlexThemeData.dark(
-      scheme: FlexScheme.deepBlue, // Keep a base scheme for dark or customize further
+    final baseData = FlexThemeData.dark(
+      scheme: FlexScheme.deepBlue,
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
       blendLevel: 13,
       subThemesData: const FlexSubThemesData(
@@ -51,14 +64,27 @@ class AppTheme {
         useM2StyleDividerInM3: true,
         alignedDropdown: true,
         useInputDecoratorThemeInDialogs: true,
-        defaultRadius: 16.0,
-        cardRadius: 16.0,
-        dialogRadius: 20.0,
-        bottomSheetRadius: 24.0,
+        defaultRadius: 20.0,
+        cardRadius: 20.0,
+        dialogRadius: 24.0,
+        bottomSheetRadius: 28.0,
         inputDecoratorBorderType: FlexInputBorderType.outline,
       ),
       visualDensity: FlexColorScheme.comfortablePlatformDensity,
       useMaterial3: true,
+    );
+
+    return baseData.copyWith(
+      cardTheme: baseData.cardTheme.copyWith(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.0),
+          side: BorderSide(
+            color: Colors.white.withValues(alpha: 0.12),
+            width: 1.0,
+          ),
+        ),
+      ),
     );
   }
 }

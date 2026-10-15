@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/surat_provider.dart';
-import '../../domain/providers/theme_provider.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/empty_state_view.dart';
+import '../widgets/custom_card.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -18,277 +21,374 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    FlutterNativeSplash.remove();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(suratSummaryProvider.notifier).refresh();
-      ref.read(suratMasukProvider.notifier).refresh();
+      _refreshAll();
     });
+  }
+
+  Future<void> _refreshAll() async {
+    await ref.read(pimpinanDashboardProvider.notifier).refresh();
+    await ref.read(myActionsProvider.notifier).refresh();
+    ref.invalidate(pengumumanProvider);
+    ref.invalidate(agendaProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final summaryAsync = ref.watch(suratSummaryProvider);
+    final dashboardAsync = ref.watch(pimpinanDashboardProvider);
+    final pengumumanAsync = ref.watch(pengumumanProvider);
+    final agendaAsync = ref.watch(agendaProvider);
+    final myActionsAsync = ref.watch(myActionsProvider);
 
-    String userName = 'User';
-    String userRole = '-';
+    String userName = 'Pimpinan';
     authState.whenData((user) {
       if (user != null) {
         userName = user.nama;
-        userRole = user.role;
       }
     });
 
+    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 16.0;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: const CustomAppBar(
-        title: 'Dashboard E-Office',
+        title: 'E-Office',
       ),
       body: RefreshIndicator(
+        edgeOffset: topPadding,
         onRefresh: () async {
-          await ref.read(suratSummaryProvider.notifier).refresh();
-          await ref.read(suratMasukProvider.notifier).refresh();
+          await _refreshAll();
+          HapticFeedback.mediumImpact();
         },
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.fromLTRB(16.0, topPadding, 16.0, 100.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Identity Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                        child: Icon(Icons.person_outline_rounded, color: Theme.of(context).colorScheme.primary),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Selamat Datang,',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            Text(
-                              userName,
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              userRole,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.logout_outlined, color: Colors.grey),
-                        onPressed: () => _confirmLogout(context),
-                      ),
-                    ],
+              // 1. Welcome Banner
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF118B9B), Color(0xFF0D6E78)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              
-              // Statistik Section
-              Text(
-                'Statistik Organisasi',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              summaryAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, stack) => EmptyStateView(
-                  message: 'Gagal memuat statistik: ${err.toString().replaceAll('Exception: ', '')}',
-                  icon: Icons.error_outline_rounded,
-                ),
-                data: (summary) {
-                  return GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    childAspectRatio: 1.4,
-                    children: [
-                      _StatCard(
-                        title: 'Surat Masuk',
-                        count: summary.suratMasukCount,
-                        icon: Icons.move_to_inbox_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      _StatCard(
-                        title: 'Surat Keluar',
-                        count: summary.suratKeluarCount,
-                        icon: Icons.outbox_outlined,
-                        color: const Color(0xFFE67E22),
-                      ),
-                      _StatCard(
-                        title: 'Disposisi Pending',
-                        count: summary.disposisiPendingCount,
-                        icon: Icons.assignment_late_outlined,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                      _StatCard(
-                        title: 'Agenda Hari Ini',
-                        count: summary.agendaTodayCount,
-                        icon: Icons.today_outlined,
-                        color: const Color(0xFF27AE60),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              
-              const SizedBox(height: 24),
-
-              // Section Surat Terbaru
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Surat Terbaru',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF118B9B).withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () => context.push('/surat-masuk'),
-                    child: const Text('Lihat Semua'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ref.watch(suratMasukProvider).when(
-                loading: () => const Center(child: LinearProgressIndicator()),
-                error: (err, st) => Text('Gagal memuat surat terbaru.'),
-                data: (list) {
-                  if (list.isEmpty) return const Text('Tidak ada surat terbaru');
-                  final recent = list.take(3).toList();
-                  return Column(
-                    children: recent.map((surat) => Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: const CircleAvatar(child: Icon(Icons.description_outlined, size: 20)),
-                        title: Text(surat.perihal, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        subtitle: Text(surat.asalSurat),
-                        onTap: () => context.push('/surat-masuk/${surat.id}'),
-                      ),
-                    )).toList(),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 24),
-              
-              // Tombol Aksi Cepat Berbasis Role Cerdas (Kontrak Poin 7)
-              Text(
-                'Aksi Cepat',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+                  ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              summaryAsync.maybeWhen(
-                data: (summary) {
-                  final isPimpinan = summary.role.toLowerCase().contains('pimpinan') || 
-                                     summary.role.toLowerCase().contains('direksi') ||
-                                     userRole.toLowerCase().contains('pimpinan');
-                  
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => context.push('/surat-masuk'),
-                          icon: const Icon(Icons.inbox_outlined),
-                          label: const Text('Surat Masuk'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // Hanya pimpinan yang melihat tombol persetujuan (approval) secara adaptif
-                      if (isPimpinan)
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => context.push('/approval'),
-                            icon: const Icon(Icons.gavel_outlined),
-                            label: const Text('Persetujuan (Sign)'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.teal.shade700,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                          ),
-                        )
-                      else
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => context.push('/disposisi'),
-                            icon: const Icon(Icons.share_outlined),
-                            label: const Text('Disposisi'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-                orElse: () => Row(
+                child: Row(
                   children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.admin_panel_settings,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
                     Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => context.push('/surat-masuk'),
-                        icon: const Icon(Icons.inbox_outlined),
-                        label: const Text('Surat Masuk'),
-                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Selamat Datang,',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            userName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
+
+              // 2. Statistik Cards
+              dashboardAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => EmptyStateView(
+                  message: 'Gagal memuat statistik',
+                  icon: Icons.error_outline_rounded,
+                ),
+                data: (data) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    clipBehavior: Clip.none,
+                    child: Row(
+                      children: [
+                        _StatCard(
+                          title: 'Approval Menunggu',
+                          count: data.pendingApproval,
+                          icon: Icons.pending_actions,
+                          color: const Color(0xFFF59E0B),
+                          onTap: () => context.push('/approval'),
+                        ),
+                        const SizedBox(width: 12),
+                        _StatCard(
+                          title: 'Surat Masuk',
+                          count: data.totalSuratMasukBulanIni,
+                          icon: Icons.move_to_inbox,
+                          color: const Color(0xFF3B82F6),
+                          onTap: () => context.push('/surat-masuk'),
+                        ),
+                        const SizedBox(width: 12),
+                        _StatCard(
+                          title: 'Disposisi Aktif',
+                          count: data.pendingDisposisi,
+                          icon: Icons.assignment,
+                          color: const Color(0xFF8B5CF6),
+                          onTap: () => context.push('/disposisi'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+
+              // 3. Papan Pengumuman
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.campaign, color: Color(0xFF0D9488)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Papan Pengumuman',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              CustomCard(
+                padding: const EdgeInsets.all(16),
+                child: pengumumanAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, st) => const Text('Gagal memuat pengumuman.'),
+                  data: (list) {
+                    if (list.isEmpty) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text('Belum ada pengumuman.', style: TextStyle(color: Colors.grey)),
+                        ),
+                      );
+                    }
+                    return Column(
+                      children: list.map((item) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.judul,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      item.isi,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0FDFA),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  item.status,
+                                  style: const TextStyle(color: Color(0xFF0F766E), fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // 4. Approval/Surat Terbaru
+              Row(
+                children: [
+                  const Icon(Icons.thumb_up, color: Color(0xFF0D9488)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Approval Terbaru',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              myActionsAsync.when(
+                loading: () => const Center(child: LinearProgressIndicator()),
+                error: (err, st) => const Text('Gagal memuat daftar tindakan.'),
+                data: (list) {
+                  if (list.isEmpty) {
+                    return const CustomCard(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Center(child: Text('Belum ada approval.', style: TextStyle(color: Colors.grey))),
+                      ),
+                    );
+                  }
+                  final recent = list.take(3).toList();
+                  return Column(
+                    children: recent.map((item) => CustomCard(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: EdgeInsets.zero,
+                      onTap: () {
+                        if (item.actionType == 'approval') {
+                          context.go('/approval');
+                        } else {
+                          context.push('/surat-masuk/${item.id}', extra: {
+                            'actionType': item.actionType,
+                            'idDisposisi': item.idDisposisi,
+                          });
+                        }
+                      },
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: item.actionType == 'approval' ? Colors.orange.shade50 : Colors.blue.shade50,
+                          child: Icon(
+                            item.actionType == 'approval' ? Icons.task_alt_rounded : Icons.alt_route_rounded,
+                            size: 20,
+                            color: item.actionType == 'approval' ? Colors.orange.shade600 : Colors.blue.shade600,
+                          ),
+                        ),
+                        title: Text(item.perihal, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+                        subtitle: Text(item.nomorSurat, style: const TextStyle(fontSize: 12)),
+                        trailing: const Icon(Icons.chevron_right, size: 16),
+                      ),
+                    )).toList(),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+
+              // 5. Agenda Terbaru
+              Row(
+                children: [
+                  const Icon(Icons.event, color: Color(0xFF0D9488)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Agenda Terbaru',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              agendaAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, st) => const Text('Gagal memuat agenda.'),
+                data: (list) {
+                  if (list.isEmpty) {
+                    return const CustomCard(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Center(child: Text('Belum ada agenda.', style: TextStyle(color: Colors.grey))),
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: list.map((item) => CustomCard(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  item.tanggalMulai != null ? DateFormat('dd').format(item.tanggalMulai!) : '-',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                                ),
+                                Text(
+                                  item.tanggalMulai != null ? DateFormat('MMM').format(item.tanggalMulai!) : '-',
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.judul,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  item.status,
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )).toList(),
+                  );
+                },
+              ),
+              const SizedBox(height: 32),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _confirmLogout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Konfirmasi Logout'),
-        content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await ref.read(authProvider.notifier).logout();
-            },
-            child: const Text('Logout'),
-          ),
-        ],
       ),
     );
   }
@@ -299,42 +399,62 @@ class _StatCard extends StatelessWidget {
   final int count;
   final IconData icon;
   final Color color;
+  final VoidCallback onTap;
 
   const _StatCard({
     required this.title,
     required this.count,
     required this.icon,
     required this.color,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 140,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Icon(icon, color: color, size: 28),
-                Text(
-                  count.toString(),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+            Text(
+              count.toString(),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
             Text(
               title,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
-              maxLines: 1,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ],
@@ -343,3 +463,4 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
+

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/theme_provider.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/custom_card.dart';
 
 class ProfilScreen extends ConsumerWidget {
   const ProfilScreen({super.key});
@@ -22,52 +24,55 @@ class ProfilScreen extends ConsumerWidget {
       }
     });
 
+    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 16.0;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: const CustomAppBar(
-        title: 'Profil Saya',
+        title: 'Profil',
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16.0, topPadding, 16.0, 100.0),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                    child: Icon(Icons.person_outline_rounded, size: 50, color: Theme.of(context).colorScheme.primary),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    userName,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    userEmail,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
+          CustomCard(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                  child: Icon(Icons.person_outline_rounded, size: 50, color: Theme.of(context).colorScheme.primary),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  userName,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  userEmail,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 24),
-          Card(
+          CustomCard(
+            padding: EdgeInsets.zero,
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.palette_outlined),
+                  leading: const Icon(Icons.dark_mode_outlined),
                   title: const Text('Mode Gelap'),
                   trailing: Switch(
                     value: themeMode == ThemeMode.dark,
                     onChanged: (val) {
+                      HapticFeedback.selectionClick();
                       ref.read(themeProvider.notifier).toggleTheme();
                     },
                   ),
@@ -79,7 +84,10 @@ class ProfilScreen extends ConsumerWidget {
                     'Keluar',
                     style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold),
                   ),
-                  onTap: () => _confirmLogout(context, ref),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    _confirmLogout(context, ref);
+                  },
                 ),
               ],
             ),
@@ -97,7 +105,10 @@ class ProfilScreen extends ConsumerWidget {
         content: const Text('Apakah Anda yakin ingin keluar?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.pop(ctx);
+            },
             child: const Text('Tidak'),
           ),
           ElevatedButton(
@@ -106,6 +117,7 @@ class ProfilScreen extends ConsumerWidget {
               foregroundColor: Colors.white,
             ),
             onPressed: () async {
+              HapticFeedback.mediumImpact();
               Navigator.pop(ctx);
               await ref.read(authProvider.notifier).logout();
             },

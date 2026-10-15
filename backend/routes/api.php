@@ -218,7 +218,8 @@ Route::delete('surat_arsip/{id}', [App\Http\Controllers\API\SuratArsipAPIControl
 Route::get('eoffice/notifications', [App\Http\Controllers\API\EOfficeSupportController::class, 'notifications']);
 Route::get('eoffice/notification-recipients', [App\Http\Controllers\API\EOfficeSupportController::class, 'notificationRecipients']);
 Route::post('eoffice/notifications', [App\Http\Controllers\API\EOfficeSupportController::class, 'storeNotification']);
-Route::post('eoffice/notifications/{id}/read', [App\Http\Controllers\API\EOfficeSupportController::class, 'markNotificationRead']);
+Route::post('eoffice/notifications/read-all', [App\Http\Controllers\API\EOfficeSupportController::class, 'markAllNotificationsRead'])->middleware('auth:sanctum');
+Route::post('eoffice/notifications/{id}/read', [App\Http\Controllers\API\EOfficeSupportController::class, 'markNotificationRead'])->middleware('auth:sanctum');
 Route::get('notifikasi_eoffice', [App\Http\Controllers\API\EOfficeSupportController::class, 'notifications']);
 Route::post('notifikasi_eoffice', [App\Http\Controllers\API\EOfficeSupportController::class, 'storeNotification']);
 Route::post('notifikasi_eoffice/{id}/read', [App\Http\Controllers\API\EOfficeSupportController::class, 'markNotificationRead']);

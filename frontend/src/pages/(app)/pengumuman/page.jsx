@@ -35,6 +35,16 @@ const normalizeList = response => {
 }
 
 const getId = item => item?.id_pengumuman || item?.id || item?.value
+const getAnnouncementExcerpt = value => {
+    if (!value) return "-"
+    const parsed = new DOMParser().parseFromString(String(value), "text/html")
+    let text = parsed.body.textContent || ""
+    // Some older records contain HTML that was entity-escaped before storage.
+    if (/<\/?[a-z][^>]*>/i.test(text)) {
+        text = new DOMParser().parseFromString(text, "text/html").body.textContent || text
+    }
+    return text.replace(/\s+/g, " ").trim() || "-"
+}
 
 const kategoriOptions = [
     { value: "semua", label: "Semua", icon: "apps", color: "#334155" },
@@ -394,8 +404,8 @@ const Pengumuman = () => {
 
                                     {/* Card Body */}
                                     <div className="px-4 pb-3">
-                                        <div className="text-sm text-slate-600 mb-3" style={{ lineHeight: 1.6, maxHeight: 80, overflow: "hidden", position: "relative" }}>
-                                            {item?.isi || "-"}
+                                        <div className="text-sm mb-3" style={{ color: "#111827", fontSize: 15, fontWeight: 500, lineHeight: 1.7, maxHeight: 80, overflow: "hidden", position: "relative" }}>
+                                            {getAnnouncementExcerpt(item?.isi)}
                                             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 24, background: "linear-gradient(transparent, white)" }}></div>
                                         </div>
 

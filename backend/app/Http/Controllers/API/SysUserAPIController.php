@@ -62,6 +62,13 @@ class SysUserAPIController extends BaseResourceController
         //         $search['kode'] = "%" . $search['kode'] . "%";
         // }
         $search = $this->_search($search);
+        // The user query below joins tables that also expose a `status`
+        // column. Qualify this filter before building the joined query so
+        // PostgreSQL does not reject it as ambiguous.
+        if (is_array($search) && array_key_exists('status', $search)) {
+            $search['sys_user.status'] = $search['status'];
+            unset($search['status']);
+        }
         // $filter = $request->get('q');
         $page = $request->get('page') ?? 1;
         $limit = $request->get('pagesize') ?? $this->limit;

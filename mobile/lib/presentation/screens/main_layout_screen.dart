@@ -15,10 +15,16 @@ class MainLayoutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: child,
       bottomNavigationBar: FloatingNavBar(
         selectedIndex: selectedIndex,
         onItemTapped: (index) {
+          // Tutup modal / bottom sheet yang sedang aktif di root navigator sebelum pindah tab
+          if (Navigator.of(context, rootNavigator: true).canPop()) {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+          
           switch (index) {
             case 0:
               context.go('/dashboard');
@@ -27,12 +33,9 @@ class MainLayoutScreen extends StatelessWidget {
               context.go('/surat-masuk');
               break;
             case 2:
-              context.go('/disposisi');
-              break;
-            case 3:
               context.go('/approval');
               break;
-            case 4:
+            case 3:
               context.go('/profil');
               break;
           }

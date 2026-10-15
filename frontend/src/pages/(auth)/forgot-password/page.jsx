@@ -7,7 +7,6 @@ import Label from 'components/Label'
 import { useAuth } from 'hooks/auth'
 import { useState } from 'react'
 import AuthSessionStatus from 'pages/(auth)/AuthSessionStatus'
-import $ from 'jquery'
 import { ModalLoginLoading } from '../login/page'
 
 const Page = () => {
@@ -24,6 +23,8 @@ const Page = () => {
 
     const submitForm = event => {
         event.preventDefault()
+        if (btn_loading) return
+
         setbtn_loading(true)
         // $('.layout-app').addClass('is-loading-global')
         forgotPassword({ email, setErrors, setStatus, onRequestDone: handleRequestDone })
@@ -66,7 +67,9 @@ const Page = () => {
                 </div>
 
                 <div className="flex items-center justify-end mt-4 c-btn-login">
-                    <Button>Email Password Reset Link</Button>
+                    <Button disabled={btn_loading}>
+                        {btn_loading ? 'Mengirim email...' : 'Email Password Reset Link'}
+                    </Button>
                 </div>
             </form>
 

@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../constants/app_config.dart';
+import '../network/dio_client.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../data/models/user_model.dart';
+import '../../presentation/screens/disposisi_screen.dart';
 import '../../presentation/screens/main_layout_screen.dart';
 import '../../presentation/screens/detail_surat_screen.dart';
 import '../../presentation/screens/login_screen.dart';
-import '../../presentation/screens/mfa_screen.dart';
 import '../../presentation/screens/dashboard_screen.dart';
 import '../../presentation/screens/surat_masuk_screen.dart';
-import '../../presentation/screens/disposisi_screen.dart';
 import '../../presentation/screens/approval_screen.dart';
 import '../../presentation/screens/notification_screen.dart';
 import '../../presentation/screens/pdf_viewer_screen.dart';
@@ -28,10 +27,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/dashboard',
     refreshListenable: authStateListenable,
     redirect: (context, state) async {
-      const storage = FlutterSecureStorage();
+      final storage = ref.read(secureStorageProvider);
       final token = await storage.read(key: AppConfig.authTokenKey);
       final isLoggedIn = token != null && token.isNotEmpty;
-      final isLoggingIn = state.matchedLocation == '/login';
+      final isLoggingIn = state.uri.path == '/login';
 
       if (!isLoggedIn && !isLoggingIn) {
         return '/login';
@@ -49,11 +48,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/mfa',
+        path: '/notifications',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: NotificationScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/pdf',
         pageBuilder: (context, state) {
-          final mfaChallengeToken = state.extra as String? ?? '';
+          final url = state.extra as String? ?? '';
           return NoTransitionPage(
-            child: MfaScreen(mfaChallengeToken: mfaChallengeToken),
+            child: PdfViewerScreen(pdfUrl: url),
           );
         },
       ),
@@ -66,12 +71,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             selectedIndex = 0;
           } else if (location != null && (location == '/surat-masuk' || location.startsWith('/surat-masuk/'))) {
             selectedIndex = 1;
-          } else if (location == '/disposisi') {
-            selectedIndex = 2;
           } else if (location == '/approval') {
-            selectedIndex = 3;
+            selectedIndex = 2;
           } else if (location == '/profil') {
-            selectedIndex = 4;
+            selectedIndex = 3;
           }
 
           return MainLayoutScreen(
@@ -96,18 +99,23 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 path: ':id',
                 pageBuilder: (context, state) {
                   final id = state.pathParameters['id']!;
+                  final extra = state.extra;
+                  final actionType = extra is Map
+                      ? extra['actionType']?.toString()
+                      : extra as String?;
+                  final idDisposisi = extra is Map
+                      ? extra['idDisposisi']?.toString()
+                      : null;
                   return NoTransitionPage(
-                    child: DetailSuratScreen(idSurat: id),
+                    child: DetailSuratScreen(
+                      idSurat: id,
+                      actionType: actionType,
+                      idDisposisi: idDisposisi,
+                    ),
                   );
                 },
               ),
             ],
-          ),
-          GoRoute(
-            path: '/disposisi',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: DisposisiScreen(),
-            ),
           ),
           GoRoute(
             path: '/approval',
@@ -116,9 +124,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
-            path: '/notifications',
+            path: '/disposisi',
             pageBuilder: (context, state) => const NoTransitionPage(
-              child: NotificationScreen(),
+              child: DisposisiScreen(),
             ),
           ),
           GoRoute(
@@ -126,15 +134,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => const NoTransitionPage(
               child: ProfilScreen(),
             ),
-          ),
-          GoRoute(
-            path: '/pdf',
-            pageBuilder: (context, state) {
-              final url = state.extra as String? ?? '';
-              return NoTransitionPage(
-                child: PdfViewerScreen(pdfUrl: url),
-              );
-            },
           ),
         ],
       ),

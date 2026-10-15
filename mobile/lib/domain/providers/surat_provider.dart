@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/surat_model.dart';
 import '../../data/repositories/surat_repository.dart';
@@ -9,132 +8,98 @@ final suratRepositoryProvider = Provider<SuratRepository>((ref) {
   return ApiSuratRepository(dio);
 });
 
-/// Provider untuk daftar Surat Masuk
-final suratMasukProvider = AsyncNotifierProvider<SuratMasukNotifier, List<SuratModel>>(() {
-  return SuratMasukNotifier();
+/// DASHBOARD PIMPINAN
+final pimpinanDashboardProvider = AsyncNotifierProvider<PimpinanDashboardNotifier, PimpinanDashboard>(() {
+  return PimpinanDashboardNotifier();
 });
 
-class SuratMasukNotifier extends AsyncNotifier<List<SuratModel>> {
+class PimpinanDashboardNotifier extends AsyncNotifier<PimpinanDashboard> {
   @override
-  Future<List<SuratModel>> build() async {
+  Future<PimpinanDashboard> build() async {
     final repository = ref.watch(suratRepositoryProvider);
-    return repository.getSuratMasuk(page: 1, pageSize: 20);
-  }
-
-  Future<void> fetchSuratMasuk() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(suratRepositoryProvider);
-      return repository.getSuratMasuk(page: 1, pageSize: 20);
-    });
-  }
-
-  Future<void> refresh() async {
-    await fetchSuratMasuk();
-  }
-}
-
-final suratSummaryProvider = AsyncNotifierProvider<SuratSummaryNotifier, SuratSummary>(() {
-  return SuratSummaryNotifier();
-});
-
-class SuratSummaryNotifier extends AsyncNotifier<SuratSummary> {
-  @override
-  Future<SuratSummary> build() async {
-    final repository = ref.watch(suratRepositoryProvider);
-    return repository.getSuratMasukSummary();
+    return repository.getDashboard();
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(suratRepositoryProvider);
-      return repository.getSuratMasukSummary();
+      return repository.getDashboard();
     });
   }
 }
 
-final approvalQueueProvider = AsyncNotifierProvider<ApprovalQueueNotifier, List<SuratModel>>(() {
-  return ApprovalQueueNotifier();
+/// DAFTAR TINDAKAN (MY ACTIONS)
+final myActionsProvider = AsyncNotifierProvider<MyActionsNotifier, List<SuratModel>>(() {
+  return MyActionsNotifier();
 });
 
-class ApprovalQueueNotifier extends AsyncNotifier<List<SuratModel>> {
+class MyActionsNotifier extends AsyncNotifier<List<SuratModel>> {
   @override
   Future<List<SuratModel>> build() async {
     final repository = ref.watch(suratRepositoryProvider);
-    return repository.getApprovalQueue();
+    return repository.getMyActions();
   }
 
-  Future<void> fetchApprovalQueue() async {
+  Future<void> fetchMyActions() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(suratRepositoryProvider);
-      return repository.getApprovalQueue();
+      return repository.getMyActions();
     });
+  }
+
+  Future<void> refresh() async {
+    await fetchMyActions();
   }
 
   Future<void> approveSurat(String id) async {
     final repository = ref.read(suratRepositoryProvider);
-    await repository.approveSuratKeluar(id);
-    await fetchApprovalQueue();
+    await repository.approveSurat(id);
+    await refresh();
   }
 
-  Future<Map<String, dynamic>?> signSurat(String id) async {
+  Future<void> rejectSurat(String id, String reason) async {
     final repository = ref.read(suratRepositoryProvider);
-    try {
-      final result = await repository.signSuratKeluar(id);
-      return result;
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Error signing surat: $e');
-      }
-      rethrow;
-    } finally {
-      // REMOVED: audit trail logging - NOT NEEDED per contract
-      await fetchApprovalQueue();
-    }
+    await repository.rejectSurat(id, reason);
+    await refresh();
   }
 
-  Future<void> rejectSurat(String id, String notes) async {
+  Future<Map<String, dynamic>> signSurat(String id, String signatureData) async {
     final repository = ref.read(suratRepositoryProvider);
-    await repository.rejectSuratKeluar(id, notes);
-    await fetchApprovalQueue();
+    final result = await repository.signSurat(id, signatureData: signatureData);
+    await refresh();
+    return result;
   }
 
-  Future<void> refresh() async {
-    await fetchApprovalQueue();
+  Future<void> completeDisposisi(String id, String catatan, String? fileBuktiPath) async {
+    final repository = ref.read(suratRepositoryProvider);
+    await repository.completeDisposisi(id, catatan: catatan, fileBuktiPath: fileBuktiPath);
+    await refresh();
+  }
+
+  Future<Map<String, dynamic>> uploadAttachment(String id, dynamic file) async {
+    final repository = ref.read(suratRepositoryProvider);
+    return await repository.uploadAttachment(id, file);
   }
 }
 
-final disposisiListProvider = AsyncNotifierProvider<DisposisiListNotifier, List<dynamic>>(() {
-  return DisposisiListNotifier();
-});
-
-class DisposisiListNotifier extends AsyncNotifier<List<dynamic>> {
-  @override
-  Future<List<dynamic>> build() async {
-    final repository = ref.watch(suratRepositoryProvider);
-    return repository.getDisposisiList();
-  }
-
-  Future<void> fetchDisposisi() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(suratRepositoryProvider);
-      return repository.getDisposisiList();
-    });
-  }
-
-  Future<void> refresh() async {
-    await fetchDisposisi();
-  }
-}
-
-final suratTimelineProvider = FutureProvider.family<List<TimelineEvent>, String>((ref, id) async {
+/// TRACKING (Sesuai ID + ActionType)
+final trackingProvider = FutureProvider.family<List<TimelineEvent>, ({String id, String? type})>((ref, arg) async {
   final repository = ref.watch(suratRepositoryProvider);
-  return repository.getSuratMasukTimeline(id);
+  return repository.getTracking(arg.id, arg.type);
 });
 
+/// DETAIL SURAT (Fetch by ID & ActionType)
+final suratDetailProvider = FutureProvider.family<SuratModel?, ({String id, String? type})>((ref, arg) async {
+  final repository = ref.watch(suratRepositoryProvider);
+  if (arg.type == 'approval') {
+    return await repository.getSuratKeluarDetail(arg.id);
+  }
+  return await repository.getSuratMasukDetail(arg.id);
+});
+
+/// NOTIFIKASI
 final notificationProvider = AsyncNotifierProvider<NotificationNotifier, List<dynamic>>(() {
   return NotificationNotifier();
 });
@@ -146,11 +111,11 @@ class NotificationNotifier extends AsyncNotifier<List<dynamic>> {
     return repository.getNotifications();
   }
 
-  Future<void> loadNotifications({bool? unread, int page = 1, int perPage = 15}) async {
+  Future<void> loadNotifications({int page = 1, int perPage = 15}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(suratRepositoryProvider);
-      return repository.getNotifications(unread: unread, page: page, perPage: perPage);
+      return repository.getNotifications(page: page, perPage: perPage);
     });
   }
 
@@ -166,5 +131,46 @@ class NotificationNotifier extends AsyncNotifier<List<dynamic>> {
 
   Future<void> refresh() async {
     await loadNotifications();
+  }
+}
+
+// COMPATIBILITY PROVIDERS (Try to phase out)
+final suratMasukProvider = myActionsProvider; // Alias
+final suratSummaryProvider = Provider((ref) => ref.watch(pimpinanDashboardProvider)); // Alias
+
+/// PENGUMUMAN
+final pengumumanProvider = FutureProvider<List<PengumumanModel>>((ref) async {
+  final repository = ref.watch(suratRepositoryProvider);
+  return repository.getPengumuman(limit: 5);
+});
+
+/// AGENDA
+final agendaProvider = FutureProvider<List<AgendaModel>>((ref) async {
+  final repository = ref.watch(suratRepositoryProvider);
+  return repository.getAgenda(limit: 5);
+});
+
+/// DAFTAR DISPOSISI
+final disposisiListProvider = AsyncNotifierProvider<DisposisiListNotifier, List<Map<String, dynamic>>>(() {
+  return DisposisiListNotifier();
+});
+
+class DisposisiListNotifier extends AsyncNotifier<List<Map<String, dynamic>>> {
+  @override
+  Future<List<Map<String, dynamic>>> build() async {
+    final repository = ref.watch(suratRepositoryProvider);
+    return repository.getDisposisiList();
+  }
+
+  Future<void> fetchDisposisi({String? status}) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final repository = ref.read(suratRepositoryProvider);
+      return repository.getDisposisiList(status: status);
+    });
+  }
+
+  Future<void> refresh() async {
+    await fetchDisposisi();
   }
 }

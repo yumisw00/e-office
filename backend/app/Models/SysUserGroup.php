@@ -40,6 +40,14 @@ class SysUserGroup extends BaseModel
         return $this->belongsTo(\App\Models\SysUser::class, 'id_user');
     }
 
+    /**
+     * Alias used by LoginAttemptService when notifying system admins.
+     */
+    public function sysUser(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\SysUser::class, 'id_user');
+    }
+
     public function idGroup(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(\App\Models\SysGroup::class, 'id_group');

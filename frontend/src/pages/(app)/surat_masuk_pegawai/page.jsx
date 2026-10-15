@@ -5,7 +5,7 @@ import Pagination from "components/Pagination";
 import Button from "components/Button";
 import EditDelete from "components/EditDelete";
 import EofficeTimelineModal from "components/EofficeTimelineModal";
-import JenisSuratTabs from "components/JenisSuratTabs";
+import JenisSuratTabs, { getJenisSuratCounts } from "components/JenisSuratTabs";
 import { Modal } from "react-bootstrap";
 import IndexPage from "../IndexPage";
 import surat_distribusiModel from "hooks/models/surat_distribusiModel";
@@ -806,7 +806,7 @@ class SuratMasukPegawai extends IndexPage {
                     title={this.titlePage}
                     is_loading={this.state.is_loading}
                     data_btn={[]}
-                    filterTabs={<div className="surat-masuk-pegawai-pengiriman-tabs" role="tablist" aria-label="Filter pengiriman surat pegawai">{[["semua", "Semua Surat", "description"], ["internal", "Internal", "business"], ["eksternal", "Eksternal", "account_balance"]].map(([value, label, icon]) => <button key={value} type="button" role="tab" aria-selected={this.state.jenisPengirimanTab === value} className={this.state.jenisPengirimanTab === value ? "active" : ""} onClick={() => this.setState({ jenisPengirimanTab: value })}><span className="material-icons" aria-hidden="true">{icon}</span><span>{label} ({suratCounts[value] || 0})</span></button>)}<JenisSuratTabs value={this.state.jenisSuratTab} onChange={value => this.setState({ jenisSuratTab: value })} /></div>}
+                    filterTabs={<div className="surat-masuk-pegawai-pengiriman-tabs" role="tablist" aria-label="Filter pengiriman surat pegawai">{[["semua", "Semua Surat", "description"], ["internal", "Internal", "business"], ["eksternal", "Eksternal", "account_balance"]].map(([value, label, icon]) => <button key={value} type="button" role="tab" aria-selected={this.state.jenisPengirimanTab === value} className={this.state.jenisPengirimanTab === value ? "active" : ""} onClick={() => this.setState({ jenisPengirimanTab: value })}><span className="material-icons" aria-hidden="true">{icon}</span><span>{label} ({suratCounts[value] || 0})</span></button>)}<JenisSuratTabs counts={getJenisSuratCounts(this.state.list)} value={this.state.jenisSuratTab} onChange={value => this.setState({ jenisSuratTab: value })} /></div>}
                 />
 
                 <div className="container pl-4 pr-4">

@@ -128,24 +128,41 @@ class SuratKeluarAPIController extends BaseResourceController
                             ->from('surat_keluar_penerima')
                             ->whereColumn('surat_keluar_penerima.id_surat_keluar', 'surat_keluar.id_surat_keluar')
                             ->where('surat_keluar_penerima.id_user', $userId);
+                    })
+                    ->orWhereExists(function ($approval) use ($userId) {
+                        $approval->select(DB::raw(1))
+                            ->from('surat_approval')
+                            ->whereColumn('surat_approval.id_surat_keluar', 'surat_keluar.id_surat_keluar')
+                            ->where('surat_approval.id_approver', $userId)
+                            ->whereNull('surat_approval.deleted_at');
                     });
             });
         }
 
-        return $query->whereExists(function ($recipient) use ($unitId) {
-            $recipient->select(DB::raw(1))
-                ->from('surat_keluar_penerima')
-                ->join('sys_user_group', 'sys_user_group.id_user', '=', 'surat_keluar_penerima.id_user')
-                ->join('mt_sdm_jabatan', function ($join) {
-                    $join->on(
-                        DB::raw('CAST(mt_sdm_jabatan.id_jabatan AS VARCHAR)'),
-                        '=',
-                        DB::raw('CAST(sys_user_group.id_jabatan AS VARCHAR)')
-                    );
-                })
-                ->whereColumn('surat_keluar_penerima.id_surat_keluar', 'surat_keluar.id_surat_keluar')
-                ->whereNull('sys_user_group.deleted_at')
-                ->where('mt_sdm_jabatan.id_unit', $unitId);
+        return $query->where(function ($visibility) use ($unitId, $userId) {
+            $visibility->whereExists(function ($recipient) use ($unitId) {
+                $recipient->select(DB::raw(1))
+                    ->from('surat_keluar_penerima')
+                    ->join('sys_user_group', 'sys_user_group.id_user', '=', 'surat_keluar_penerima.id_user')
+                    ->join('mt_sdm_jabatan', function ($join) {
+                        $join->on(
+                            DB::raw('CAST(mt_sdm_jabatan.id_jabatan AS VARCHAR)'),
+                            '=',
+                            DB::raw('CAST(sys_user_group.id_jabatan AS VARCHAR)')
+                        );
+                    })
+                    ->whereColumn('surat_keluar_penerima.id_surat_keluar', 'surat_keluar.id_surat_keluar')
+                    ->whereNull('sys_user_group.deleted_at')
+                    ->where('mt_sdm_jabatan.id_unit', $unitId);
+            })
+                ->orWhere('created_by', $userId)
+                ->orWhereExists(function ($approval) use ($userId) {
+                    $approval->select(DB::raw(1))
+                        ->from('surat_approval')
+                        ->whereColumn('surat_approval.id_surat_keluar', 'surat_keluar.id_surat_keluar')
+                        ->where('surat_approval.id_approver', $userId)
+                        ->whereNull('surat_approval.deleted_at');
+                });
         });
     }
 
@@ -1193,6 +1210,12 @@ class SuratKeluarAPIController extends BaseResourceController
         $data = is_array($record)
             ? $record
             : (method_exists($record, 'toArray') ? $record->toArray() : (array) $record);
+
+        // Mobile uses `draft_file_path`; the database/frontend contract uses
+        // `file_draft_path`. Return both names to keep clients compatible.
+        if (array_key_exists('file_draft_path', $data)) {
+            $data['draft_file_path'] = $data['file_draft_path'];
+        }
 
         if (!empty($data['id_surat_template'])) {
             $template = $this->findTemplate($data['id_surat_template']);

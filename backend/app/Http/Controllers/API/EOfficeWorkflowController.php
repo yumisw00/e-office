@@ -1355,7 +1355,10 @@ class EOfficeWorkflowController extends Controller
 
         $groupId = session('id_group');
         $groupQuery = DB::table('sys_group')
-            ->whereNull('deleted_at')
+            // This query is later joined with sys_user_group, which also has
+            // a deleted_at column. Qualify the column so PostgreSQL does not
+            // reject the authorization check as ambiguous.
+            ->whereNull('sys_group.deleted_at')
             ->whereRaw("LOWER(REPLACE(REPLACE(nama, '_', ' '), '-', ' ')) IN ('admin sistem', 'admin konten', 'admin kontak')");
         if ($groupId && (clone $groupQuery)->where('id_group', $groupId)->exists()) {
             return true;

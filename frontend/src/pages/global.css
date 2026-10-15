@@ -4552,11 +4552,11 @@ html body main.layout-app-body .surat-approval-table .table .approval-actions .m
 .surat-masuk-pegawai-table .td-action { display: flex; align-items: center; justify-content: center; gap: 4px; }
 .container-header-app .surat-masuk-header-actions .btn-default-app,
 .container-header-app .surat-keluar-header-actions .btn-default-app { box-sizing: border-box; height: 36px; padding-top: 0; padding-bottom: 0; align-items: center; }
-@media (max-width: 700px) { .surat-masuk-pengiriman-tabs { overflow-x: auto; padding-bottom: 3px; } .surat-masuk-pengiriman-tabs > button { min-width: 142px; } }
+@media (max-width: 700px) { .surat-masuk-pengiriman-tabs { overflow-x: visible; padding-bottom: 3px; } .surat-masuk-pengiriman-tabs > button { min-width: 142px; } }
 
 .jenis-surat-tabs-label { flex: 0 0 auto; padding-right: 12px; border-right: 1px solid #d7e2e6; color: #334155; font-size: 13px; font-weight: 700; }
-.jenis-surat-tabs-list { display: flex; flex: 1 1 auto; min-width: 0; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: thin; }
-.jenis-surat-tabs-list button { flex: 0 0 auto; padding: 5px 16px; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; color: #334155; font-size: 12px; font-weight: 600; line-height: 1.2; }
+.jenis-surat-tabs-list { display: flex !important; flex: 1 1 0%; width: 0; min-width: 0; max-width: 100%; align-items: center; flex-wrap: wrap !important; gap: 8px; overflow-x: visible !important; }
+.jenis-surat-tabs-list button { flex: 0 0 auto; max-width: 100%; white-space: normal; padding: 5px 16px; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; color: #334155; font-size: 12px; font-weight: 600; line-height: 1.2; }
 .jenis-surat-tabs-list button.active { border-color: #0f7f89; background: #0f7f89; color: #fff; box-shadow: 0 2px 5px rgba(15, 127, 137, .2); }
 
 .container-header-app [role="tablist"]:has(.jenis-surat-tabs),

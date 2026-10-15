@@ -41,8 +41,8 @@ const BtnIcon = (props) => {
                     </Dropdown.Toggle>
 
                     <Dropdown.Menu>
-                        <Dropdown.Item target='_blank' href={`${import.meta.env.VITE_BACKEND_URL}api/user_guide`}>
-                            <Link target='_blank' href={`${import.meta.env.VITE_BACKEND_URL}api/user_guide`} className={`d-flex align-items-center`}>
+                        <Dropdown.Item target='_blank' href={`${import.meta.env.VITE_BACKEND_URL}api/user_guide?v=2`}>
+                            <Link target='_blank' href={`${import.meta.env.VITE_BACKEND_URL}api/user_guide?v=2`} className={`d-flex align-items-center`}>
                                 <div className=''>
                                     <span className='material-icons'>
                                         visibility

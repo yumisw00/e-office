@@ -561,6 +561,34 @@ class EOfficeSupportController extends Controller
         ]);
     }
 
+    public function markAllNotificationsRead(Request $request): JsonResponse
+    {
+        $currentUserId = (int) ($request->user()?->id_user ?? auth()->user()?->id_user ?? 0);
+        if (!$currentUserId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Autentikasi pengguna diperlukan.',
+            ], 401);
+        }
+
+        $now = now();
+        $updatedCount = DB::table('sys_notification')
+            ->where('id_user', $currentUserId)
+            ->where('channel', 'eoffice')
+            ->whereNull('read_at')
+            ->whereNull('deleted_at')
+            ->update([
+                'read_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Semua notifikasi ditandai sudah dibaca.',
+            'updated_count' => $updatedCount,
+        ]);
+    }
+
     private function options(array $values): array
     {
         return collect($values)

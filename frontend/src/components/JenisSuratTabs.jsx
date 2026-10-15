@@ -3,7 +3,16 @@
 import { useEffect, useState } from "react"
 import axios from "lib/axios"
 
-const JenisSuratTabs = ({ value = "semua", onChange }) => {
+export const getJenisSuratCounts = (list = []) => {
+    const counts = { semua: list.length }
+    list.forEach(item => {
+        const jenis = String(item?.surat_masuk?.jenis || item?.jenis || item?.jenis_surat || '').trim().toLowerCase()
+        if (jenis) counts[jenis] = (counts[jenis] || 0) + 1
+    })
+    return counts
+}
+
+const JenisSuratTabs = ({ value = "semua", onChange, counts = {} }) => {
     const [options, setOptions] = useState([])
 
     useEffect(() => {
@@ -31,10 +40,10 @@ const JenisSuratTabs = ({ value = "semua", onChange }) => {
         <div className="jenis-surat-tabs" aria-label="Filter jenis surat">
             <span className="jenis-surat-tabs-label">Jenis Surat</span>
             <div className="jenis-surat-tabs-list">
-                <button type="button" className={value === 'semua' ? 'active' : ''} onClick={() => onChange?.('semua')}>Semua</button>
+                <button type="button" className={value === 'semua' ? 'active' : ''} onClick={() => onChange?.('semua')}>Semua ({counts.semua ?? 0})</button>
                 {options.map(option => (
                     <button key={option.id_jenis_surat || option.value} type="button" className={value === option.value ? 'active' : ''} onClick={() => onChange?.(option.value)}>
-                        {option.label}
+                        {option.label} ({counts[String(option.value).trim().toLowerCase()] ?? 0})
                     </button>
                 ))}
             </div>

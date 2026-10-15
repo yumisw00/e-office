@@ -3,7 +3,7 @@
 import HeaderApp from "components/HeaderApp";
 import Pagination from "components/Pagination";
 import EditDelete from "components/EditDelete";
-import JenisSuratTabs from "components/JenisSuratTabs";
+import JenisSuratTabs, { getJenisSuratCounts } from "components/JenisSuratTabs";
 import Button from "components/Button";
 import IndexPage from "../IndexPage";
 import surat_keluarModel from "hooks/models/surat_keluarModel";
@@ -496,7 +496,7 @@ class Surat_keluar extends IndexPage {
                         ['semua', 'Semua Surat', 'description'],
                         ['internal', 'Internal', 'business'],
                         ['eksternal', 'Eksternal', 'account_balance'],
-                    ].map(([value, label, icon]) => <button key={value} type="button" role="tab" aria-selected={this.state.jenisPengirimanTab === value} className={this.state.jenisPengirimanTab === value ? 'active' : ''} onClick={() => { this.setState(state => ({ jenisPengirimanTab: value, datafilter: { ...state.datafilter, paginate: { ...state.datafilter.paginate, page: 1 } } }), this.get) }}><span className="material-icons" aria-hidden="true">{icon}</span><span>{label} ({tabCounts[value]})</span></button>)}<JenisSuratTabs value={this.state.jenisSuratTab} onChange={value => this.setState({ jenisSuratTab: value })} /></div>}
+                    ].map(([value, label, icon]) => <button key={value} type="button" role="tab" aria-selected={this.state.jenisPengirimanTab === value} className={this.state.jenisPengirimanTab === value ? 'active' : ''} onClick={() => { this.setState(state => ({ jenisPengirimanTab: value, datafilter: { ...state.datafilter, paginate: { ...state.datafilter.paginate, page: 1 } } }), this.get) }}><span className="material-icons" aria-hidden="true">{icon}</span><span>{label} ({tabCounts[value]})</span></button>)}<JenisSuratTabs counts={getJenisSuratCounts(this.state.list)} value={this.state.jenisSuratTab} onChange={value => this.setState({ jenisSuratTab: value })} /></div>}
                     btnCustom={
                         <div className="surat-header-actions surat-keluar-header-actions" style={{ marginTop: 0, marginBottom: 0 }}>
                         <EofficeToolbar>

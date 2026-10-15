@@ -28,7 +28,14 @@ class AksesMenu
             return $next($request);
         }
 
-        if (!auth()->check()) {
+        // API mobile authenticates with a Sanctum Bearer token, while the web
+        // application uses the default session guard. AksesMenu is part of the
+        // API middleware group and runs before route-level auth:sanctum, so it
+        // must explicitly recognize both authentication mechanisms.
+        $hasWebSession = auth()->check();
+        $hasSanctumToken = auth()->guard('sanctum')->check();
+
+        if (!$hasWebSession && !$hasSanctumToken) {
             return response()->json([
                 'code' => 403,
                 'status' => 403,

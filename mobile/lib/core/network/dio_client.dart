@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../constants/app_config.dart';
-import 'api_endpoints.dart';
 
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
   return const FlutterSecureStorage(
@@ -46,7 +45,18 @@ final dioProvider = Provider<Dio>((ref) {
           debugPrint('📤 REQUEST[${options.method}] => ${options.uri}');
           debugPrint('   Headers: $sanitizedHeaders');
           if (options.data != null) {
-            debugPrint('   Data: ${options.data}');
+            dynamic logData = options.data;
+            if (logData is Map) {
+              final copy = Map<String, dynamic>.from(logData);
+              if (copy.containsKey('password')) copy['password'] = '***';
+              if (copy.containsKey('fcm_token')) copy['fcm_token'] = '***';
+              logData = copy;
+            }
+            String dataStr = logData.toString();
+            if (dataStr.length > 200) {
+              dataStr = '${dataStr.substring(0, 200)}...';
+            }
+            debugPrint('   Data: $dataStr');
           }
         }
         handler.next(options);
@@ -74,6 +84,7 @@ final dioProvider = Provider<Dio>((ref) {
         if (statusCode == 401) {
           await storage.delete(key: AppConfig.authTokenKey);
           await storage.delete(key: AppConfig.userDataKey);
+          await storage.write(key: 'session_expired_flag', value: '1');
           computedMessage = 'Sesi Anda telah berakhir, silakan login kembali.';
         }
 
@@ -93,14 +104,15 @@ final dioProvider = Provider<Dio>((ref) {
             }
           } else {
             // Pola B: Default Laravel Handler (NO error_code)
-            if (statusCode == 429) {
+            final bodyMsg = responseData['message']?.toString();
+            if (bodyMsg != null && bodyMsg.trim().isNotEmpty) {
+              computedMessage = bodyMsg;
+            } else if (statusCode == 429) {
               computedMessage = 'Terlalu banyak percobaan percobaan, coba lagi dalam beberapa saat.';
             } else if (statusCode == 500) {
               computedMessage = 'Internal Server Error (500). Silakan hubungi admin.';
             } else if (statusCode == 404) {
               computedMessage = 'Endpoint tidak ditemukan di server (404).';
-            } else if (responseData.containsKey('message')) {
-              computedMessage = responseData['message'].toString();
             }
           }
         } else {

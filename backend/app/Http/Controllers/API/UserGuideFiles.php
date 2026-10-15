@@ -33,21 +33,6 @@ use Illuminate\Support\Str;
  */
 class UserGuideFiles extends BaseResourceController
 {
-    public $user_guide_by_group = [
-        1 => "PT HK - ICOFR- USER GUIDE ADMINISTRATOR.pdf", # "Administrator"
-
-        18 => "PT HK - ICOFR- USER GUIDE PREPARER LINE 1.pdf", # "Preparer Line 1"
-        14 => "PT HK - ICOFR- USER GUIDE REVIEWER LINE 1.pdf", # "Reviewer Line 1"
-
-        13 => "PT HK - ICOFR- USER GUIDE PREPARER LINE 2.pdf", # "Preparer Line 2"
-        11 => "PT HK - ICOFR- USER GUIDE REVIEWER LINE 2.pdf", # "Reviewer Line 2"
-
-        10 => "PT HK - ICOFR- USER GUIDE PREPARER LINE 3.pdf", # "Preparer Line 3"
-        2 => "PT HK - ICOFR- USER GUIDE REVIEWER LINE 3.pdf", # "Reviewer Line 3"
-
-        21 => "PT HK - ICOFR- USER GUIDE ADMINISTRATOR.pdf", # "Pengelola ICOFR"
-    ];
-
     public function __construct() {}
 
     public function getfile()
@@ -59,12 +44,7 @@ class UserGuideFiles extends BaseResourceController
             ], 401);
         }
 
-        $id_group = session('id_group');
-        // Group E-Office yang baru tidak menggunakan ID group ICOFR lama.
-        // Tetap tampilkan panduan umum agar tombol Preview User Guide tidak
-        // berakhir dengan 404 bagi group yang belum memiliki mapping khusus.
-        $file_name = $this->user_guide_by_group[$id_group]
-            ?? 'PT HK - ICOFR- USER GUIDE ADMINISTRATOR.pdf';
+        $file_name = 'USER GUIDE.docx.pdf';
 
         $filePath = storage_path('user_guide/' . $file_name);
 
@@ -79,7 +59,10 @@ class UserGuideFiles extends BaseResourceController
         return response()->file(
             $filePath,
             [
-                'Content-Disposition' => 'inline; filename=' . $file_name,
+                'Content-Disposition' => 'inline; filename="' . $file_name . '"',
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
             ]
         );
     }
