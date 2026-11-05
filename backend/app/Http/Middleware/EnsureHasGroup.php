@@ -48,7 +48,7 @@ class EnsureHasGroup
         // group's menu-action cache is stale or incomplete.
         if ($action === 'approve' || $action === 'reject') {
             $routeId = $request->route('id');
-            $userId = auth()->user()?->id_user ?? auth()->id();
+            $userId = $user->id_user;
             if ($routeId && $userId && DB::table('surat_approval')
                 ->where('id_surat_keluar', $routeId)
                 ->where('id_approver', $userId)
@@ -76,7 +76,7 @@ class EnsureHasGroup
         // The controller performs the final signer and status checks.
         if ($action === 'sign') {
             $routeId = $request->route('id');
-            $userId = auth()->user()?->id_user ?? auth()->id();
+            $userId = $user->id_user;
             if ($routeId && $userId && DB::table('surat_keluar')
                 ->where('id_surat_keluar', $routeId)
                 ->where('id_penandatangan', $userId)

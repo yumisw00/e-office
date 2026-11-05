@@ -1,5 +1,5 @@
+import 'package:e_office_mobile/core/utils/haptic_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -29,7 +29,7 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
   }
 
   void _showFilterTopSheet() {
-    HapticFeedback.lightImpact();
+    HapticHelper.lightImpact();
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -92,7 +92,7 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
                                   ),
                                   TextButton(
                                     onPressed: () {
-                                      HapticFeedback.lightImpact();
+                                      HapticHelper.lightImpact();
                                       setState(() {
                                         _selectedCategory = 'semua';
                                         _selectedOrder = 'terbaru';
@@ -157,7 +157,7 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
                                     isSelected: _selectedDateRange != null,
                                     icon: Icons.date_range_rounded,
                                     onTap: () async {
-                                      HapticFeedback.lightImpact();
+                                      HapticHelper.lightImpact();
                                       final picked = await showDateRangePicker(
                                         context: context,
                                         firstDate: DateTime(2020),
@@ -188,7 +188,7 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
                                 width: double.infinity,
                                 child: FilledButton(
                                   onPressed: () {
-                                    HapticFeedback.mediumImpact();
+                                    HapticHelper.mediumImpact();
                                     Navigator.pop(context);
                                   },
                                   style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
@@ -214,7 +214,7 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
     final theme = Theme.of(context);
     return GestureDetector(
       onTap: () {
-        HapticFeedback.selectionClick();
+        HapticHelper.selectionClick();
         onTap();
       },
       child: AnimatedContainer(
@@ -267,7 +267,7 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
         edgeOffset: topPadding,
         onRefresh: () async {
           await ref.read(myActionsProvider.notifier).fetchMyActions();
-          HapticFeedback.mediumImpact();
+          HapticHelper.mediumImpact();
         },
         child: provider.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -306,7 +306,7 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
                 message: 'Tidak ada surat yang sesuai dengan filter.',
                 icon: Icons.filter_alt_off_rounded,
                 onRetry: () {
-                  HapticFeedback.lightImpact();
+                  HapticHelper.lightImpact();
                   setState(() {
                     _selectedCategory = 'semua';
                     _selectedOrder = 'terbaru';
@@ -328,7 +328,7 @@ class _SuratMasukScreenState extends ConsumerState<SuratMasukScreen> {
                   padding: EdgeInsets.zero,
                   onTap: () {
                     if (isApproval) {
-                      context.go('/approval');
+                      context.go('/approval', extra: {'highlightId': surat.id});
                     } else {
                       context.push('/surat-masuk/${surat.id}', extra: {
                         'actionType': surat.actionType,

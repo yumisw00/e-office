@@ -1,10 +1,10 @@
+import 'package:e_office_mobile/core/utils/haptic_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../domain/providers/auth_provider.dart';
+import '../../core/theme/smooth_scroll_physics.dart';
 import '../../domain/providers/surat_provider.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/empty_state_view.dart';
@@ -36,18 +36,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
     final dashboardAsync = ref.watch(pimpinanDashboardProvider);
     final pengumumanAsync = ref.watch(pengumumanProvider);
     final agendaAsync = ref.watch(agendaProvider);
     final myActionsAsync = ref.watch(myActionsProvider);
-
-    String userName = 'Pimpinan';
-    authState.whenData((user) {
-      if (user != null) {
-        userName = user.nama;
-      }
-    });
 
     final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight + 16.0;
 
@@ -60,76 +52,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         edgeOffset: topPadding,
         onRefresh: () async {
           await _refreshAll();
-          HapticFeedback.mediumImpact();
+          HapticHelper.mediumImpact();
         },
         child: SingleChildScrollView(
+          physics: const SmoothScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
           padding: EdgeInsets.fromLTRB(16.0, topPadding, 16.0, 100.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Welcome Banner
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF118B9B), Color(0xFF0D6E78)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF118B9B).withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.admin_panel_settings,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Selamat Datang,',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            userName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // 2. Statistik Cards
+              // 1. Statistik Cards
               dashboardAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (err, stack) => EmptyStateView(
@@ -137,36 +68,38 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   icon: Icons.error_outline_rounded,
                 ),
                 data: (data) {
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    clipBehavior: Clip.none,
-                    child: Row(
-                      children: [
-                        _StatCard(
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: _StatCard(
                           title: 'Approval Menunggu',
                           count: data.pendingApproval,
                           icon: Icons.pending_actions,
                           color: const Color(0xFFF59E0B),
-                          onTap: () => context.push('/approval'),
+                          onTap: () => context.go('/approval'),
                         ),
-                        const SizedBox(width: 12),
-                        _StatCard(
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _StatCard(
                           title: 'Surat Masuk',
                           count: data.totalSuratMasukBulanIni,
                           icon: Icons.move_to_inbox,
                           color: const Color(0xFF3B82F6),
-                          onTap: () => context.push('/surat-masuk'),
+                          onTap: () => context.go('/surat-masuk'),
                         ),
-                        const SizedBox(width: 12),
-                        _StatCard(
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _StatCard(
                           title: 'Disposisi Aktif',
                           count: data.pendingDisposisi,
                           icon: Icons.assignment,
                           color: const Color(0xFF8B5CF6),
-                          onTap: () => context.push('/disposisi'),
+                          onTap: () => context.go('/disposisi'),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -285,7 +218,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       padding: EdgeInsets.zero,
                       onTap: () {
                         if (item.actionType == 'approval') {
-                          context.go('/approval');
+                          context.go('/approval', extra: {'highlightId': item.id});
                         } else {
                           context.push('/surat-masuk/${item.id}', extra: {
                             'actionType': item.actionType,
@@ -411,54 +344,47 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final theme = Theme.of(context);
+    return CustomCard(
       onTap: onTap,
-      child: Container(
-        width: 140,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 20),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              count.toString(),
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+              Text(
+                count.toString(),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              height: 1.2,
             ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

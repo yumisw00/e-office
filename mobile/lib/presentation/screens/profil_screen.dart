@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/theme_provider.dart';
+import '../../domain/providers/haptic_provider.dart';
+import '../../core/utils/haptic_helper.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
 
@@ -13,6 +15,7 @@ class ProfilScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final themeMode = ref.watch(themeProvider);
+    final hapticEnabled = ref.watch(hapticProvider);
     
     String userName = 'Nama User';
     String userEmail = 'email@user.com';
@@ -20,7 +23,7 @@ class ProfilScreen extends ConsumerWidget {
     authState.whenData((user) {
       if (user != null) {
         userName = user.nama;
-        userEmail = user.email ?? 'email@contoh.com';
+        userEmail = user.email;
       }
     });
 
@@ -72,8 +75,23 @@ class ProfilScreen extends ConsumerWidget {
                   trailing: Switch(
                     value: themeMode == ThemeMode.dark,
                     onChanged: (val) {
-                      HapticFeedback.selectionClick();
+                      HapticHelper.selectionClick();
                       ref.read(themeProvider.notifier).toggleTheme();
+                    },
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.vibration_outlined),
+                  title: const Text('Getar'),
+                  trailing: Switch(
+                    value: hapticEnabled,
+                    onChanged: (val) {
+                      ref.read(hapticProvider.notifier).toggle();
+                      // Give immediate tactile confirmation when turning ON
+                      if (!hapticEnabled) {
+                        HapticFeedback.selectionClick();
+                      }
                     },
                   ),
                 ),
@@ -85,7 +103,7 @@ class ProfilScreen extends ConsumerWidget {
                     style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold),
                   ),
                   onTap: () {
-                    HapticFeedback.lightImpact();
+                    HapticHelper.lightImpact();
                     _confirmLogout(context, ref);
                   },
                 ),
@@ -106,7 +124,7 @@ class ProfilScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () {
-              HapticFeedback.lightImpact();
+              HapticHelper.lightImpact();
               Navigator.pop(ctx);
             },
             child: const Text('Tidak'),
@@ -117,7 +135,7 @@ class ProfilScreen extends ConsumerWidget {
               foregroundColor: Colors.white,
             ),
             onPressed: () async {
-              HapticFeedback.mediumImpact();
+              HapticHelper.mediumImpact();
               Navigator.pop(ctx);
               await ref.read(authProvider.notifier).logout();
             },

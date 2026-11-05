@@ -72,9 +72,21 @@ class MyActionsNotifier extends AsyncNotifier<List<SuratModel>> {
     return result;
   }
 
-  Future<void> completeDisposisi(String id, String catatan, String? fileBuktiPath) async {
+  Future<void> completeDisposisi(
+    String id,
+    String catatan,
+    String? fileBuktiPath, {
+    String? idSuratMasuk,
+    String? asalNilai,
+  }) async {
     final repository = ref.read(suratRepositoryProvider);
-    await repository.completeDisposisi(id, catatan: catatan, fileBuktiPath: fileBuktiPath);
+    await repository.completeDisposisi(
+      id,
+      catatan: catatan,
+      fileBuktiPath: fileBuktiPath,
+      idSuratMasuk: idSuratMasuk,
+      asalNilai: asalNilai,
+    );
     await refresh();
   }
 

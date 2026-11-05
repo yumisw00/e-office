@@ -1,6 +1,6 @@
+import 'package:e_office_mobile/core/utils/haptic_helper.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class CustomCard extends StatelessWidget {
   final Widget child;
@@ -54,7 +54,7 @@ class CustomCard extends StatelessWidget {
         splashColor: theme.colorScheme.primary.withValues(alpha: 0.12),
         highlightColor: theme.colorScheme.primary.withValues(alpha: 0.06),
         onTap: () {
-          HapticFeedback.lightImpact();
+          HapticHelper.lightImpact();
           onTap!();
         },
         child: content,
@@ -79,11 +79,13 @@ class CustomCard extends StatelessWidget {
     );
 
     if (isTranslucent) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: cardWidget,
+      return RepaintBoundary(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: cardWidget,
+          ),
         ),
       );
     }

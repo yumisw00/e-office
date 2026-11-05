@@ -16,6 +16,8 @@ import '../../presentation/screens/notification_screen.dart';
 import '../../presentation/screens/pdf_viewer_screen.dart';
 import '../../presentation/screens/profil_screen.dart';
 
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authStateListenable = ValueNotifier<AsyncValue<UserModel?>>(ref.read(authProvider));
   
@@ -24,6 +26,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   });
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/dashboard',
     refreshListenable: authStateListenable,
     redirect: (context, state) async {
@@ -119,9 +122,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/approval',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: ApprovalScreen(),
-            ),
+            pageBuilder: (context, state) {
+              final extra = state.extra;
+              String? highlightId;
+              if (extra is Map) {
+                highlightId = extra['highlightId']?.toString();
+              } else if (extra is String) {
+                highlightId = extra;
+              }
+              highlightId ??= state.uri.queryParameters['highlightId'];
+              return NoTransitionPage(
+                child: ApprovalScreen(highlightId: highlightId),
+              );
+            },
           ),
           GoRoute(
             path: '/disposisi',

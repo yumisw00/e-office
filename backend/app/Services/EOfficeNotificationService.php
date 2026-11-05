@@ -15,7 +15,7 @@ class EOfficeNotificationService
         }
 
         try {
-            DB::table('sys_notification')->insert([
+            $notificationId = DB::table('sys_notification')->insertGetId([
                 'id_user' => $userId,
                 'channel' => 'eoffice',
                 'title' => $title,
@@ -24,8 +24,17 @@ class EOfficeNotificationService
                 'payload' => json_encode($payload),
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
-            app(FirebasePushService::class)->sendToUser($userId, $title, $message, $payload + ['url' => $url]);
+            ], 'id_notification');
+
+            app(FirebasePushService::class)->sendToUser(
+                $userId,
+                $title,
+                $message,
+                array_merge($payload, [
+                    'url' => $url,
+                    'id_notification' => (string) $notificationId,
+                ])
+            );
         } catch (\Throwable $exception) {
             // A notification must never undo a completed workflow action.
             Log::warning('Gagal membuat notifikasi E-Office.', [

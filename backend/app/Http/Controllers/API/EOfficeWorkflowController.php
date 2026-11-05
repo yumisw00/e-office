@@ -68,7 +68,7 @@ class EOfficeWorkflowController extends Controller
                     'status' => 'distributed',
                     'catatan' => $validated['catatan'] ?? null,
                     'tanggal_distribusi' => $now,
-                    'created_by' => auth()->user()?->id_user,
+                    'created_by' => $this->currentUser()?->id_user,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ], 'id_surat_distribusi');
@@ -139,7 +139,7 @@ class EOfficeWorkflowController extends Controller
         }
 
         $idDistribusi = $validated['id_surat_distribusi'] ?? null;
-        $idUser = (int) auth()->user()?->id_user;
+        $idUser = (int) $this->currentUser()?->id_user;
 
         // Security: require either a specific distribusi ID or an authenticated user.
         // Without both, the query could match and update ALL distributions for this letter.
@@ -210,7 +210,7 @@ class EOfficeWorkflowController extends Controller
         }
 
         // Ownership check: only recipient of the distribution or admin can mark complete.
-        $currentUserId = (int) auth()->user()?->id_user;
+        $currentUserId = (int) $this->currentUser()?->id_user;
         if (!$this->isAdminSession()) {
             $hasDistribution = DB::table('surat_distribusi')
                 ->where('id_surat_masuk', $surat->id)
@@ -243,7 +243,7 @@ class EOfficeWorkflowController extends Controller
             return $this->notFound('Surat masuk tidak ditemukan.');
         }
 
-        $currentUserId = (int) auth()->user()?->id_user;
+        $currentUserId = (int) $this->currentUser()?->id_user;
         $hasDistribution = DB::table('surat_distribusi')
             ->where('id_surat_masuk', $surat->id)
             ->where('id_user_tujuan', $currentUserId)
@@ -276,7 +276,7 @@ class EOfficeWorkflowController extends Controller
                 'hash_file' => $this->fileHash($surat->file_surat),
                 'lokasi_fisik' => $validated['lokasi_fisik'] ?? null,
                 'tanggal_arsip' => $validated['tanggal_arsip'] ?? now(),
-                'created_by' => auth()->user()?->id_user,
+                'created_by' => $this->currentUser()?->id_user,
                 'created_by_desc' => auth()->user()?->name,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -309,7 +309,7 @@ class EOfficeWorkflowController extends Controller
         }
 
         // Ownership check: only disposition recipient or admin can complete disposition.
-        $currentUserId = (int) auth()->user()?->id_user;
+        $currentUserId = (int) $this->currentUser()?->id_user;
         if (!$this->isAdminSession() && (int) ($before->id_penerima ?? 0) !== $currentUserId) {
             return $this->forbidden();
         }
@@ -377,7 +377,7 @@ class EOfficeWorkflowController extends Controller
             return $this->notFound('Surat keluar tidak ditemukan.');
         }
 
-        if ((int) $surat->created_by !== (int) auth()->user()?->id_user) {
+        if ((int) $surat->created_by !== (int) $this->currentUser()?->id_user) {
             return $this->forbidden();
         }
 
@@ -442,7 +442,7 @@ class EOfficeWorkflowController extends Controller
             return $this->notFound('Surat keluar tidak ditemukan.');
         }
 
-        if (!empty($surat->id_penandatangan) && (int) $surat->id_penandatangan !== (int) auth()->user()?->id_user) {
+        if (!empty($surat->id_penandatangan) && (int) $surat->id_penandatangan !== (int) $this->currentUser()?->id_user) {
             return $this->forbidden();
         }
 
@@ -490,7 +490,7 @@ class EOfficeWorkflowController extends Controller
             $idSignature = DB::table('digital_signature')->insertGetId([
                 'source_type' => 'surat_keluar',
                 'source_id' => $surat->id_surat_keluar,
-                'id_penandatangan' => $surat->id_penandatangan ?: auth()->user()?->id_user,
+                'id_penandatangan' => $surat->id_penandatangan ?: $this->currentUser()?->id_user,
                 'certificate_serial' => 'EOFFICE-' . now()->format('YmdHis') . '-' . strtoupper(Str::random(10)),
                 'qr_code_path' => $qrPath,
                 'signature_path' => $signaturePath,
@@ -516,7 +516,7 @@ class EOfficeWorkflowController extends Controller
             return $signature;
         });
 
-        $signerId = (int) (auth()->user()?->id_user ?? 0);
+        $signerId = (int) ($this->currentUser()?->id_user ?? 0);
         if (!empty($surat->created_by) && (int) $surat->created_by !== $signerId) {
             $this->createNotification(
                 (int) $surat->created_by,
@@ -557,7 +557,7 @@ class EOfficeWorkflowController extends Controller
             return $this->notFound('Surat keluar tidak ditemukan.');
         }
 
-        if ((int) $surat->created_by !== (int) auth()->user()?->id_user) {
+        if ((int) $surat->created_by !== (int) $this->currentUser()?->id_user) {
             return $this->forbidden();
         }
 
@@ -664,7 +664,7 @@ class EOfficeWorkflowController extends Controller
             return $this->notFound('Surat keluar tidak ditemukan.');
         }
 
-        if ((int) $surat->created_by !== (int) auth()->user()?->id_user) {
+        if ((int) $surat->created_by !== (int) $this->currentUser()?->id_user) {
             return $this->forbidden();
         }
 
@@ -688,7 +688,7 @@ class EOfficeWorkflowController extends Controller
                 'file_path' => $surat->file_pdf_path ?: $surat->file_draft_path,
                 'hash_file' => $this->fileHash($surat->file_pdf_path ?: $surat->file_draft_path),
                 'tanggal_arsip' => now(),
-                'created_by' => auth()->user()?->id_user,
+                'created_by' => $this->currentUser()?->id_user,
                 'created_by_desc' => auth()->user()?->name,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -716,7 +716,7 @@ class EOfficeWorkflowController extends Controller
         }
 
         // Ownership check: user must be related to this letter (creator, approver, signer, or admin).
-        $currentUserId = (int) auth()->user()?->id_user;
+        $currentUserId = (int) $this->currentUser()?->id_user;
         if (!$this->isAdminSession()) {
             $isCreator = (int) ($surat->created_by ?? 0) === $currentUserId;
             $isApprover = DB::table('surat_approval')
@@ -789,7 +789,7 @@ class EOfficeWorkflowController extends Controller
             return $this->notFound('Surat keluar tidak ditemukan.');
         }
 
-        $currentUserId = auth()->user()?->id_user;
+        $currentUserId = $this->currentUser()?->id_user;
         if (!$currentUserId) {
             return response()->json([
                 'success' => false,
@@ -810,8 +810,8 @@ class EOfficeWorkflowController extends Controller
 
         // Admin Sistem, Admin Konten, and Pimpinan may process the active
         // approval even when legacy data assigned it to another approver.
-        if (!$approval && $request->user()) {
-            $groupId = session('id_group');
+        if (!$approval && $this->currentUser()) {
+            $groupId = ($this->currentUser()?->id_group ?? session('id_group'));
             $isApprovalOperator = DB::table('sys_group')
                 ->where('id_group', $groupId)
                 ->whereNull('deleted_at')
@@ -971,7 +971,7 @@ class EOfficeWorkflowController extends Controller
             DB::table('digital_signature')->insert([
                 'source_type' => 'surat_keluar_approval',
                 'source_id' => $suratId,
-                'id_penandatangan' => $surat->id_penandatangan ?: auth()->user()?->id_user,
+                'id_penandatangan' => $surat->id_penandatangan ?: $this->currentUser()?->id_user,
                 'certificate_serial' => 'EOFFICE-APPROVAL-' . now()->format('YmdHis') . '-' . strtoupper(Str::random(8)),
                 'qr_code_path' => $qrPath,
                 'signed_file_path' => $surat->file_pdf_path ?: $surat->file_draft_path,
@@ -1353,7 +1353,7 @@ class EOfficeWorkflowController extends Controller
             return true;
         }
 
-        $groupId = session('id_group');
+        $groupId = ($this->currentUser()?->id_group ?? session('id_group'));
         $groupQuery = DB::table('sys_group')
             // This query is later joined with sys_user_group, which also has
             // a deleted_at column. Qualify the column so PostgreSQL does not
@@ -1364,12 +1364,17 @@ class EOfficeWorkflowController extends Controller
             return true;
         }
 
-        $userId = auth()->user()?->id_user ?? auth()->id();
+        $userId = $this->currentUser()?->id_user;
         return $userId && $groupQuery
             ->join('sys_user_group', 'sys_user_group.id_group', '=', 'sys_group.id_group')
             ->where('sys_user_group.id_user', $userId)
             ->whereNull('sys_user_group.deleted_at')
             ->exists();
+    }
+
+    private function currentUser()
+    {
+        return auth()->guard('sanctum')->user() ?? auth()->user();
     }
 
     private function notFound(string $message): JsonResponse

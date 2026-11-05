@@ -5,6 +5,7 @@ class ApiEndpoints {
   static const String login = '/mobile/login';
   static const String logout = '/mobile/logout';
   static const String user = '/mobile/user';
+  static const String updateFcmToken = '/mobile/fcm-token';
 
   // Dashboard & Actions (PIMPINAN)
   static const String pimpinanDashboard = '/pimpinan/dashboard';

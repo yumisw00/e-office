@@ -251,7 +251,7 @@ class _DisposisiScreenState extends ConsumerState<DisposisiScreen> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         foregroundColor: const Color(0xFF138A98),
                       ),
-                      onPressed: () => _showCompleteModal(context, idDisposisi, perihal),
+                      onPressed: () => _showCompleteModal(context, idDisposisi, perihal, idSuratMasuk: idSuratMasuk),
                       icon: const Icon(Icons.check_circle_outline, size: 16),
                       label: const Text('Selesaikan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
@@ -264,7 +264,7 @@ class _DisposisiScreenState extends ConsumerState<DisposisiScreen> {
     );
   }
 
-  void _showCompleteModal(BuildContext context, String idDisposisi, String perihal) {
+  void _showCompleteModal(BuildContext context, String idDisposisi, String perihal, {String? idSuratMasuk}) {
     if (idDisposisi.isEmpty) return;
     final catatanController = TextEditingController();
     PlatformFile? selectedFile;
@@ -405,6 +405,8 @@ class _DisposisiScreenState extends ConsumerState<DisposisiScreen> {
                                     idDisposisi,
                                     catatan: catatan,
                                     fileBuktiPath: fileBuktiPath,
+                                    idSuratMasuk: idSuratMasuk,
+                                    asalNilai: 'layar /disposisi',
                                   );
 
                               if (context.mounted) {

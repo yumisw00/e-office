@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:figma_squircle/figma_squircle.dart';
 import '../../domain/providers/liquid_glass_provider.dart';
 
 class LiquidGlassContainer extends ConsumerWidget {
@@ -32,12 +33,17 @@ class LiquidGlassContainer extends ConsumerWidget {
           width: width,
           height: height,
           padding: padding,
-          decoration: BoxDecoration(
+          decoration: ShapeDecoration(
             color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
-              width: 1.0,
+            shape: SmoothRectangleBorder(
+              borderRadius: SmoothBorderRadius(
+                cornerRadius: borderRadius,
+                cornerSmoothing: 1.0,
+              ),
+              side: BorderSide(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                width: 1.0,
+              ),
             ),
           ),
           child: child,
@@ -47,14 +53,17 @@ class LiquidGlassContainer extends ConsumerWidget {
 
     // Liquid Glass Effect
     return RepaintBoundary(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
+      child: ClipSmoothRect(
+        radius: SmoothBorderRadius(
+          cornerRadius: borderRadius,
+          cornerSmoothing: 1.0,
+        ),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: Container(
             width: width,
             height: height,
-            decoration: BoxDecoration(
+            decoration: ShapeDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -63,17 +72,26 @@ class LiquidGlassContainer extends ConsumerWidget {
                   isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.1),
                 ],
               ),
-              borderRadius: BorderRadius.circular(borderRadius),
+              shape: SmoothRectangleBorder(
+                borderRadius: SmoothBorderRadius(
+                  cornerRadius: borderRadius,
+                  cornerSmoothing: 1.0,
+                ),
+              ),
             ),
             padding: const EdgeInsets.all(1.0), // 1px border thickness
             child: Container(
               padding: padding,
-              decoration: BoxDecoration(
+              decoration: ShapeDecoration(
                 color: isDark
                     ? Colors.black.withValues(alpha: 0.2)
                     : Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(
-                  borderRadius > 1.0 ? borderRadius - 1.0 : borderRadius,
+                shape: SmoothRectangleBorder(
+                  borderRadius: SmoothBorderRadius(
+                    // Inner radius should be slightly smaller, but since it's 1px it's barely noticeable. 
+                    cornerRadius: borderRadius > 1.0 ? borderRadius - 1.0 : borderRadius,
+                    cornerSmoothing: 1.0,
+                  ),
                 ),
               ),
               child: child,

@@ -189,7 +189,13 @@ class GoogleDriveService
     {
         $this->assertConfigured();
 
-        return Cache::remember(config('google_drive.token_cache_key', 'google_drive_token'), now()->addMinutes(50), function () {
+        // Keep cached tokens separate when credentials are rotated. A static
+        // cache key can otherwise reuse an access token issued to an older
+        // OAuth client until its TTL expires.
+        $cacheKey = config('google_drive.token_cache_key', 'google_drive_token') . ':'
+            . hash('sha256', (string) config('google_drive.client_id'));
+
+        return Cache::remember($cacheKey, now()->addMinutes(50), function () {
             $url = 'https://oauth2.googleapis.com/token';
 
             try {
@@ -205,11 +211,22 @@ class GoogleDriveService
                 throw new RuntimeException('Tahap OAuth Google gagal menghubungi layanan token: ' . $exception->getMessage(), 0, $exception);
             }
 
-            try {
-                $payload = $this->decodeResponse($response->getStatusCode(), (string) $response->getBody(), 'Gagal mengambil token Google Drive.');
-            } catch (RuntimeException $exception) {
-                throw new RuntimeException('Tahap OAuth Google gagal memperbarui access token: ' . $exception->getMessage(), 0, $exception);
+            $status = $response->getStatusCode();
+            $body = (string) $response->getBody();
+            $payload = json_decode($body, true) ?: [];
+            if ($status < 200 || $status >= 300) {
+                $oauthError = $payload['error'] ?? null;
+                $message = match ($oauthError) {
+                    'invalid_grant' => 'Refresh token Google tidak valid, sudah dicabut/kedaluwarsa, atau tidak cocok dengan OAuth client. Buat refresh token baru untuk akun dan client yang benar.',
+                    'invalid_client' => 'OAuth client Google ditolak. Periksa pasangan GOOGLE_DRIVE_CLIENT_ID dan GOOGLE_DRIVE_CLIENT_SECRET.',
+                    'unauthorized_client' => 'OAuth client Google tidak diizinkan memakai grant refresh token. Periksa tipe dan pengaturan OAuth client.',
+                    'invalid_request' => 'Permintaan token Google tidak valid. Periksa konfigurasi OAuth Drive di server.',
+                    default => 'Google menolak permintaan access token (HTTP ' . $status . '). Periksa konfigurasi OAuth Drive dan log backend.',
+                };
+                throw new RuntimeException('Tahap OAuth Google gagal memperbarui access token: ' . $message);
             }
+
+            $payload = $this->decodeResponse($status, $body, 'Gagal mengambil token Google Drive.');
 
             if (empty($payload['access_token'])) {
                 throw new RuntimeException('Token Google Drive tidak ditemukan pada response.');

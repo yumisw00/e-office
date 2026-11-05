@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/api_endpoints.dart';
@@ -47,7 +48,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
         'email': email,
         'password': password,
         'device_name': deviceName,
-        if (fcmToken != null) 'fcm_token': fcmToken,
+        'fcm_token': ?fcmToken,
       };
 
       final response = await dio.post(
@@ -77,6 +78,13 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
           await storage.write(
             key: AppConfig.userDataKey,
             value: jsonEncode(user.toJson()),
+          );
+        }
+
+        if (fcmToken != null) {
+          await storage.write(
+            key: AppConfig.fcmTokenKey,
+            value: fcmToken,
           );
         }
 
@@ -169,9 +177,17 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
         print('⚠️ Logout Error (non-fatal): $e');
       }
     } finally {
+      try {
+        await FirebaseMessaging.instance.deleteToken();
+      } catch (e) {
+        if (kDebugMode) {
+          print('⚠️ Firebase deleteToken error: $e');
+        }
+      }
       final storage = _ref.read(secureStorageProvider);
       await storage.delete(key: AppConfig.authTokenKey);
       await storage.delete(key: AppConfig.userDataKey);
+      await storage.delete(key: AppConfig.fcmTokenKey);
       state = const AsyncValue.data(null);
     }
   }

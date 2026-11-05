@@ -1,7 +1,7 @@
+import 'package:e_office_mobile/core/utils/haptic_helper.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,13 +32,16 @@ class DetailSuratScreen extends ConsumerStatefulWidget {
 
 class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
   String? _resolvedIdDisposisi;
+  String _asalNilaiDisposisi = 'tidak diketahui';
   SuratModel? _lastLoggedSurat; // DEBUG ONLY: cegah log berulang tiap rebuild
 
   @override
   void initState() {
     super.initState();
     _resolvedIdDisposisi = widget.idDisposisi;
-    if (_resolvedIdDisposisi == null && widget.actionType == 'disposisi') {
+    if (widget.idDisposisi != null && widget.idDisposisi!.isNotEmpty) {
+      _asalNilaiDisposisi = 'extra dari my-actions';
+    } else if (widget.actionType == 'disposisi') {
       _resolveDisposisiId();
     }
   }
@@ -49,6 +52,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
       if (disp != null && mounted) {
         setState(() {
           _resolvedIdDisposisi = (disp['id_surat_disposisi'] ?? disp['id'])?.toString();
+          _asalNilaiDisposisi = 'hasil getDisposisiForSurat';
         });
       }
     } catch (_) {}
@@ -147,7 +151,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
               ref.invalidate(suratDetailProvider((id: widget.idSurat, type: widget.actionType)));
               ref.invalidate(trackingProvider((id: widget.idSurat, type: widget.actionType)));
               await ref.read(myActionsProvider.notifier).refresh();
-              HapticFeedback.mediumImpact();
+              HapticHelper.mediumImpact();
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -248,7 +252,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    HapticFeedback.lightImpact();
+                    HapticHelper.lightImpact();
                     context.push('/pdf', extra: surat.activeFilePath);
                   },
                   icon: const Icon(Icons.picture_as_pdf_rounded),
@@ -293,7 +297,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
           child: ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF138A98), foregroundColor: Colors.white),
             onPressed: () {
-              HapticFeedback.mediumImpact();
+              HapticHelper.mediumImpact();
               final user = ref.read(authProvider).value;
               ApprovalReceiptModal.show(
                 context,
@@ -316,7 +320,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
                   side: BorderSide(color: Theme.of(context).colorScheme.error),
                 ),
                 onPressed: () {
-                  HapticFeedback.lightImpact();
+                  HapticHelper.lightImpact();
                   _showRejectDialog(context, surat);
                 },
                 child: const Text('Tolak'),
@@ -330,7 +334,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () {
-                  HapticFeedback.mediumImpact();
+                  HapticHelper.mediumImpact();
                   _showApproveConfirm(context, surat);
                 },
                 child: const Text('Setujui'),
@@ -378,7 +382,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           onPressed: () {
-            HapticFeedback.mediumImpact();
+            HapticHelper.mediumImpact();
             _showCompleteDisposisiDialog(context, surat);
           },
           icon: const Icon(Icons.task_alt_rounded),
@@ -504,7 +508,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              HapticFeedback.lightImpact();
+              HapticHelper.lightImpact();
               context.pop();
             },
             child: const Text('Tidak'),
@@ -512,7 +516,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF138A98), foregroundColor: Colors.white),
             onPressed: () async {
-              HapticFeedback.mediumImpact();
+              HapticHelper.mediumImpact();
               context.pop();
               try {
                 await ref.read(suratRepositoryProvider).approveSurat(surat.id);
@@ -551,7 +555,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              HapticFeedback.lightImpact();
+              HapticHelper.lightImpact();
               context.pop();
             },
             child: const Text('Tidak'),
@@ -560,7 +564,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error, foregroundColor: Colors.white),
             onPressed: () async {
               if (controller.text.isEmpty) return;
-              HapticFeedback.mediumImpact();
+              HapticHelper.mediumImpact();
               context.pop();
               try {
                 await ref.read(suratRepositoryProvider).rejectSurat(surat.id, controller.text);
@@ -580,8 +584,13 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
   }
 
   void _showCompleteDisposisiDialog(BuildContext context, SuratModel surat) {
-    final dispositionId = _resolvedIdDisposisi ?? widget.idDisposisi ?? surat.idDisposisi;
-    if (dispositionId == null || dispositionId.isEmpty) {
+    String? tempDispositionId = _resolvedIdDisposisi ?? widget.idDisposisi;
+    String asal = _asalNilaiDisposisi;
+    if ((tempDispositionId == null || tempDispositionId.isEmpty) && surat.idDisposisi != null && surat.idDisposisi!.isNotEmpty) {
+      tempDispositionId = surat.idDisposisi;
+      asal = 'surat.idDisposisi';
+    }
+    if (tempDispositionId == null || tempDispositionId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('ID disposisi tidak ditemukan untuk surat ini. Silakan muat ulang.'),
@@ -590,6 +599,7 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
       );
       return;
     }
+    final dispositionId = tempDispositionId;
 
     final catatanController = TextEditingController();
     PlatformFile? selectedFile;
@@ -728,6 +738,8 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
                                     dispositionId,
                                     catatan: catatan,
                                     fileBuktiPath: fileBuktiPath,
+                                    idSuratMasuk: widget.idSurat,
+                                    asalNilai: asal,
                                   );
 
                               if (context.mounted) {

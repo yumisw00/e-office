@@ -48,6 +48,41 @@ void _debugLogDetailKeys(String label, dynamic body) {
   }
 }
 
+/// DEBUG ONLY: cetak raw log aksi dengan token tersamarkan
+dynamic _sanitizeForRawLog(dynamic data) {
+  if (data == null) return null;
+  if (data is Map) {
+    final copy = <dynamic, dynamic>{};
+    for (final entry in data.entries) {
+      final key = entry.key.toString();
+      final keyLower = key.toLowerCase();
+      if (keyLower.contains('token') ||
+          keyLower.contains('password') ||
+          keyLower.contains('secret') ||
+          keyLower.contains('authorization')) {
+        copy[entry.key] = '[HIDDEN]';
+      } else {
+        copy[entry.key] = _sanitizeForRawLog(entry.value);
+      }
+    }
+    return copy;
+  } else if (data is List) {
+    return data.map(_sanitizeForRawLog).toList();
+  } else if (data is String) {
+    if (data.contains('Bearer ')) {
+      return data.replaceAll(RegExp(r'Bearer\s+[A-Za-z0-9\-._~+/]+=*'), 'Bearer [HIDDEN]');
+    }
+    return data;
+  }
+  return data;
+}
+
+void _logActionRaw(String actionName, int? statusCode, dynamic rawData) {
+  if (!kDebugMode) return;
+  final sanitized = _sanitizeForRawLog(rawData);
+  debugPrint('[RAW_LOG][$actionName] Status: $statusCode, Body: $sanitized');
+}
+
 abstract class SuratRepository {
   Future<PimpinanDashboard> getDashboard();
   Future<List<SuratModel>> getMyActions({int page = 1, int pageSize = 15});
@@ -55,7 +90,13 @@ abstract class SuratRepository {
   Future<void> approveSurat(String id);
   Future<void> rejectSurat(String id, String reason);
   Future<Map<String, dynamic>> signSurat(String id, {required String signatureData});
-  Future<void> completeDisposisi(String id, {required String catatan, String? fileBuktiPath});
+  Future<void> completeDisposisi(
+    String id, {
+    required String catatan,
+    String? fileBuktiPath,
+    String? idSuratMasuk,
+    String? asalNilai,
+  });
   Future<Map<String, dynamic>> uploadAttachment(String id, dynamic file);
   Future<List<Map<String, dynamic>>> getDisposisiList({String? status, int page = 1, int pageSize = 20});
   Future<Map<String, dynamic>?> getDisposisiForSurat(String idSuratMasuk);
@@ -179,18 +220,35 @@ class ApiSuratRepository implements SuratRepository {
 
   @override
   Future<void> approveSurat(String id) async {
-    await _dio.post(ApiEndpoints.suratKeluarApprove(id));
+    try {
+      final response = await _dio.post(ApiEndpoints.suratKeluarApprove(id));
+      _logActionRaw('approve', response.statusCode, response.data);
+    } on DioException catch (e) {
+      _logActionRaw('approve', e.response?.statusCode, e.response?.data ?? e.message);
+      rethrow;
+    } catch (e) {
+      _logActionRaw('approve', null, e.toString());
+      rethrow;
+    }
   }
 
   @override
   Future<void> rejectSurat(String id, String reason) async {
-    await _dio.post(
-      ApiEndpoints.suratKeluarReject(id),
-      data: {
-        'catatan_revisi': reason,
-        'reason': reason,
-      },
-    );
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.suratKeluarReject(id),
+        data: {
+          'catatan_revisi': reason,
+        },
+      );
+      _logActionRaw('reject', response.statusCode, response.data);
+    } on DioException catch (e) {
+      _logActionRaw('reject', e.response?.statusCode, e.response?.data ?? e.message);
+      rethrow;
+    } catch (e) {
+      _logActionRaw('reject', null, e.toString());
+      rethrow;
+    }
   }
 
   @override
@@ -206,17 +264,35 @@ class ApiSuratRepository implements SuratRepository {
   }
 
   @override
-  Future<void> completeDisposisi(String id, {required String catatan, String? fileBuktiPath}) async {
+  Future<void> completeDisposisi(
+    String id, {
+    required String catatan,
+    String? fileBuktiPath,
+    String? idSuratMasuk,
+    String? asalNilai,
+  }) async {
+    if (kDebugMode) {
+      debugPrint('[DEBUG][complete]: idDisposisi yang dikirim: $id, id surat masuk: ${idSuratMasuk ?? "-"}, ASAL nilai: ${asalNilai ?? "tidak diketahui"}');
+    }
     final payload = <String, dynamic>{
       'catatan_penyelesaian': catatan,
       if (fileBuktiPath != null && fileBuktiPath.isNotEmpty)
         'file_bukti_path': fileBuktiPath,
     };
 
-    await _dio.post(
-      ApiEndpoints.disposisiComplete(id),
-      data: payload,
-    );
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.disposisiComplete(id),
+        data: payload,
+      );
+      _logActionRaw('complete', response.statusCode, response.data);
+    } on DioException catch (e) {
+      _logActionRaw('complete', e.response?.statusCode, e.response?.data ?? e.message);
+      rethrow;
+    } catch (e) {
+      _logActionRaw('complete', null, e.toString());
+      rethrow;
+    }
   }
 
   @override
@@ -233,18 +309,27 @@ class ApiSuratRepository implements SuratRepository {
         'file': await MultipartFile.fromFile(filePath, filename: fileName),
     });
 
-    final response = await _dio.post(
-      ApiEndpoints.disposisiUploadAttachment(id),
-      data: formData,
-    );
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      if (data['data'] is Map<String, dynamic>) {
-        return Map<String, dynamic>.from(data['data']);
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.disposisiUploadAttachment(id),
+        data: formData,
+      );
+      _logActionRaw('upload-attachment', response.statusCode, response.data);
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        if (data['data'] is Map<String, dynamic>) {
+          return Map<String, dynamic>.from(data['data']);
+        }
+        return data;
       }
-      return data;
+      return {};
+    } on DioException catch (e) {
+      _logActionRaw('upload-attachment', e.response?.statusCode, e.response?.data ?? e.message);
+      rethrow;
+    } catch (e) {
+      _logActionRaw('upload-attachment', null, e.toString());
+      rethrow;
     }
-    return {};
   }
 
   @override

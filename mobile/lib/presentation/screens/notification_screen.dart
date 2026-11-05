@@ -1,11 +1,10 @@
+import 'package:e_office_mobile/core/utils/haptic_helper.dart';
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../core/routing/notification_route_resolver.dart';
 import '../../domain/providers/surat_provider.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/empty_state_view.dart';
@@ -27,7 +26,7 @@ class NotificationScreen extends ConsumerWidget {
             icon: const Icon(Icons.done_all_rounded),
             tooltip: 'Tandai semua dibaca',
             onPressed: () {
-              HapticFeedback.lightImpact();
+              HapticHelper.lightImpact();
               _showMarkAllReadConfirm(context, ref);
             },
           ),
@@ -49,27 +48,41 @@ class NotificationScreen extends ConsumerWidget {
             }
 
             return ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(8.0, topPadding, 8.0, 100.0),
               itemCount: list.length,
               separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
-                final item = list[index];
-                final data = item['data'] ?? {};
+                final item = list[index] is Map ? Map<String, dynamic>.from(list[index] as Map) : <String, dynamic>{};
+                
+                // Ekstraksi data sesuai kontrak backend API (GET /eoffice/notifications)
+                final payload = item['payload'] is Map
+                    ? Map<String, dynamic>.from(item['payload'] as Map)
+                    : <String, dynamic>{};
+                final title = item['title']?.toString() ?? 'Notifikasi Baru';
+                final message = item['message']?.toString() ?? '';
+                final url = item['url']?.toString() ?? payload['url']?.toString();
+                final type = payload['type']?.toString() ?? item['type']?.toString();
                 final isRead = item['read_at'] != null;
-                final createdAt = DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now();
+                final createdAt = DateTime.tryParse(item['created_at']?.toString() ?? '') ?? DateTime.now();
+                final isApproval = _isApprovalType(type, url, title);
 
                 return ListTile(
                   tileColor: isRead ? null : Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
                   leading: CircleAvatar(
-                    backgroundColor: isRead ? Colors.grey[200] : Theme.of(context).colorScheme.primaryContainer,
+                    backgroundColor: isRead
+                        ? Colors.grey[200]
+                        : (isApproval ? Colors.orange.shade100 : Colors.blue.shade100),
                     child: Icon(
-                      _getIconForType(item['type']),
-                      color: isRead ? Colors.grey : Theme.of(context).colorScheme.primary,
+                      isApproval ? Icons.task_alt_rounded : Icons.alt_route_rounded,
+                      color: isRead
+                          ? Colors.grey
+                          : (isApproval ? Colors.orange.shade800 : Colors.blue.shade800),
                       size: 20,
                     ),
                   ),
                   title: Text(
-                    data['message'] ?? 'Notifikasi Baru',
+                    title,
                     style: TextStyle(
                       fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
                       fontSize: 14,
@@ -78,8 +91,16 @@ class NotificationScreen extends ConsumerWidget {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (data['sender_name'] != null)
-                        Text('Dari: ${data['sender_name']}', style: const TextStyle(fontSize: 12)),
+                      if (message.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0, bottom: 4.0),
+                          child: Text(
+                            message,
+                            style: TextStyle(fontSize: 12, color: Colors.grey[800]),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       Text(
                         DateFormat('dd MMM yyyy HH:mm').format(createdAt),
                         style: TextStyle(fontSize: 11, color: Colors.grey[600]),
@@ -87,7 +108,7 @@ class NotificationScreen extends ConsumerWidget {
                     ],
                   ),
                   onTap: () {
-                    HapticFeedback.lightImpact();
+                    HapticHelper.lightImpact();
                     _handleNotificationTap(context, ref, item);
                   },
                 );
@@ -99,16 +120,15 @@ class NotificationScreen extends ConsumerWidget {
     );
   }
 
-  IconData _getIconForType(String? type) {
-    if (type == null) return Icons.notifications_outlined;
-    if (type.contains('Disposisi')) return Icons.assignment_outlined;
-    if (type.contains('SuratKeluar')) return Icons.description_outlined;
-    if (type.contains('Approval')) return Icons.gavel_outlined;
-    return Icons.info_outline;
+  bool _isApprovalType(String? type, String? url, String? title) {
+    final combined = '${type ?? ''} ${url ?? ''} ${title ?? ''}'.toLowerCase();
+    return combined.contains('approval') ||
+        combined.contains('persetujuan') ||
+        combined.contains('surat_keluar') ||
+        combined.contains('keluar');
   }
 
   void _handleNotificationTap(BuildContext context, WidgetRef ref, Map<String, dynamic> item) async {
-    // DEBUG ONLY: cetak map item yang di-tap (tidak mengubah logic di bawah)
     if (kDebugMode) {
       String dump;
       try {
@@ -121,43 +141,22 @@ class NotificationScreen extends ConsumerWidget {
       }
     }
 
-    final id = item['id'];
-    final data = item['data'] ?? {};
+    final notificationId = item['id_notification']?.toString() ?? item['id']?.toString();
     
-    // Mark as read in background
-    if (item['read_at'] == null) {
-      try {
-        await ref.read(notificationProvider.notifier).markRead(id);
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal menandai notifikasi dibaca: $e')),
-          );
-        }
-      }
+    // Tandai dibaca di server jika belum dibaca
+    if (item['read_at'] == null && notificationId != null) {
+      ref.read(notificationProvider.notifier).markRead(notificationId).then((_) {
+        // Refresh lokal list secara asinkron
+        ref.read(notificationProvider.notifier).refresh();
+      }).catchError((e) {
+        if (kDebugMode) print('⚠️ Gagal tandai notifikasi dibaca: $e');
+      });
     }
 
-    // Deep link logic
-    final actionUrl = data['action_url']?.toString();
-    final referenceId = data['reference_id']?.toString() ?? data['surat_id']?.toString();
-    final referenceType = data['reference_type']?.toString();
-
-    if (actionUrl != null && actionUrl.isNotEmpty) {
-      if (actionUrl.contains('/disposisi/')) {
-        final parts = actionUrl.split('/');
-        final id = parts[parts.indexOf('disposisi') + 1];
-        context.push('/surat-masuk/$id', extra: 'disposisi');
-      } else if (actionUrl.contains('/surat_keluar/') || referenceType?.toLowerCase() == 'surat_keluar') {
-        context.go('/approval');
-      } else if (referenceId != null) {
-        context.push('/surat-masuk/$referenceId', extra: 'disposisi');
-      }
-    } else if (referenceId != null) {
-      if (referenceType?.toLowerCase() == 'surat_keluar') {
-        context.go('/approval');
-      } else {
-        context.push('/surat-masuk/$referenceId', extra: 'disposisi');
-      }
+    // Navigasi menggunakan Unified Route Resolver yang sama dengan push notification
+    final resolved = NotificationRouteResolver.resolveFromRaw(item);
+    if (context.mounted) {
+      NotificationRouteResolver.navigateToRoute(context, resolved);
     }
   }
 
@@ -170,14 +169,14 @@ class NotificationScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () {
-              HapticFeedback.lightImpact();
+              HapticHelper.lightImpact();
               Navigator.pop(ctx);
             },
             child: const Text('Tidak'),
           ),
           TextButton(
             onPressed: () async {
-              HapticFeedback.mediumImpact();
+              HapticHelper.mediumImpact();
               Navigator.pop(ctx);
               try {
                 await ref.read(notificationProvider.notifier).markAllRead();

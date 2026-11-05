@@ -138,7 +138,7 @@ const SuratTemplate = () => {
     }, [])
 
     useEffect(() => {
-        axios.get('/api/master_jenis_surat/options', { withCredentials: true })
+        axios.get('/api/surat_template/jenis-options', { withCredentials: true })
             .then(response => setJenisTemplateOptions(normalizeList(response.data)))
             .catch(() => {
                 setJenisTemplateOptions([])

@@ -129,12 +129,38 @@ class MobileLoginController extends AppBaseController
      */
     public function logout(Request $request): JsonResponse
     {
-        // Revoke current token
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        $user->fcm_token = null;
+        $user->save();
+        $user->currentAccessToken()?->delete();
 
         return response()->json([
             'success' => true,
             'message' => 'Logout berhasil.',
+        ]);
+    }
+
+    /**
+     * Update FCM token for the authenticated mobile user.
+     */
+    public function updateFcmToken(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'fcm_token' => 'required|string|max:4096',
+            'device_name' => 'nullable|string|max:255',
+        ]);
+
+        $user = $request->user();
+        $user->fcm_token = $validated['fcm_token'];
+        if (!empty($validated['device_name'])) {
+            $user->device_name = $validated['device_name'];
+        }
+        $user->device_last_active = now();
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'FCM token berhasil diperbarui.',
         ]);
     }
 

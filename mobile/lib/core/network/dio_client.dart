@@ -80,15 +80,23 @@ final dioProvider = Provider<Dio>((ref) {
 
         String computedMessage = 'Terjadi kesalahan sistem (${statusCode ?? "Koneksi"}).';
 
+        final requestPath = error.requestOptions.path;
+        final uriPath = error.requestOptions.uri.path;
+        final isAuthSensitivePath = requestPath.startsWith('/mobile/') ||
+            requestPath.startsWith('/pimpinan/') ||
+            uriPath.startsWith('/mobile/') ||
+            uriPath.startsWith('/pimpinan/') ||
+            uriPath.startsWith('/api/mobile/') ||
+            uriPath.startsWith('/api/pimpinan/');
+
         // Penanganan Logout / Unauthenticated Otomatis (401)
-        if (statusCode == 401) {
+        // HANYA hapus token, data user, dan set session_expired_flag jika path diawali /mobile/ atau /pimpinan/
+        if (statusCode == 401 && isAuthSensitivePath) {
           await storage.delete(key: AppConfig.authTokenKey);
           await storage.delete(key: AppConfig.userDataKey);
           await storage.write(key: 'session_expired_flag', value: '1');
           computedMessage = 'Sesi Anda telah berakhir, silakan login kembali.';
-        }
-
-        if (responseData is Map<String, dynamic>) {
+        } else if (responseData is Map) {
           final errorCode = responseData['error_code']?.toString();
           
           if (errorCode != null) {

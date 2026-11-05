@@ -52,11 +52,14 @@ dependencies:
   # File & Image Picker
   file_picker: ^8.1.7
 
+  # Splash Screen
+  flutter_native_splash: ^2.4.1
+  flutter_displaymode: ^0.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  flutter_native_splash: ^2.4.1
 
 flutter:
   uses-material-design: true
@@ -69,6 +72,6 @@ flutter_native_splash:
   color_dark: "#121212" # Jika aplikasi mendukung dark mode di awal
   image: "assets/images/logo_splash.png"
   android_12:
-    image: "assets/images/logo_native.png"
+    image: "assets/images/logo_android12.png"
     icon_background_color: "#ffffff"
     icon_background_color_dark: "#121212"

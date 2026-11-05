@@ -1,10 +1,8 @@
-import 'package:dio/dio.dart';
+import 'package:e_office_mobile/core/utils/haptic_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../core/network/dio_client.dart';
 import '../../data/models/surat_model.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/surat_provider.dart';
@@ -14,19 +12,53 @@ import '../widgets/custom_card.dart';
 import '../widgets/approval_receipt_modal.dart';
 
 class ApprovalScreen extends ConsumerStatefulWidget {
-  const ApprovalScreen({super.key});
+  final String? highlightId;
+
+  const ApprovalScreen({
+    super.key,
+    this.highlightId,
+  });
 
   @override
   ConsumerState<ApprovalScreen> createState() => _ApprovalScreenState();
 }
 
 class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
+  final ScrollController _scrollController = ScrollController();
+  String? _lastScrolledHighlightId;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(myActionsProvider.notifier).fetchMyActions();
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToHighlightIfNeeded(List<SuratModel> items) {
+    final highlightId = widget.highlightId;
+    if (highlightId == null || highlightId.isEmpty || highlightId == _lastScrolledHighlightId) return;
+    final index = items.indexWhere((it) => it.id == highlightId);
+    if (index >= 0) {
+      _lastScrolledHighlightId = highlightId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_scrollController.hasClients) return;
+        final targetOffset = (index * 220.0).clamp(0.0, _scrollController.position.maxScrollExtent);
+        if (targetOffset > 0) {
+          _scrollController.animateTo(
+            targetOffset,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOutCubic,
+          );
+        }
+      });
+    }
   }
 
   void _showApproveConfirm(BuildContext context, SuratModel surat) {
@@ -42,7 +74,7 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              HapticFeedback.lightImpact();
+              HapticHelper.lightImpact();
               Navigator.pop(ctx);
             },
             child: const Text('Batal'),
@@ -53,7 +85,7 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
               foregroundColor: Colors.white,
             ),
             onPressed: () async {
-              HapticFeedback.mediumImpact();
+              HapticHelper.mediumImpact();
               Navigator.pop(ctx);
               try {
                 await ref.read(myActionsProvider.notifier).approveSurat(surat.id);
@@ -110,7 +142,7 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              HapticFeedback.lightImpact();
+              HapticHelper.lightImpact();
               Navigator.pop(ctx);
             },
             child: const Text('Batal'),
@@ -128,7 +160,7 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
                 );
                 return;
               }
-              HapticFeedback.mediumImpact();
+              HapticHelper.mediumImpact();
               Navigator.pop(ctx);
               try {
                 await ref.read(myActionsProvider.notifier).rejectSurat(surat.id, reason);
@@ -152,95 +184,7 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
     );
   }
 
-  String? _loadingDocId;
 
-  Future<void> _handleViewDocument(BuildContext context, String suratId) async {
-    HapticFeedback.lightImpact();
-    setState(() {
-      _loadingDocId = suratId;
-    });
-
-    try {
-      final dio = ref.read(dioProvider);
-      final response = await dio.get('/surat_keluar/$suratId');
-      if (response.statusCode == 200) {
-        final body = response.data;
-        String? filePath;
-        if (body is Map) {
-          filePath = (body['draft_file_path'] ?? body['signed_file_path'])?.toString();
-          if ((filePath == null || filePath.isEmpty) && body['data'] is Map) {
-            final dataMap = body['data'] as Map;
-            filePath = (dataMap['draft_file_path'] ?? dataMap['signed_file_path'])?.toString();
-          }
-          if (filePath == null || filePath.isEmpty) {
-            filePath = (body['file_pdf_path'] ?? body['file_draft_path'])?.toString();
-          }
-          if ((filePath == null || filePath.isEmpty) && body['data'] is Map) {
-            final dataMap = body['data'] as Map;
-            filePath = (dataMap['file_pdf_path'] ?? dataMap['file_draft_path'])?.toString();
-          }
-        }
-
-        if (filePath == null || filePath.isEmpty) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('File dokumen belum tersedia.')),
-            );
-          }
-          return;
-        }
-
-        final dotIndex = filePath.lastIndexOf('.');
-        final ext = dotIndex != -1 ? filePath.substring(dotIndex).toLowerCase() : '';
-
-        if (ext == '.pdf') {
-          if (context.mounted) {
-            context.push('/pdf', extra: filePath);
-          }
-        } else {
-          debugPrint('📄 Dokumen bukan PDF (path: $filePath)');
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Dokumen berformat $ext belum bisa dibuka di aplikasi')),
-            );
-          }
-        }
-      }
-    } on DioException catch (e) {
-      final body = e.response?.data;
-      String msg;
-      if (body is Map && body['message'] != null) {
-        msg = body['message'].toString();
-      } else if (e.message != null && e.message!.isNotEmpty) {
-        msg = e.message!;
-      } else {
-        msg = 'Terjadi kesalahan (${e.response?.statusCode ?? "koneksi"})';
-      }
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal memuat dokumen: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loadingDocId = null;
-        });
-      }
-    }
-  }
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
@@ -290,6 +234,7 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
           ),
           data: (queueList) {
             final approvalTasks = queueList.where((item) => item.actionType == 'approval').toList();
+            _scrollToHighlightIfNeeded(approvalTasks);
 
             if (approvalTasks.isEmpty) {
               return const EmptyStateView(
@@ -299,6 +244,7 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
             }
 
             return ListView.builder(
+              controller: _scrollController,
               padding: EdgeInsets.fromLTRB(16.0, topPadding, 16.0, 100.0),
               itemCount: approvalTasks.length,
               itemBuilder: (context, index) {
@@ -306,10 +252,19 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
                 final status = item.status.toLowerCase();
                 final isApproved = status == 'approved';
                 final statusColor = _getStatusColor(status);
+                final isHighlighted = widget.highlightId != null && item.id == widget.highlightId;
 
-                return CustomCard(
+                return _BlinkingHighlightCard(
+                  key: ValueKey('highlight_${item.id}'),
+                  isHighlighted: isHighlighted,
                   margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
+                  borderRadius: 20.0,
+                  child: CustomCard(
+                    margin: EdgeInsets.zero,
+                    padding: const EdgeInsets.all(16),
+                    onTap: () {
+                      context.push('/surat-masuk/${item.id}', extra: {'actionType': 'approval'});
+                    },
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -383,82 +338,189 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen> {
                         ),
                       ],
                       const SizedBox(height: 16),
-                      Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 8,
-                        runSpacing: 8,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          OutlinedButton.icon(
-                            onPressed: _loadingDocId == item.id
-                                ? null
-                                : () => _handleViewDocument(context, item.id),
-                            icon: _loadingDocId == item.id
-                                ? const SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.description_outlined, size: 18),
-                            label: const Text('Lihat Dokumen'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF138A98),
-                              side: const BorderSide(color: Color(0xFF138A98)),
+                          if (isApproved)
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                final user = ref.read(authProvider).value;
+                                ApprovalReceiptModal.show(
+                                  context,
+                                  surat: item,
+                                  approverName: user?.nama ?? 'Pimpinan',
+                                  approvalTime: item.tanggalDiterima,
+                                );
+                              },
+                              icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                              label: const Text('Tanda Terima QR'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF138A98),
+                                foregroundColor: Colors.white,
+                              ),
+                            )
+                          else ...[
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Theme.of(context).colorScheme.error,
+                                side: BorderSide(color: Theme.of(context).colorScheme.error),
+                              ),
+                              onPressed: () => _showRejectDialog(context, item),
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                              label: const Text('Tolak'),
                             ),
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isApproved)
-                                ElevatedButton.icon(
-                                  onPressed: () {
-                                    final user = ref.read(authProvider).value;
-                                    ApprovalReceiptModal.show(
-                                      context,
-                                      surat: item,
-                                      approverName: user?.nama ?? 'Pimpinan',
-                                      approvalTime: item.tanggalDiterima,
-                                    );
-                                  },
-                                  icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-                                  label: const Text('Tanda Terima QR'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF138A98),
-                                    foregroundColor: Colors.white,
-                                  ),
-                                )
-                              else ...[
-                                OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Theme.of(context).colorScheme.error,
-                                    side: BorderSide(color: Theme.of(context).colorScheme.error),
-                                  ),
-                                  onPressed: () => _showRejectDialog(context, item),
-                                  icon: const Icon(Icons.close_rounded, size: 18),
-                                  label: const Text('Tolak'),
-                                ),
-                                const SizedBox(width: 8),
-                                ElevatedButton.icon(
-                                  onPressed: () => _showApproveConfirm(context, item),
-                                  icon: const Icon(Icons.check_rounded, size: 18),
-                                  label: const Text('Setujui'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF22A06B), // Green as in React frontend
-                                    foregroundColor: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: () => _showApproveConfirm(context, item),
+                              icon: const Icon(Icons.check_rounded, size: 18),
+                              label: const Text('Setujui'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF22A06B), // Green as in React frontend
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],
                   ),
-                );
-              },
-            );
-          },
-        ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    ),
+  );
+}
+}
+
+/// Widget untuk animasi kedipan 2 kali pada kartu surat yang dipilih
+class _BlinkingHighlightCard extends StatefulWidget {
+  final bool isHighlighted;
+  final EdgeInsetsGeometry? margin;
+  final double borderRadius;
+  final Widget child;
+
+  const _BlinkingHighlightCard({
+    super.key,
+    required this.isHighlighted,
+    this.margin,
+    this.borderRadius = 20.0,
+    required this.child,
+  });
+
+  @override
+  State<_BlinkingHighlightCard> createState() => _BlinkingHighlightCardState();
+}
+
+class _BlinkingHighlightCardState extends State<_BlinkingHighlightCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+
+    // 2 kedipan (pulse 2 kali: 0 -> 1 -> 0 -> 1 -> 0)
+    _animation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeOutQuad)),
+        weight: 25,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 0.0).chain(CurveTween(curve: Curves.easeInQuad)),
+        weight: 25,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeOutQuad)),
+        weight: 25,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 0.0).chain(CurveTween(curve: Curves.easeInQuad)),
+        weight: 25,
+      ),
+    ]).animate(_controller);
+
+    if (widget.isHighlighted) {
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (mounted) {
+          _controller.forward();
+        }
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _BlinkingHighlightCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isHighlighted && !oldWidget.isHighlighted) {
+      _controller.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.isHighlighted) {
+      if (widget.margin != null) {
+        return Padding(padding: widget.margin!, child: widget.child);
+      }
+      return widget.child;
+    }
+
+    return Padding(
+      padding: widget.margin ?? EdgeInsets.zero,
+      child: AnimatedBuilder(
+        animation: _animation,
+        builder: (context, child) {
+          final v = _animation.value;
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(widget.borderRadius),
+              border: v > 0.01
+                  ? Border.all(
+                      color: const Color(0xFF138A98).withValues(alpha: v * 0.95),
+                      width: 2.5,
+                    )
+                  : null,
+              boxShadow: [
+                if (v > 0.01)
+                  BoxShadow(
+                    color: const Color(0xFF138A98).withValues(alpha: v * 0.5),
+                    blurRadius: 18 * v,
+                    spreadRadius: 3 * v,
+                  ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                child!,
+                if (v > 0.01)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(widget.borderRadius > 2 ? widget.borderRadius - 2 : widget.borderRadius),
+                          color: const Color(0xFF138A98).withValues(alpha: v * 0.15),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+        child: widget.child,
       ),
     );
   }

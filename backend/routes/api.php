@@ -34,6 +34,7 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 Route::post('mobile/login', [App\Http\Controllers\API\MobileLoginController::class, 'login'])
     ->withoutMiddleware(\App\Http\Middleware\AksesMenu::class);
 Route::post('mobile/logout', [App\Http\Controllers\API\MobileLoginController::class, 'logout'])->middleware('auth:sanctum');
+Route::post('mobile/fcm-token', [App\Http\Controllers\API\MobileLoginController::class, 'updateFcmToken'])->middleware('auth:sanctum');
 Route::get('mobile/user', [App\Http\Controllers\API\MobileLoginController::class, 'user'])->middleware('auth:sanctum');
 Route::post('mobile/groups', [App\Http\Controllers\API\MobileLoginController::class, 'groups'])->middleware('auth:sanctum');
 Route::post('mobile/switch-group', [App\Http\Controllers\API\MobileLoginController::class, 'switchGroup'])->middleware('auth:sanctum');
