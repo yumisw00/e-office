@@ -422,9 +422,10 @@ class SuratDisposisiAPIController extends BaseResourceController
 
     private function currentUserId(Request $request): int
     {
-        $userId = auth()->user()?->id_user
-            ?? auth()->user()?->id
-            ?? $request->session()->get('id_user');
+        $user = $request->user('sanctum') ?? $request->user() ?? auth()->user();
+        $userId = $user?->id_user
+            ?? $user?->id
+            ?? ($request->hasSession() ? $request->session()->get('id_user') : null);
 
         if (!$userId) {
             abort(403, 'Akun pengguna tidak ditemukan.');
@@ -435,13 +436,28 @@ class SuratDisposisiAPIController extends BaseResourceController
 
     private function isSystemAdmin(Request $request): bool
     {
-        $groupId = $request->session()->get('id_group');
-
-        return (bool) ($groupId && DB::table('sys_group')
-            ->where('id_group', $groupId)
+        $groupId = $request->hasSession() ? $request->session()->get('id_group') : null;
+        $groupQuery = DB::table('sys_group')
             ->whereNull('deleted_at')
-            ->whereRaw("LOWER(REPLACE(nama, '_', ' ')) = 'admin sistem'")
-            ->exists());
+            ->whereRaw("LOWER(REPLACE(nama, '_', ' ')) = 'admin sistem'");
+
+        if ($groupId) {
+            return $groupQuery->where('id_group', $groupId)->exists();
+        }
+
+        $user = $request->user('sanctum') ?? $request->user() ?? auth()->user();
+        $userId = $user?->id_user ?? $user?->id;
+        if (!$userId) {
+            return false;
+        }
+
+        return DB::table('sys_user_group')
+            ->join('sys_group', 'sys_group.id_group', '=', 'sys_user_group.id_group')
+            ->where('sys_user_group.id_user', $userId)
+            ->whereNull('sys_user_group.deleted_at')
+            ->whereNull('sys_group.deleted_at')
+            ->whereRaw("LOWER(REPLACE(sys_group.nama, '_', ' ')) = 'admin sistem'")
+            ->exists();
     }
 
     private function sendDispositionEmail(?SuratDisposisi $record): void

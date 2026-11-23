@@ -44,7 +44,7 @@ class UserGuideFiles extends BaseResourceController
             ], 401);
         }
 
-        $file_name = 'USER GUIDE.docx.pdf';
+        $file_name = 'USER GUIDE.pdf';
 
         $filePath = storage_path('user_guide/' . $file_name);
 

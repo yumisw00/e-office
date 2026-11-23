@@ -6,7 +6,7 @@ import '../constants/app_config.dart';
 
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
   return const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 });
@@ -18,6 +18,7 @@ final dioProvider = Provider<Dio>((ref) {
       baseUrl: AppConfig.baseUrl,
       connectTimeout: AppConfig.connectTimeout,
       receiveTimeout: AppConfig.receiveTimeout,
+      sendTimeout: AppConfig.sendTimeout,
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -125,9 +126,17 @@ final dioProvider = Provider<Dio>((ref) {
           }
         } else {
           // Fallback Generic Berdasarkan HTTP Status Code jika body kosong / bukan json
-          if (error.type == DioExceptionType.connectionTimeout ||
-              error.type == DioExceptionType.receiveTimeout) {
-            computedMessage = 'Koneksi ke server timeout. Silakan periksa jaringan Anda.';
+          if (error.type == DioExceptionType.receiveTimeout) {
+            final isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].contains(error.requestOptions.method.toUpperCase());
+            if (isMutation) {
+              computedMessage = 'Waktu tunggu server habis saat memproses. Permintaan mungkin telah berhasil disimpan, silakan muat ulang antrian.';
+            } else {
+              computedMessage = 'Koneksi ke server timeout saat menerima data. Silakan periksa jaringan Anda.';
+            }
+          } else if (error.type == DioExceptionType.connectionTimeout) {
+            computedMessage = 'Gagal terhubung ke server (koneksi timeout). Silakan periksa jaringan Anda.';
+          } else if (error.type == DioExceptionType.sendTimeout) {
+            computedMessage = 'Waktu pengiriman data ke server habis. Silakan periksa jaringan Anda.';
           } else if (statusCode == 429) {
             computedMessage = 'Terlalu banyak percobaan percobaan, coba lagi dalam beberapa saat.';
           } else if (statusCode == 403) {

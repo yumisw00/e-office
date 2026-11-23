@@ -31,8 +31,8 @@ void main() {
         ),
       );
 
-      // Tab 1 is Surat Masuk (Icons.assignment_outlined)
-      final tab1Finder = find.byIcon(Icons.assignment_outlined);
+      // Tab 1 is Surat Masuk (Icons.arrow_circle_down_outlined)
+      final tab1Finder = find.byIcon(Icons.arrow_circle_down_outlined);
       expect(tab1Finder, findsOneWidget);
 
       await tester.tap(tab1Finder);
@@ -145,7 +145,7 @@ void main() {
         ),
       );
 
-      final tab2Finder = find.byIcon(Icons.check_circle_rounded);
+      final tab2Finder = find.byIcon(Icons.shortcut_rounded);
       final tab2Center = tester.getCenter(tab2Finder);
 
       final gesture = await tester.startGesture(tab2Center);
@@ -176,7 +176,7 @@ void main() {
         ),
       );
 
-      final tab1Finder = find.byIcon(Icons.assignment_rounded);
+      final tab1Finder = find.byIcon(Icons.arrow_circle_down_rounded);
       final tab1Center = tester.getCenter(tab1Finder);
 
       final gesture = await tester.startGesture(tab1Center);
@@ -207,33 +207,33 @@ void main() {
       final tab0Finder = find.byIcon(Icons.grid_view_rounded);
       final tab0Center = tester.getCenter(tab0Finder);
 
-      // Verify initial resting state height is 42
-      AnimatedContainer container =
-          tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
-      expect(container.constraints?.maxHeight ?? 42, 42);
+      // Verify initial resting state padding is (h: 8, v: 9)
+      AnimatedPadding padding =
+          tester.widget<AnimatedPadding>(find.byType(AnimatedPadding));
+      expect(padding.padding, const EdgeInsets.symmetric(horizontal: 8, vertical: 9));
 
       // Hold gesture
       final gesture = await tester.startGesture(tab0Center);
       await tester.pump(const Duration(milliseconds: 200));
 
-      // AnimatedContainer should animate toward 60
+      // AnimatedPadding should animate toward zero padding (filling 60px height)
       await tester.pump(const Duration(milliseconds: 200));
-      container =
-          tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
-      expect(container.constraints?.maxHeight ?? 60, 60);
+      padding =
+          tester.widget<AnimatedPadding>(find.byType(AnimatedPadding));
+      expect(padding.padding, EdgeInsets.zero);
 
       // Release gesture
       await gesture.up();
       await tester.pumpAndSettle();
 
-      // Should return to resting height 42
-      container =
-          tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
-      expect(container.constraints?.maxHeight ?? 42, 42);
+      // Should return to resting padding
+      padding =
+          tester.widget<AnimatedPadding>(find.byType(AnimatedPadding));
+      expect(padding.padding, const EdgeInsets.symmetric(horizontal: 8, vertical: 9));
     });
 
     testWidgets(
-        'Holding on tab 3 (Profil) expands capsule seamlessly to fill full navbar (margin zero, height 60)',
+        'Holding on tab 3 (Approval) expands capsule seamlessly to fill full navbar (margin zero, height 60)',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         buildTestableNavBar(
@@ -242,34 +242,32 @@ void main() {
         ),
       );
 
-      final tab3Finder = find.byIcon(Icons.person_rounded);
+      final tab3Finder = find.byIcon(Icons.check_circle_rounded);
       final tab3Center = tester.getCenter(tab3Finder);
 
-      // Resting state: margin has 8px horizontal, 9px vertical
-      AnimatedContainer container =
-          tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
-      expect(container.margin, const EdgeInsets.symmetric(horizontal: 8, vertical: 9));
+      // Resting state: padding has 8px horizontal, 9px vertical
+      AnimatedPadding padding =
+          tester.widget<AnimatedPadding>(find.byType(AnimatedPadding));
+      expect(padding.padding, const EdgeInsets.symmetric(horizontal: 8, vertical: 9));
 
       // Hold gesture on tab 3
       final gesture = await tester.startGesture(tab3Center);
       await tester.pump(const Duration(milliseconds: 250));
       await tester.pump(const Duration(milliseconds: 200));
 
-      // Held state: margin is completely ZERO and height is full 60
-      container =
-          tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
-      expect(container.margin, EdgeInsets.zero);
-      expect(container.constraints?.maxHeight ?? 60, 60);
+      // Held state: padding is completely ZERO and fills full navbar
+      padding =
+          tester.widget<AnimatedPadding>(find.byType(AnimatedPadding));
+      expect(padding.padding, EdgeInsets.zero);
 
       // Release gesture
       await gesture.up();
       await tester.pumpAndSettle();
 
-      // Returns to resting margin
-      container =
-          tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
-      expect(container.margin, const EdgeInsets.symmetric(horizontal: 8, vertical: 9));
-      expect(container.constraints?.maxHeight ?? 42, 42);
+      // Returns to resting padding
+      padding =
+          tester.widget<AnimatedPadding>(find.byType(AnimatedPadding));
+      expect(padding.padding, const EdgeInsets.symmetric(horizontal: 8, vertical: 9));
     });
   });
 }

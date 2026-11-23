@@ -25,6 +25,11 @@ const AndroidNotificationChannel _androidChannel = AndroidNotificationChannel(
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
+
+  // Inisialisasi local notifications di background isolate agar notifikasi
+  // data-only FCM bisa ditampilkan di system tray Android saat app di background/terminate.
+  await _initLocalNotificationsForBackground();
+
   if (kDebugMode) {
     print(" [BACKGROUND] Pesan diterima: ${message.messageId}");
     print("   Data: ${message.data}");
@@ -73,6 +78,23 @@ Future<void> _showLocalNotification({
     const NotificationDetails(android: androidDetails, iOS: iosDetails),
     payload: data != null ? jsonEncode(data) : null,
   );
+}
+
+/// Inisialisasi local notifications khusus untuk background isolate.
+/// Dipakai oleh _firebaseMessagingBackgroundHandler agar notifikasi lokal
+/// bisa muncul di system tray Android saat aplikasi di background atau terminated.
+Future<void> _initLocalNotificationsForBackground() async {
+  const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+  await _localNotifications.initialize(
+    const InitializationSettings(
+      android: androidSettings,
+    ),
+  );
+
+  // Daftarkan channel Android secara eksplisit untuk Android 8.0+
+  final androidPlugin = _localNotifications.resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>();
+  await androidPlugin?.createNotificationChannel(_androidChannel);
 }
 
 class FirebaseMessagingService {

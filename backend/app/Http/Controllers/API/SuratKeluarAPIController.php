@@ -37,11 +37,11 @@ class SuratKeluarAPIController extends BaseResourceController
         $search = $this->_search($request->get('q')) ?: [];
         unset($search['created_by']);
 
-        $user = auth()->user();
+        $user = $request->user('sanctum') ?? $request->user() ?? auth()->user();
         $userId = $user?->id_user
             ?? $user?->id
-            ?? data_get($request->session()->get('user'), 'id_user')
-            ?? $request->session()->get('id_user');
+            ?? ($request->hasSession() ? data_get($request->session()->get('user'), 'id_user') : null)
+            ?? ($request->hasSession() ? $request->session()->get('id_user') : null);
         $applyVisibilityScope = fn ($query) => $this->applyVisibilityScope($query, $request, $userId);
 
         // Jumlah tab selalu mencakup seluruh surat yang dapat diakses.
@@ -168,7 +168,7 @@ class SuratKeluarAPIController extends BaseResourceController
 
     private function activeUserUnit(Request $request, int $userId): ?string
     {
-        $sessionUnit = trim((string) $request->session()->get('id_unit', ''));
+        $sessionUnit = $request->hasSession() ? trim((string) $request->session()->get('id_unit', '')) : '';
         if ($sessionUnit !== '') {
             return $sessionUnit;
         }
@@ -227,13 +227,18 @@ class SuratKeluarAPIController extends BaseResourceController
     public function show($id = null): JsonResponse
     {
         $request = request();
-        $userId = (int) (auth()->user()?->id_user ?? auth()->user()?->id ?? 0);
+        $userId = $this->currentUserId();
         $surat = $this->applyVisibilityScope($this->model->newQuery(), $request, $userId)->find($id);
         if (!$surat) {
             return response()->json(['success' => false, 'message' => 'Surat keluar tidak ditemukan.'], 404);
         }
 
-        return response()->json(['success' => true, 'data' => $this->transformFrontendRecord($surat)]);
+        $data = $this->transformFrontendRecord($surat);
+        $data['created_by_name'] = $surat->created_by
+            ? DB::table('sys_user')->where('id_user', $surat->created_by)->value('name')
+            : null;
+
+        return response()->json(['success' => true, 'data' => $data]);
     }
 
     /**
@@ -290,13 +295,14 @@ class SuratKeluarAPIController extends BaseResourceController
         unset($payload['status'], $payload['office365_document_url'], $payload['google_drive_copy_token'], $payload['created_by'], $payload['created_by_desc']);
 
         if ($mode === 'store') {
-            $creatorId = auth()->user()?->id_user
-                ?? auth()->user()?->id
-                ?? $request->session()->get('id_user');
+            $user = $request->user('sanctum') ?? $request->user() ?? auth()->user();
+            $creatorId = $user?->id_user
+                ?? $user?->id
+                ?? ($request->hasSession() ? $request->session()->get('id_user') : null);
 
             if ($creatorId) {
                 $payload['created_by'] = $creatorId;
-                $payload['created_by_desc'] = auth()->user()?->name;
+                $payload['created_by_desc'] = $user?->name;
             }
         }
 
@@ -1031,7 +1037,13 @@ class SuratKeluarAPIController extends BaseResourceController
 
     private function currentUserId(): int
     {
-        return (int) (auth()->user()?->id_user ?? auth()->user()?->id ?? request()->session()->get('id_user') ?? 0);
+        $request = request();
+        $user = $request->user('sanctum') ?? $request->user() ?? auth()->user();
+
+        return (int) ($user?->id_user
+            ?? $user?->id
+            ?? ($request->hasSession() ? $request->session()->get('id_user') : null)
+            ?? 0);
     }
 
     private function generateNomorAgenda(): string
@@ -1336,12 +1348,12 @@ class SuratKeluarAPIController extends BaseResourceController
 
     private function activeGroupName(Request $request): string
     {
-        $groupName = trim((string) $request->session()->get('nama_group', ''));
+        $groupName = $request->hasSession() ? trim((string) $request->session()->get('nama_group', '')) : '';
         if ($groupName !== '') {
             return $groupName;
         }
 
-        $groupId = $request->session()->get('id_group');
+        $groupId = $request->hasSession() ? $request->session()->get('id_group') : null;
         if (!$groupId) {
             return '';
         }

@@ -55,7 +55,16 @@ class AppTheme {
 
   static ThemeData get darkTheme {
     final baseData = FlexThemeData.dark(
-      scheme: FlexScheme.deepBlue,
+      colors: const FlexSchemeColor(
+        primary: AppColors.primaryLight,
+        primaryContainer: AppColors.primaryDark,
+        secondary: Color(0xFF22B8C9),
+        secondaryContainer: Color(0xFF004D54),
+        tertiary: Color(0xFF22B8C9),
+        tertiaryContainer: Color(0xFF004D54),
+        appBarColor: AppColors.primary,
+        error: AppColors.error,
+      ),
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
       blendLevel: 13,
       subThemesData: const FlexSubThemesData(

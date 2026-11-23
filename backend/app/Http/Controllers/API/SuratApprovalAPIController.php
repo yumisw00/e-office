@@ -45,13 +45,25 @@ class SuratApprovalAPIController extends BaseResourceController
 
         // The active authenticated session is authoritative. Do not rely on a
         // client-side user ID stored in localStorage to scope approval data.
-        $approverId = auth()->user()?->id_user ?? auth()->id();
-        $activeGroupId = $request->session()->get('id_group');
-        $isSystemAdmin = $activeGroupId && DB::table('sys_group')
-            ->where('id_group', $activeGroupId)
-            ->whereNull('deleted_at')
-            ->whereRaw("LOWER(REPLACE(nama, '_', ' ')) = 'admin sistem'")
-            ->exists();
+        $user = $request->user('sanctum') ?? $request->user() ?? auth()->user();
+        $approverId = $user?->id_user ?? $user?->id;
+        $activeGroupId = $request->hasSession() ? $request->session()->get('id_group') : null;
+        $isSystemAdmin = false;
+        if ($activeGroupId) {
+            $isSystemAdmin = DB::table('sys_group')
+                ->where('id_group', $activeGroupId)
+                ->whereNull('deleted_at')
+                ->whereRaw("LOWER(REPLACE(nama, '_', ' ')) = 'admin sistem'")
+                ->exists();
+        } elseif ($approverId) {
+            $isSystemAdmin = DB::table('sys_user_group')
+                ->join('sys_group', 'sys_group.id_group', '=', 'sys_user_group.id_group')
+                ->where('sys_user_group.id_user', $approverId)
+                ->whereNull('sys_user_group.deleted_at')
+                ->whereNull('sys_group.deleted_at')
+                ->whereRaw("LOWER(REPLACE(sys_group.nama, '_', ' ')) = 'admin sistem'")
+                ->exists();
+        }
 
         if (!$isSystemAdmin && $approverId) {
             $query->where('surat_approval.id_approver', $approverId);

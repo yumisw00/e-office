@@ -13,7 +13,7 @@ import '../../presentation/screens/dashboard_screen.dart';
 import '../../presentation/screens/surat_masuk_screen.dart';
 import '../../presentation/screens/approval_screen.dart';
 import '../../presentation/screens/notification_screen.dart';
-import '../../presentation/screens/pdf_viewer_screen.dart';
+import '../../presentation/screens/document_viewer_screen.dart';
 import '../../presentation/screens/profil_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -61,92 +61,99 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) {
           final url = state.extra as String? ?? '';
           return NoTransitionPage(
-            child: PdfViewerScreen(pdfUrl: url),
+            child: DocumentViewerScreen(pdfUrl: url),
           );
         },
       ),
-      ShellRoute(
-        builder: (context, state, child) {
-          int selectedIndex = 0;
-          final location = state.fullPath;
-          
-          if (location == '/dashboard' || location == '/') {
-            selectedIndex = 0;
-          } else if (location != null && (location == '/surat-masuk' || location.startsWith('/surat-masuk/'))) {
-            selectedIndex = 1;
-          } else if (location == '/approval') {
-            selectedIndex = 2;
-          } else if (location == '/profil') {
-            selectedIndex = 3;
-          }
-
+      GoRoute(
+        path: '/profil',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: ProfilScreen(),
+        ),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
           return MainLayoutScreen(
-            selectedIndex: selectedIndex,
-            child: child,
+            navigationShell: navigationShell,
           );
         },
-        routes: [
-          GoRoute(
-            path: '/dashboard',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: DashboardScreen(),
-            ),
-          ),
-          GoRoute(
-            path: '/surat-masuk',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: SuratMasukScreen(),
-            ),
+        branches: [
+          // Index 0: Dashboard
+          StatefulShellBranch(
             routes: [
               GoRoute(
-                path: ':id',
+                path: '/dashboard',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: DashboardScreen(),
+                ),
+              ),
+            ],
+          ),
+          // Index 1: Surat Masuk
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/surat-masuk',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: SuratMasukScreen(),
+                ),
+                routes: [
+                  GoRoute(
+                    parentNavigatorKey: rootNavigatorKey,
+                    path: ':id',
+                    pageBuilder: (context, state) {
+                      final id = state.pathParameters['id']!;
+                      final extra = state.extra;
+                      final actionType = extra is Map
+                          ? extra['actionType']?.toString()
+                          : extra as String?;
+                      final idDisposisi = extra is Map
+                          ? extra['idDisposisi']?.toString()
+                          : null;
+                      return NoTransitionPage(
+                        child: DetailSuratScreen(
+                          idSurat: id,
+                          actionType: actionType,
+                          idDisposisi: idDisposisi,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Index 2: Disposisi
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/disposisi',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: DisposisiScreen(),
+                ),
+              ),
+            ],
+          ),
+          // Index 3: Approval
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/approval',
                 pageBuilder: (context, state) {
-                  final id = state.pathParameters['id']!;
                   final extra = state.extra;
-                  final actionType = extra is Map
-                      ? extra['actionType']?.toString()
-                      : extra as String?;
-                  final idDisposisi = extra is Map
-                      ? extra['idDisposisi']?.toString()
-                      : null;
+                  String? highlightId;
+                  if (extra is Map) {
+                    highlightId = extra['highlightId']?.toString();
+                  } else if (extra is String) {
+                    highlightId = extra;
+                  }
+                  highlightId ??= state.uri.queryParameters['highlightId'];
                   return NoTransitionPage(
-                    child: DetailSuratScreen(
-                      idSurat: id,
-                      actionType: actionType,
-                      idDisposisi: idDisposisi,
-                    ),
+                    child: ApprovalScreen(highlightId: highlightId),
                   );
                 },
               ),
             ],
-          ),
-          GoRoute(
-            path: '/approval',
-            pageBuilder: (context, state) {
-              final extra = state.extra;
-              String? highlightId;
-              if (extra is Map) {
-                highlightId = extra['highlightId']?.toString();
-              } else if (extra is String) {
-                highlightId = extra;
-              }
-              highlightId ??= state.uri.queryParameters['highlightId'];
-              return NoTransitionPage(
-                child: ApprovalScreen(highlightId: highlightId),
-              );
-            },
-          ),
-          GoRoute(
-            path: '/disposisi',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: DisposisiScreen(),
-            ),
-          ),
-          GoRoute(
-            path: '/profil',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: ProfilScreen(),
-            ),
           ),
         ],
       ),

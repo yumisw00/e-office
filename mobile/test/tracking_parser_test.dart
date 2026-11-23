@@ -55,6 +55,40 @@ void main() {
     expect(events[1].judul, 'Disetujui pimpinan');
   });
 
+  test('200: disposisi timeline endpoint dipanggil saat actionType == disposisi', () async {
+    String? requestedPath;
+    final dio = Dio(BaseOptions(baseUrl: 'http://fake.local/api'));
+    dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        requestedPath = options.path;
+        return handler.resolve(Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: {
+            'success': true,
+            'data': [
+              {
+                'type': 'created',
+                'title': 'Disposisi dibuat',
+                'description': 'Disposisi dikirim kepada penerima.',
+                'status': 'open',
+                'created_at': '2026-10-01 09:00:00',
+              },
+            ],
+          },
+        ));
+      },
+    ));
+    final repo = ApiSuratRepository(dio);
+    final events = await repo.getTracking('42', 'disposisi');
+
+    expect(requestedPath, '/surat_disposisi/42/timeline');
+    expect(events.length, 1);
+    expect(events[0].judul, 'Disposisi dibuat');
+    expect(events[0].catatan, 'Disposisi dikirim kepada penerima.');
+    expect(events[0].status, 'open');
+  });
+
   test('403: melempar TrackingException berisi body.message', () async {
     final repo = _repo(403, {'success': false, 'message': 'Akses khusus Pimpinan.'});
     try {

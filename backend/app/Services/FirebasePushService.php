@@ -12,13 +12,24 @@ class FirebasePushService
 {
     public function sendToUser(int $userId, string $title, ?string $body, array $data = []): void
     {
-        $deviceToken = DB::table('sys_user')->where('id_user', $userId)->value('fcm_token');
+        $deviceToken = trim((string) DB::table('sys_user')->where('id_user', $userId)->value('fcm_token'));
         $credentialsPath = config('services.firebase.credentials');
-        if (!$deviceToken || !$credentialsPath || !is_file($credentialsPath)) return;
+        if ($userId <= 0 || $deviceToken === '') return;
+        if (!$credentialsPath || !is_file($credentialsPath) || !is_readable($credentialsPath)) {
+            Log::warning('Push notification FCM tidak dikirim: kredensial Firebase belum tersedia atau tidak dapat dibaca.');
+            return;
+        }
 
         try {
             $credentials = json_decode(file_get_contents($credentialsPath), true, flags: JSON_THROW_ON_ERROR);
-            (new Client(['timeout' => 5]))->post(
+            foreach (['project_id', 'client_email', 'private_key', 'token_uri'] as $requiredField) {
+                if (empty($credentials[$requiredField])) {
+                    Log::warning('Push notification FCM tidak dikirim: file kredensial Firebase tidak lengkap.');
+                    return;
+                }
+            }
+
+            $response = (new Client(['timeout' => 5, 'http_errors' => false]))->post(
                 'https://fcm.googleapis.com/v1/projects/' . $credentials['project_id'] . '/messages:send',
                 [
                     'headers' => ['Authorization' => 'Bearer ' . $this->accessToken($credentials)],
@@ -29,6 +40,24 @@ class FirebasePushService
                     ]],
                 ]
             );
+
+            if ($response->getStatusCode() >= 400) {
+                $error = json_decode((string) $response->getBody(), true);
+                $isUnregistered = collect(data_get($error, 'error.details', []))
+                    ->contains(fn ($detail) => ($detail['errorCode'] ?? null) === 'UNREGISTERED');
+                if ($isUnregistered) {
+                    DB::table('sys_user')
+                        ->where('id_user', $userId)
+                        ->where('fcm_token', $deviceToken)
+                        ->update(['fcm_token' => null]);
+                }
+
+                Log::warning('Push notification FCM ditolak oleh Firebase.', [
+                    'id_user' => $userId,
+                    'http_status' => $response->getStatusCode(),
+                    'token_unregistered' => $isUnregistered,
+                ]);
+            }
         } catch (\Throwable $exception) {
             Log::warning('Push notification FCM gagal dikirim.', ['id_user' => $userId, 'error' => $exception->getMessage()]);
         }

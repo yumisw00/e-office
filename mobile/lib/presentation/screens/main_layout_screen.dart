@@ -3,42 +3,30 @@ import 'package:go_router/go_router.dart';
 import '../widgets/floating_nav_bar.dart';
 
 class MainLayoutScreen extends StatelessWidget {
-  final Widget child;
-  final int selectedIndex;
+  final StatefulNavigationShell navigationShell;
 
   const MainLayoutScreen({
     super.key,
-    required this.child,
-    this.selectedIndex = 0,
+    required this.navigationShell,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      body: child,
+      body: navigationShell,
       bottomNavigationBar: FloatingNavBar(
-        selectedIndex: selectedIndex,
+        selectedIndex: navigationShell.currentIndex,
         onItemTapped: (index) {
           // Tutup modal / bottom sheet yang sedang aktif di root navigator sebelum pindah tab
           if (Navigator.of(context, rootNavigator: true).canPop()) {
             Navigator.of(context, rootNavigator: true).pop();
           }
-          
-          switch (index) {
-            case 0:
-              context.go('/dashboard');
-              break;
-            case 1:
-              context.go('/surat-masuk');
-              break;
-            case 2:
-              context.go('/approval');
-              break;
-            case 3:
-              context.go('/profil');
-              break;
-          }
+
+          navigationShell.goBranch(
+            index,
+            initialLocation: index == navigationShell.currentIndex,
+          );
         },
       ),
     );

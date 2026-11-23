@@ -69,19 +69,8 @@ class SuratMasukAPIController extends BaseResourceController
 
     private function scopedQuery(Request $request): Builder
     {
-        $user = auth()->user();
-        $groups = $user ? ($user->groups ?? []) : [];
-        if (empty($groups) && $request->session()->get('nama_group')) {
-            $groups = [['name' => trim($request->session()->get('nama_group'))]];
-        }
-        if (empty($groups) && $request->session()->get('id_group')) {
-            $group = \App\Models\SysGroup::find($request->session()->get('id_group'));
-            if ($group) {
-                $groups = [['name' => trim($group->nama)]];
-            }
-        }
-
-        $groupNames = collect($groups)->map(fn ($group) => strtolower($group['name'] ?? $group['nama'] ?? ''))->all();
+        $user = $request->user('sanctum') ?? $request->user() ?? auth()->user();
+        $groupNames = $this->getUserGroupNames($user, $request);
         $isAdmin = collect($groupNames)->intersect([
             'admin_sistem', 'admin sistem', 'admin konten', 'admin_konten', 'admin kontak', 'admin_kontak',
         ])->isNotEmpty()
@@ -151,34 +140,12 @@ class SuratMasukAPIController extends BaseResourceController
         }
 
         // Authorization check
-        $user = auth()->user();
+        $request ??= request();
+        $user = $request->user('sanctum') ?? $request->user() ?? auth()->user();
         $userId = $user?->id_user ?? $user?->id ?? null;
         $userUnit = $this->getUserUnit($user);
 
-        $groupNames = collect($user?->groups ?? [])
-            ->map(fn($g) => strtolower($g['name'] ?? $g['nama'] ?? ''))
-            ->filter()
-            ->values()
-            ->all();
-
-        // The authenticated user model does not always hydrate its groups.
-        // Use the active server session as the same fallback used by index(),
-        // otherwise Admin Konten receives a 403 while opening a detail modal.
-        $sessionGroupName = strtolower((string) session('nama_group', ''));
-        if ($sessionGroupName !== '') {
-            $groupNames[] = $sessionGroupName;
-        }
-
-        $activeGroupId = session('id_group');
-        if ($activeGroupId) {
-            $activeGroupName = DB::table('sys_group')
-                ->where('id_group', $activeGroupId)
-                ->whereNull('deleted_at')
-                ->value('nama');
-            if ($activeGroupName) {
-                $groupNames[] = strtolower($activeGroupName);
-            }
-        }
+        $groupNames = $this->getUserGroupNames($user, $request);
 
         $isAdmin = collect($groupNames)->intersect([
             'admin_sistem', 'admin sistem', 'admin konten', 'admin_konten', 'admin kontak', 'admin_kontak',
@@ -225,7 +192,9 @@ class SuratMasukAPIController extends BaseResourceController
         // Login stores the active organizational scope in the session. This
         // is the primary source for employees who share the same Pegawai role
         // but belong to SDM, Keuangan, Operasional, or Pemasaran.
-        $sessionUnit = trim((string) session('id_unit', ''));
+        $sessionUnit = request()->hasSession()
+            ? trim((string) request()->session()->get('id_unit', ''))
+            : '';
         if ($sessionUnit !== '') {
             return $sessionUnit;
         }
@@ -289,6 +258,46 @@ class SuratMasukAPIController extends BaseResourceController
         }
 
         return null;
+    }
+
+    private function getUserGroupNames($user, Request $request): array
+    {
+        $groupNames = collect($user?->groups ?? [])
+            ->map(fn ($group) => strtolower(trim((string) (data_get($group, 'name') ?? data_get($group, 'nama') ?? ''))))
+            ->filter()
+            ->values()
+            ->all();
+
+        $userId = $user?->id_user ?? $user?->id;
+        if ($userId && Schema::hasTable('sys_user_group') && Schema::hasTable('sys_group')) {
+            $groupNames = array_merge($groupNames, DB::table('sys_user_group')
+                ->join('sys_group', 'sys_group.id_group', '=', 'sys_user_group.id_group')
+                ->where('sys_user_group.id_user', $userId)
+                ->whereNull('sys_user_group.deleted_at')
+                ->whereNull('sys_group.deleted_at')
+                ->pluck('sys_group.nama')
+                ->map(fn ($name) => strtolower(trim((string) $name)))
+                ->all());
+        }
+
+        if ($request->hasSession()) {
+            $sessionGroupName = strtolower(trim((string) $request->session()->get('nama_group', '')));
+            if ($sessionGroupName !== '') {
+                $groupNames[] = $sessionGroupName;
+            }
+            $activeGroupId = $request->session()->get('id_group');
+            if ($activeGroupId) {
+                $activeGroupName = DB::table('sys_group')
+                    ->where('id_group', $activeGroupId)
+                    ->whereNull('deleted_at')
+                    ->value('nama');
+                if ($activeGroupName) {
+                    $groupNames[] = strtolower(trim((string) $activeGroupName));
+                }
+            }
+        }
+
+        return array_values(array_unique($groupNames));
     }
 
     public function store(Request $request): JsonResponse
@@ -654,7 +663,7 @@ class SuratMasukAPIController extends BaseResourceController
         DB::table('surat_distribusi')->insert($values + [
             'id_surat_masuk' => $suratId,
             'id_user_tujuan' => $recipientId,
-            'created_by' => auth()->user()?->id_user,
+            'created_by' => request()->user('sanctum')?->id_user ?? auth()->user()?->id_user,
             'created_at' => now(),
         ]);
     }

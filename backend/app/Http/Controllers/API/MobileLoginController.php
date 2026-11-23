@@ -37,7 +37,7 @@ class MobileLoginController extends AppBaseController
             'email' => 'required|email',
             'password' => 'required|string',
             'device_name' => 'required|string',
-            'fcm_token' => 'nullable|string|max:4096',
+            'fcm_token' => 'nullable|string|max:512',
         ]);
 
         RateLimiter::hit($throttleKey, 60);
@@ -146,7 +146,7 @@ class MobileLoginController extends AppBaseController
     public function updateFcmToken(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'fcm_token' => 'required|string|max:4096',
+            'fcm_token' => 'required|string|max:512',
             'device_name' => 'nullable|string|max:255',
         ]);
 

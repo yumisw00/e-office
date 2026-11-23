@@ -26,7 +26,7 @@ class UserModel {
     final unitKerjaValue = json['unit_kerja'] ?? json['department'] ?? json['divisi'] ?? unitDariGroup;
     return UserModel(
       id: (json['id_user'] ?? json['id'] ?? json['uuid'] ?? '').toString(),
-      nama: namaValue.toString() ?? 'User',
+      nama: namaValue?.toString() ?? 'User',
       email: json['email']?.toString() ?? '',
       nip: json['nip']?.toString(),
       jabatan: jabatanValue.toString(),

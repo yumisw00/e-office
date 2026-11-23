@@ -55,6 +55,11 @@ dependencies:
   # Splash Screen
   flutter_native_splash: ^2.4.1
   flutter_displaymode: ^0.7.0
+  url_launcher: ^6.3.3
+  webview_flutter: ^4.14.1
+
+  # Connectivity / offline indicator
+  connectivity_plus: ^6.0.5
 
 dev_dependencies:
   flutter_test:

@@ -81,6 +81,9 @@ class _EOfficeAppState extends ConsumerState<EOfficeApp> with WidgetsBindingObse
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _ensureHighRefreshRate();
+      // Auto-refresh data saat aplikasi kembali ke foreground
+      ref.read(notificationProvider.notifier).refresh();
+      ref.read(suratMasukListProvider.notifier).refresh();
     }
   }
 

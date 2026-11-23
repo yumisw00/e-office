@@ -878,22 +878,40 @@ class EOfficeWorkflowController extends Controller
             }
         });
 
-        // Generate QR code AFTER the transaction commits (non-critical, wrapped in try-catch)
-        if ($isLastApprover && $this->featureEnabled($surat->generate_qr_code ?? false)) {
-            $this->generateApprovalQrCode($surat->id_surat_keluar);
-        }
+        // Run non-critical work after the HTTP response has been sent so mobile
+        // clients do not wait for QR generation, push notifications, or SMTP.
+        defer(function () use ($surat, $approval, $action, $nextApproverId, $isLastApprover) {
+            if ($isLastApprover && $this->featureEnabled($surat->generate_qr_code ?? false)) {
+                try {
+                    $this->generateApprovalQrCode($surat->id_surat_keluar);
+                } catch (\Throwable $e) {
+                    Log::warning('Gagal membuat QR approval setelah respons dikirim.', [
+                        'surat_id' => $surat->id_surat_keluar,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
-        // Send email notifications AFTER the transaction commits (non-critical, wrapped in try-catch)
-        try {
-            $this->notifyOutgoingApprovalAction($surat, $action, $nextApproverId, $isLastApprover);
-            $this->sendApprovalActionEmails($surat, $approval, $action, $nextApproverId, $isLastApprover);
-        } catch (\Throwable $e) {
-            Log::warning('Gagal mengirim email notifikasi approval.', [
-                'surat_id' => $surat->id_surat_keluar,
-                'action' => $action,
-                'error' => $e->getMessage(),
-            ]);
-        }
+            try {
+                $this->notifyOutgoingApprovalAction($surat, $action, $nextApproverId, $isLastApprover);
+            } catch (\Throwable $e) {
+                Log::warning('Gagal mengirim push notification approval setelah respons dikirim.', [
+                    'surat_id' => $surat->id_surat_keluar,
+                    'action' => $action,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            try {
+                $this->sendApprovalActionEmails($surat, $approval, $action, $nextApproverId, $isLastApprover);
+            } catch (\Throwable $e) {
+                Log::warning('Gagal mengirim email notifikasi approval setelah respons dikirim.', [
+                    'surat_id' => $surat->id_surat_keluar,
+                    'action' => $action,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        });
 
         return response()->json([
             'success' => true,

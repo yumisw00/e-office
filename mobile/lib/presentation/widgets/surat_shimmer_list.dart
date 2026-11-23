@@ -13,7 +13,7 @@ class SuratShimmerList extends StatelessWidget {
           elevation: 2,
           margin: const EdgeInsets.only(bottom: 12),
           child: Shimmer.fromColors(
-            baseColor: Theme.of(context).colorScheme.surfaceVariant,
+            baseColor: Theme.of(context).colorScheme.surfaceContainerHighest,
             highlightColor: Theme.of(context).colorScheme.surface,
             child: Padding(
               padding: const EdgeInsets.all(12.0),

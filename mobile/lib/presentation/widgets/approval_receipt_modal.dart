@@ -1,3 +1,4 @@
+import 'package:e_office_mobile/core/constants/app_colors.dart';
 import 'package:e_office_mobile/core/utils/haptic_helper.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -62,13 +63,20 @@ class ApprovalReceiptModal extends StatelessWidget {
     return '$namaHari, $tgl $namaBulan $thn $jam.$menit.$detik';
   }
 
+  String _getJenisSurat() {
+    if (surat.jenisSurat != null && surat.jenisSurat!.isNotEmpty) {
+      return surat.jenisSurat!;
+    }
+    return 'Surat Edaran';
+  }
+
   String _getQrDataString() {
     if (customQrData != null && customQrData!.isNotEmpty) {
       return customQrData!;
     }
     final timeStr = formatTanggalWaktuIndonesia(approvalTime);
     final data = {
-      'jenis': surat.perihal.isNotEmpty ? surat.perihal : 'Surat Keluar',
+      'jenis': _getJenisSurat(),
       'no_surat': surat.nomorSurat,
       'perihal': surat.perihal,
       'pengirim': surat.pengirim ?? surat.pemohon ?? '-',
@@ -118,7 +126,7 @@ class ApprovalReceiptModal extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: const Color(0xFF138A98),
+            backgroundColor: AppColors.primary,
             content: Text('QR Code berhasil disimpan ke: $savePath'),
             duration: const Duration(seconds: 4),
           ),
@@ -139,7 +147,7 @@ class ApprovalReceiptModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final qrData = _getQrDataString();
-    const primaryTeal = Color(0xFF138A98);
+    const primaryTeal = AppColors.primary;
 
     return Container(
       decoration: BoxDecoration(
@@ -234,7 +242,7 @@ class ApprovalReceiptModal extends StatelessWidget {
               const SizedBox(height: 14),
 
               // Details List
-              _buildInfoRow('Jenis Surat', surat.perihal.isNotEmpty ? surat.perihal : 'Surat Permohonan'),
+              _buildInfoRow('Jenis Surat', _getJenisSurat()),
               _buildInfoRow('Nomor Surat', surat.nomorSurat),
               _buildInfoRow('Perihal', surat.perihal),
               _buildInfoRow(
@@ -264,9 +272,9 @@ class ApprovalReceiptModal extends StatelessWidget {
                     const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF84CC16), // Lime Green
-                        borderRadius: BorderRadius.circular(12),
+                      decoration: const ShapeDecoration(
+                        color: Color(0xFF84CC16), // Lime Green
+                        shape: StadiumBorder(),
                       ),
                       child: const Text(
                         'Disetujui',

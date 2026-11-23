@@ -1,5 +1,4 @@
 import 'package:e_office_mobile/core/utils/haptic_helper.dart';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class CustomCard extends StatelessWidget {
@@ -11,6 +10,9 @@ class CustomCard extends StatelessWidget {
   final Color? color;
   final Color? borderColor;
   final double borderWidth;
+  // isTranslucent dipertahankan sebagai parameter agar tidak perlu ubah semua
+  // caller, namun BackdropFilter dihapus — gunakan warna solid mendekati
+  // frosted glass tanpa overhead GPU compositing layer.
   final bool isTranslucent;
 
   const CustomCard({
@@ -31,11 +33,14 @@ class CustomCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    // isTranslucent: warna solid (alpha 1.0) agar tidak memunculkan compositing
+    // layer. Efek "frosted" dicapai dengan warna yang sedikit lebih cerah/gelap
+    // dari surface tanpa membutuhkan BackdropFilter.blur.
     final effectiveColor = color ??
         (isTranslucent
             ? (isDark
-                ? theme.colorScheme.surface.withValues(alpha: 0.75)
-                : Colors.white.withValues(alpha: 0.85))
+                ? theme.colorScheme.surfaceContainerHigh
+                : Colors.white)
             : theme.colorScheme.surface);
 
     final effectiveBorderColor = borderColor ??
@@ -61,7 +66,7 @@ class CustomCard extends StatelessWidget {
       );
     }
 
-    Widget cardWidget = Container(
+    return Container(
       margin: margin,
       decoration: BoxDecoration(
         color: effectiveColor,
@@ -77,19 +82,5 @@ class CustomCard extends StatelessWidget {
         child: content,
       ),
     );
-
-    if (isTranslucent) {
-      return RepaintBoundary(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(borderRadius),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: cardWidget,
-          ),
-        ),
-      );
-    }
-
-    return cardWidget;
   }
 }

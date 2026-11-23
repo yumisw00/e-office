@@ -7,7 +7,7 @@ import Button from "components/Button";
 import EofficeStatusBadge from "components/EofficeStatusBadge";
 import { api_services } from "hooks/api_services";
 import axios from "lib/axios";
-import { formatDateApp, showToastr } from "pages/Utils";
+import { formatDateApp, showToastr, urlPreview } from "pages/Utils";
 import { canUseEofficeAction, getStoredUserLogin } from "lib/eofficeAccess";
 
 const ACTIVE_STATUSES = ['waiting', 'pending', 'review'];
@@ -21,6 +21,19 @@ const normalizeList = response => {
 };
 
 const getId = item => item?.id_surat_approval || item?.id || item?.value;
+
+const getReadOnlyPreviewUrl = value => {
+    if (!value) return '';
+    const rawUrl = String(value);
+    const absoluteUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `/${rawUrl.replace(/^\/+/, '')}`;
+    const googleDoc = absoluteUrl.match(/https?:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\/([^/]+)/i);
+    if (googleDoc) return `https://docs.google.com/${googleDoc[1]}/d/${googleDoc[2]}/preview`;
+    const googleDriveFile = absoluteUrl.match(/https?:\/\/drive\.google\.com\/file\/d\/([^/]+)/i);
+    if (googleDriveFile) return `https://drive.google.com/file/d/${googleDriveFile[1]}/preview`;
+    const googleDriveOpen = absoluteUrl.match(/https?:\/\/drive\.google\.com\/open\?[^#]*\bid=([^&]+)/i);
+    if (googleDriveOpen) return `https://drive.google.com/file/d/${googleDriveOpen[1]}/preview`;
+    return absoluteUrl.startsWith('/') ? urlPreview(absoluteUrl) : absoluteUrl;
+};
 
 const getCurrentUserId = () => {
     const stored = getStoredUserLogin() || {};
@@ -88,6 +101,7 @@ const SuratApproval = () => {
     const [rejectionNote, setRejectionNote] = useState('');
     const [processing, setProcessing] = useState(false);
     const [barcodeModal, setBarcodeModal] = useState({ show: false, item: null, qrData: '' });
+    const [previewModal, setPreviewModal] = useState({ show: false, loading: false, data: null });
 
     const service = useMemo(() => api_services({ api_path: '/surat_approval' }), []);
 
@@ -116,6 +130,71 @@ const SuratApproval = () => {
         loadData();
     }, []);
 
+    useEffect(() => {
+        const handleApprovalQueueUpdate = event => {
+            if (event.key === 'eoffice-approval-queue-updated') loadData();
+        };
+        window.addEventListener('storage', handleApprovalQueueUpdate);
+        return () => window.removeEventListener('storage', handleApprovalQueueUpdate);
+    }, []);
+
+    const openPreview = async item => {
+        const suratId = item?.id_surat_keluar;
+        if (!suratId) {
+            showToastr('error', 'ID surat keluar tidak ditemukan.');
+            return;
+        }
+        setPreviewModal({ show: true, loading: true, data: item });
+        try {
+            const response = await axios.get(`/api/surat_keluar/${suratId}`);
+            const result = response?.data?.data || response?.data?.result || response?.data;
+            setPreviewModal({ show: true, loading: false, data: result ? { ...item, ...result } : item });
+        } catch (error) {
+            setPreviewModal({ show: true, loading: false, data: item });
+            showToastr('error', error?.response?.data?.message || 'Detail surat gagal dimuat.');
+        }
+    };
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const suratId = params.get('preview_approval');
+        const approvalRowId = params.get('preview_approval_row');
+        if (suratId) openPreview({ id_surat_keluar: suratId, id_surat_approval: approvalRowId });
+    }, []);
+
+    const openPreviewTab = item => {
+        const suratId = item?.id_surat_keluar;
+        if (!suratId) {
+            showToastr('error', 'ID surat keluar tidak ditemukan.');
+            return;
+        }
+        const url = new URL(window.location.href);
+        url.searchParams.set('preview_approval', suratId);
+        url.searchParams.set('preview_approval_row', getId(item));
+        const previewWindow = window.open(url.toString(), '_blank');
+        if (!previewWindow) showToastr('error', 'Tab preview diblokir browser. Izinkan pop-up untuk membuka preview surat.');
+    };
+
+    const closePreview = () => {
+        setPreviewModal({ show: false, loading: false, data: null });
+        if (new URLSearchParams(window.location.search).has('preview_approval')) {
+            window.close();
+            window.setTimeout(() => {
+                if (!window.closed) window.location.replace(window.location.pathname);
+            }, 150);
+        }
+    };
+
+    const previewData = previewModal.data || {};
+    const previewApprovalRowId = new URLSearchParams(window.location.search).get('preview_approval_row');
+    const previewApprovalItem = (previewData.approval || [])
+        .find(approval => String(approval.id_surat_approval) === String(previewApprovalRowId));
+    const previewActionItem = previewApprovalItem
+        ? { ...previewData, ...previewApprovalItem, id_surat_keluar: previewData.id_surat_keluar }
+        : null;
+    const previewPath = previewData.file_pdf_path || previewData.file_draft_path || previewData.lampiran_path;
+    const previewUrl = getReadOnlyPreviewUrl(previewPath || previewData.google_drive_document_url || previewData.drive_document_url);
+
     const handleApprove = async item => {
         const idSurat = item?.id_surat_keluar;
         if (!idSurat) {
@@ -139,6 +218,20 @@ const SuratApproval = () => {
             // Remove the processed approval immediately, then confirm with the API.
             const processedId = getId(item)
             setList(current => current.filter(row => getId(row) !== processedId))
+            setPreviewModal(current => ({
+                ...current,
+                data: {
+                    ...current.data,
+                    approval: (current.data?.approval || []).map(approval => String(approval.id_surat_approval) === String(processedId)
+                        ? { ...approval, status: 'approved', tanggal_aksi: new Date().toISOString() }
+                        : approval),
+                },
+            }));
+            try {
+                window.localStorage.setItem('eoffice-approval-queue-updated', String(Date.now()));
+            } catch (error) {
+                // The current preview still updates if browser storage is unavailable.
+            }
 
             // Generate barcode/QR data after approval.
             const approverName = getCurrentUserName()
@@ -195,6 +288,22 @@ const SuratApproval = () => {
         }
 
         showToastr('success', response?.data?.message || 'Surat keluar ditolak.');
+            const rejectedApprovalId = String(getId(rejectingItem));
+            const rejectedAt = new Date().toISOString();
+            setPreviewModal(current => ({
+                ...current,
+                data: {
+                    ...current.data,
+                    approval: (current.data?.approval || []).map(approval => String(approval.id_surat_approval) === rejectedApprovalId
+                        ? { ...approval, status: 'rejected', catatan_revisi: rejectionNote.trim(), tanggal_aksi: rejectedAt }
+                        : approval),
+                },
+            }));
+            try {
+                window.localStorage.setItem('eoffice-approval-queue-updated', String(Date.now()));
+            } catch (error) {
+                // The current preview still updates if browser storage is unavailable.
+            }
         closeReject();
         loadData();
     };
@@ -221,7 +330,7 @@ const SuratApproval = () => {
                     <table className="w-full table border-collapse border" style={{ minWidth: 980 }}>
                         <thead>
                             <tr>
-                                {['No', 'Nomor Surat', 'Perihal', 'Kepada', 'Pembuat', 'Tanggal Diajukan', 'Urutan', 'Status', 'Aksi'].map((label, index) => (
+                                {['No', 'Nomor Surat', 'Kepada', 'Pembuat', 'Tanggal Diajukan', 'Urutan', 'Status'].map((label, index) => (
                                     <th
                                         key={index}
                                         className="border"
@@ -231,7 +340,6 @@ const SuratApproval = () => {
                                             textAlign: 'center',
                                             padding: '10px 8px',
                                             verticalAlign: 'middle',
-                                            width: index === 8 ? 86 : undefined,
                                         }}
                                     >
                                         {label}
@@ -243,8 +351,22 @@ const SuratApproval = () => {
                             {list.map((item, index) => (
                                 <tr key={getId(item) || index}>
                                     <td className="border text-center">{index + 1}</td>
-                                    <td className="border">{item?.nomor_surat || item?.kode_draft || '-'}</td>
-                                    <td className="border">{item?.perihal || '-'}</td>
+                                    <td className="border">
+                                        <div className="d-flex flex-column align-items-start" style={{ lineHeight: 1.35 }}>
+                                            <button
+                                                type="button"
+                                                className="btn p-0 text-left"
+                                                onClick={() => openPreviewTab(item)}
+                                                title="Lihat preview surat"
+                                                style={{ color: '#138a98', fontWeight: 700, textDecoration: 'none', border: 0, background: 'transparent' }}
+                                            >
+                                                {item?.nomor_surat || item?.kode_draft || '-'}
+                                            </button>
+                                            {item?.kode_draft && item?.kode_draft !== item?.nomor_surat ? (
+                                                <span className="text-muted" style={{ fontSize: 12 }}>{item.kode_draft}</span>
+                                            ) : null}
+                                        </div>
+                                    </td>
                                     <td className="border">{item?.tujuan_nama || item?.kepada || '-'}</td>
                                     <td className="border">{item?.created_by_name || item?.nama_pembuat || '-'}</td>
                                     <td className="border text-center">
@@ -256,39 +378,11 @@ const SuratApproval = () => {
                                     <td className="border text-center">
                                         <EofficeStatusBadge value={item?.status || 'review'} />
                                     </td>
-                                    <td className="border text-center approval-action-cell">
-                                        <div className="approval-actions d-flex align-items-center justify-content-center" style={{ gap: 6 }}>
-                                            {canApprove ? (
-                                                <Button
-                                                    className="btn-default-app"
-                                                    style={{ background: '#22a06b', color: '#fff', borderColor: '#22a06b', width: 32, minWidth: 32, height: 32, padding: 0, justifyContent: 'center' }}
-                                                    disabled={processing}
-                                                    onClick={() => handleApprove(item)}
-                                                    title="Setujui"
-                                                    aria-label="Setujui"
-                                                >
-                                                    <span className="material-icons" style={{ display: 'block', fontSize: 18, lineHeight: 1 }}>check</span>
-                                                </Button>
-                                            ) : null}
-                                            {canReject ? (
-                                                <Button
-                                                    className="btn-default-app btn-danger"
-                                                    style={{ width: 32, minWidth: 32, height: 32, padding: 0, justifyContent: 'center' }}
-                                                    disabled={processing}
-                                                    onClick={() => openReject(item)}
-                                                    title="Tolak"
-                                                    aria-label="Tolak"
-                                                >
-                                                    <span className="material-icons" style={{ display: 'block', fontSize: 18, lineHeight: 1 }}>close</span>
-                                                </Button>
-                                            ) : null}
-                                        </div>
-                                    </td>
                                 </tr>
                             ))}
                             {!list.length ? (
                                 <tr>
-                                    <td className="border text-center text-muted" colSpan={9} style={{ padding: 28 }}>
+                                    <td className="border text-center text-muted" colSpan={7} style={{ padding: 28 }}>
                                         Tidak ada surat yang menunggu approval Anda saat ini.
                                     </td>
                                 </tr>
@@ -297,6 +391,92 @@ const SuratApproval = () => {
                     </table>
                 </div>
             </div>
+
+            <Modal show={previewModal.show && !barcodeModal.show} onHide={closePreview} fullscreen="always" className="eoffice-modal-detail approval-preview-fullscreen">
+                <Modal.Header closeButton>
+                    <Modal.Title>Preview Approval</Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="eoffice-modal-body">
+                    {previewModal.loading ? <div className="text-center py-5">Memuat detail surat...</div> : (
+                        <div style={{ height: '100%', minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(280px, 28fr) minmax(400px, 44fr) minmax(280px, 28fr)', gap: 12 }}>
+                            <section className="border rounded p-3" style={{ minWidth: 0, overflowY: 'auto', boxShadow: '0 2px 5px rgba(0,0,0,.08)' }}>
+                                <div className="d-flex align-items-center justify-content-between mb-2">
+                                    <strong>{previewData.nomor_surat || previewData.kode_draft || 'Detail surat'}</strong>
+                                    <span className="badge bg-info">{previewData.status || 'Menunggu Persetujuan'}</span>
+                                </div>
+                                <div className="text-muted mb-3" style={{ fontSize: 12 }}>{previewData.perihal || 'Detail surat keluar'}</div>
+                                <div className="row g-2">
+                                    {[
+                                        ['Nomor Agenda', previewData.kode_draft],
+                                        ['Nomor Surat', previewData.nomor_surat],
+                                        ['Jenis Surat', previewData.jenis || previewData.jenis_surat],
+                                        ['Kepada', previewData.tujuan_nama || previewData.kepada],
+                                        ['Pembuat', previewData.created_by_name || previewData.nama_pembuat || previewData.created_by_desc],
+                                        ['Tanggal Surat', previewData.tanggal_surat],
+                                    ].map(([label, value]) => (
+                                        <div className="col-md-6" key={label}>
+                                            <div className="border rounded p-2 bg-light h-100">
+                                                <div className="text-muted" style={{ fontSize: 11 }}>{label}</div>
+                                                <strong style={{ fontSize: 13, overflowWrap: 'anywhere' }}>{value || '-'}</strong>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-3">
+                                    <div className="text-muted" style={{ fontSize: 11 }}>Isi/Ringkasan</div>
+                                    <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 13 }}>{previewData.ringkasan || previewData.isi_surat || '-'}</div>
+                                </div>
+                            </section>
+                            <section className="border rounded p-2" style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', boxShadow: '0 2px 5px rgba(0,0,0,.08)' }}>
+                                <div className="font-semibold mb-2"><span className="material-icons mr-1" style={{ fontSize: 16, verticalAlign: 'middle' }}>attach_file</span>Lampiran Surat</div>
+                                {previewUrl ? <iframe title="Preview surat yang menunggu approval" src={previewUrl} style={{ width: '100%', flex: 1, minHeight: 0, border: '1px solid #d6dce1', borderRadius: 4, background: '#2f2f2f' }} /> : <div className="text-muted text-center py-5">Belum ada lampiran surat.</div>}
+                            </section>
+                            <section style={{ minWidth: 0, overflowY: 'auto' }}>
+                                <div className="border rounded p-3" style={{ boxShadow: '0 2px 5px rgba(0,0,0,.08)' }}>
+                                    <strong><span className="material-icons mr-1" style={{ fontSize: 16, verticalAlign: 'middle' }}>timeline</span>Tracking Approval</strong>
+                                    {(previewData.approval || []).length ? previewData.approval.map((approval, index) => {
+                                        const status = String(approval.status || 'waiting').toLowerCase();
+                                        const label = ({ waiting: 'Menunggu Persetujuan', pending: 'Menunggu Persetujuan', review: 'Menunggu Persetujuan', approved: 'Disetujui', rejected: 'Ditolak' })[status] || approval.status || 'Menunggu Persetujuan';
+                                        return <div key={approval.id_surat_approval || index} className="border-bottom py-2" style={{ fontSize: 13 }}>
+                                            <strong>{approval.nama_approver || `Approver ${approval.urutan || index + 1}`}</strong>
+                                            <div className={status === 'approved' ? 'text-success' : status === 'rejected' ? 'text-danger' : 'text-muted'}>{label}</div>
+                                            {approval.tanggal_aksi ? <div className="text-muted" style={{ fontSize: 11 }}>{approval.tanggal_aksi}</div> : null}
+                                            {approval.catatan_revisi ? <div className="mt-1">Catatan: {approval.catatan_revisi}</div> : null}
+                                        </div>;
+                                    }) : <div className="text-muted mt-2" style={{ fontSize: 12 }}>Data tracking approval tidak tersedia.</div>}
+                                </div>
+                                {previewActionItem && ACTIVE_STATUSES.includes(String(previewActionItem.status || '').toLowerCase()) ? (
+                                    <div className="d-flex flex-wrap mt-2" style={{ gap: 8 }}>
+                                        {canApprove ? (
+                                            <Button
+                                                className="btn-default-app"
+                                                type="button"
+                                                disabled={processing}
+                                                onClick={() => handleApprove(previewActionItem)}
+                                                style={{ background: '#22a06b', color: '#fff', borderColor: '#22a06b' }}
+                                            >
+                                                <span className="material-icons mr-1" style={{ fontSize: 16, verticalAlign: 'middle' }}>check</span>
+                                                Setujui Approval
+                                            </Button>
+                                        ) : null}
+                                        {canReject ? (
+                                            <Button
+                                                className="btn-default-app btn-danger"
+                                                type="button"
+                                                disabled={processing}
+                                                onClick={() => openReject(previewActionItem)}
+                                            >
+                                                <span className="material-icons mr-1" style={{ fontSize: 16, verticalAlign: 'middle' }}>close</span>
+                                                Tolak Approval
+                                            </Button>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                            </section>
+                        </div>
+                    )}
+                </Modal.Body>
+            </Modal>
 
             <Modal show={!!rejectingItem} onHide={closeReject} centered>
                 <Modal.Header closeButton>
@@ -332,15 +512,15 @@ const SuratApproval = () => {
             </Modal>
 
             {/* Barcode/QR Code Modal after approval */}
-            <Modal show={barcodeModal.show} onHide={() => setBarcodeModal({ show: false, item: null, qrData: '' })} centered size="sm">
+            <Modal show={barcodeModal.show} onHide={closePreview} fullscreen="always" className="eoffice-modal-detail approval-preview-fullscreen approval-receipt-fullscreen">
                 <Modal.Header closeButton>
                     <Modal.Title>
                         <span className="material-icons mr-1" style={{ fontSize: 20, verticalAlign: 'middle' }}>qr_code_2</span>
                         Tanda Terima Approval
                     </Modal.Title>
                 </Modal.Header>
-                <Modal.Body>
-                    <div className="text-center">
+                <Modal.Body className="approval-receipt-body">
+                    <div className="approval-receipt-card text-center">
                         <SimpleQRCode data={barcodeModal.qrData} size={200} />
                         <hr />
                         <div className="text-start">
@@ -379,7 +559,7 @@ const SuratApproval = () => {
                     <Button
                         className="btn-default-app btn-light"
                         type="button"
-                        onClick={() => setBarcodeModal({ show: false, item: null, qrData: '' })}
+                        onClick={closePreview}
                     >
                         Tutup
                     </Button>

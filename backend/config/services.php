@@ -1,5 +1,10 @@
 <?php
 
+$firebaseCredentialsPath = env('FIREBASE_CREDENTIALS');
+$firebaseCredentialsPath = $firebaseCredentialsPath
+    ? (realpath($firebaseCredentialsPath) ?: realpath(base_path($firebaseCredentialsPath)) ?: base_path($firebaseCredentialsPath))
+    : null;
+
 return [
 
     /*
@@ -40,15 +45,7 @@ return [
     ],
 
     'firebase' => [
-        'credentials' => env('FIREBASE_CREDENTIALS')
-            ? base_path(env('FIREBASE_CREDENTIALS'))
-            : null,
-    ],
-
-    'firebase' => [
-        'credentials' => env('FIREBASE_CREDENTIALS')
-            ? base_path(env('FIREBASE_CREDENTIALS'))
-            : null,
+        'credentials' => $firebaseCredentialsPath,
     ],
 
 ];

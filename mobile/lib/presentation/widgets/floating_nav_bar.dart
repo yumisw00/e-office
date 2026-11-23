@@ -51,7 +51,11 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
     super.dispose();
   }
 
-  void _onPointerDown(PointerDownEvent event, double itemWidth, double totalWidth) {
+  void _onPointerDown(
+    PointerDownEvent event,
+    double itemWidth,
+    double totalWidth,
+  ) {
     _pointerDown = true;
     _dragStartX = event.position.dx;
     _capsuleStartLeft = _effectiveIndex * itemWidth;
@@ -70,7 +74,11 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
     });
   }
 
-  void _onPointerMove(PointerMoveEvent event, double itemWidth, double totalWidth) {
+  void _onPointerMove(
+    PointerMoveEvent event,
+    double itemWidth,
+    double totalWidth,
+  ) {
     if (!_pointerDown) return;
 
     final deltaX = event.position.dx - _dragStartX;
@@ -147,134 +155,150 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
     const double navBarHeight = 60.0;
     const double navBarRadius = 30.0;
 
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-        child: Container(
-          height: navBarHeight,
-          decoration: BoxDecoration(
-            color: isDark
-                ? theme.colorScheme.surface.withValues(alpha: 0.94)
-                : Colors.white.withValues(alpha: 0.94),
-            borderRadius: BorderRadius.circular(navBarRadius),
-            border: Border.all(
+    // RepaintBoundary memastikan animasi NavBar tidak memicu repaint pada
+    // widget di atasnya (konten layar), sehingga animasi kapsul & drag
+    // hanya men-repaint area NavBar saja.
+    return RepaintBoundary(
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: Container(
+            height: navBarHeight,
+            decoration: BoxDecoration(
+              // Alpha 0.84 digunakan agar konten layar terlihat di balik
+              // NavBar dengan luas pandangan nyaman. RepaintBoundary di atas memastikan
+              // compositing layer NavBar tidak memicu repaint konten — performa tetap terjaga.
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.10)
-                  : Colors.black.withValues(alpha: 0.06),
-              width: 1.0,
-            ),
-            boxShadow: [
-              BoxShadow(
+                  ? theme.colorScheme.surface.withValues(alpha: 0.84)
+                  : Colors.white.withValues(alpha: 0.84),
+              borderRadius: BorderRadius.circular(navBarRadius),
+              border: Border.all(
                 color: isDark
-                    ? Colors.black.withValues(alpha: 0.25)
-                    : theme.colorScheme.primary.withValues(alpha: 0.08),
-                blurRadius: 16,
-                spreadRadius: 1,
-                offset: const Offset(0, 4),
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : Colors.black.withValues(alpha: 0.06),
+                width: 1.0,
               ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(navBarRadius - 1),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final totalWidth = constraints.maxWidth;
-                if (totalWidth <= 0) return const SizedBox.shrink();
-                final itemWidth = totalWidth / 4;
+              boxShadow: [
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.25)
+                      : theme.colorScheme.primary.withValues(alpha: 0.08),
+                  // blurRadius dikurangi dari 16 ke 8 — mengurangi GPU blur pass
+                  blurRadius: 8,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(navBarRadius - 1),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final totalWidth = constraints.maxWidth;
+                  if (totalWidth <= 0) return const SizedBox.shrink();
+                  final itemWidth = totalWidth / 4;
 
-                final capsuleLeft =
-                    _isDragging ? _dragLeft : _effectiveIndex * itemWidth;
+                  // Hitung posisi horizontal kapsul slider aktif
+                  final leftPosition = _isDragging
+                      ? _dragLeft
+                      : (_effectiveIndex * itemWidth);
 
-                return Stack(
-                  children: [
-                    // Sliding Indicator Capsule
-                    AnimatedPositioned(
-                      duration: _isDragging
-                          ? Duration.zero
-                          : const Duration(milliseconds: 250),
-                      curve: Curves.easeOutCubic,
-                      left: capsuleLeft,
-                      top: 0,
-                      bottom: 0,
-                      width: itemWidth,
-                      child: Center(
-                        child: AnimatedContainer(
+                  return Stack(
+                    children: [
+                      // Kapsul Slider Bergerak (iPhone 16 style pill).
+                      // AnimatedPositioned + AnimatedContainer digabung jadi
+                      // satu AnimatedPositioned untuk menghindari double-layout
+                      // pass per frame saat animasi berjalan.
+                      AnimatedPositioned(
+                        duration: _isDragging
+                            ? Duration.zero
+                            : const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        left: leftPosition,
+                        top: 0,
+                        bottom: 0,
+                        width: itemWidth,
+                        child: AnimatedPadding(
                           duration: const Duration(milliseconds: 180),
                           curve: Curves.easeOutCubic,
-                          width: double.infinity,
-                          height: _isHeld ? navBarHeight : 42,
-                          margin: EdgeInsets.symmetric(
+                          padding: EdgeInsets.symmetric(
                             horizontal: _isHeld ? 0 : 8,
                             vertical: _isHeld ? 0 : 9,
                           ),
-                          decoration: BoxDecoration(
-                            color: _isHeld
-                                ? activeColor.withValues(alpha: 0.28)
-                                : activeColor.withValues(alpha: 0.18),
-                            borderRadius: BorderRadius.circular(
-                              _isHeld ? navBarRadius : 21,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: _isHeld
+                                  ? activeColor.withValues(alpha: 0.28)
+                                  : activeColor.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(
+                                _isHeld ? navBarRadius : 21,
+                              ),
+                              // BoxShadow hanya muncul saat isHeld, nilai tetap
+                              // (tidak dianimasikan) agar GPU tidak re-rasterize
+                              // shadow setiap frame.
+                              boxShadow: _isHeld
+                                  ? [
+                                      BoxShadow(
+                                        color: activeColor.withValues(
+                                          alpha: 0.20,
+                                        ),
+                                        blurRadius: 8,
+                                        spreadRadius: 0,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                  : null,
                             ),
-                            boxShadow: _isHeld
-                                ? [
-                                    BoxShadow(
-                                      color:
-                                          activeColor.withValues(alpha: 0.20),
-                                      blurRadius: 8,
-                                      spreadRadius: 0,
-                                      offset: const Offset(0, 1),
-                                    ),
-                                  ]
-                                : null,
                           ),
                         ),
                       ),
-                    ),
-                    // Tab Items Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildTabItem(
-                          context,
-                          index: 0,
-                          activeIcon: Icons.grid_view_rounded,
-                          inactiveIcon: Icons.grid_view_outlined,
-                          itemWidth: itemWidth,
-                          totalWidth: totalWidth,
-                          height: navBarHeight,
-                        ),
-                        _buildTabItem(
-                          context,
-                          index: 1,
-                          activeIcon: Icons.assignment_rounded,
-                          inactiveIcon: Icons.assignment_outlined,
-                          itemWidth: itemWidth,
-                          totalWidth: totalWidth,
-                          height: navBarHeight,
-                        ),
-                        _buildTabItem(
-                          context,
-                          index: 2,
-                          activeIcon: Icons.check_circle_rounded,
-                          inactiveIcon: Icons.check_circle_outline_rounded,
-                          itemWidth: itemWidth,
-                          totalWidth: totalWidth,
-                          height: navBarHeight,
-                        ),
-                        _buildTabItem(
-                          context,
-                          index: 3,
-                          activeIcon: Icons.person_rounded,
-                          inactiveIcon: Icons.person_outline_rounded,
-                          itemWidth: itemWidth,
-                          totalWidth: totalWidth,
-                          height: navBarHeight,
-                        ),
-                      ],
-                    ),
-                  ],
-                );
-              },
+                      // Tab Items Row: 0: Dashboard, 1: Surat Masuk, 2: Disposisi, 3: Approval
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildTabItem(
+                            context,
+                            index: 0,
+                            activeIcon: Icons.grid_view_rounded,
+                            inactiveIcon: Icons.grid_view_outlined,
+                            itemWidth: itemWidth,
+                            totalWidth: totalWidth,
+                            height: navBarHeight,
+                          ),
+                          _buildTabItem(
+                            context,
+                            index: 1,
+                            activeIcon: Icons.arrow_circle_down_rounded,
+                            inactiveIcon: Icons.arrow_circle_down_outlined,
+                            itemWidth: itemWidth,
+                            totalWidth: totalWidth,
+                            height: navBarHeight,
+                          ),
+                          _buildTabItem(
+                            context,
+                            index: 2,
+                            activeIcon: Icons.shortcut_rounded,
+                            inactiveIcon: Icons.shortcut_outlined,
+                            itemWidth: itemWidth,
+                            totalWidth: totalWidth,
+                            height: navBarHeight,
+                          ),
+                          _buildTabItem(
+                            context,
+                            index: 3,
+                            activeIcon: Icons.check_circle_rounded,
+                            inactiveIcon: Icons.check_circle_outline_rounded,
+                            itemWidth: itemWidth,
+                            totalWidth: totalWidth,
+                            height: navBarHeight,
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -318,8 +342,10 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
       return Expanded(
         child: Listener(
           behavior: HitTestBehavior.opaque,
-          onPointerDown: (event) => _onPointerDown(event, itemWidth, totalWidth),
-          onPointerMove: (event) => _onPointerMove(event, itemWidth, totalWidth),
+          onPointerDown: (event) =>
+              _onPointerDown(event, itemWidth, totalWidth),
+          onPointerMove: (event) =>
+              _onPointerMove(event, itemWidth, totalWidth),
           onPointerUp: (event) => _onPointerUp(itemWidth),
           onPointerCancel: (event) => _onPointerCancel(),
           child: content,

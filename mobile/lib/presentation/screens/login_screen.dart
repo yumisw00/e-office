@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:io' show Platform;
 import '../../core/network/dio_client.dart';
 import '../../domain/providers/auth_provider.dart';
+import 'package:e_office_mobile/core/utils/haptic_helper.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -208,8 +209,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                               },
                             ),
                             const SizedBox(height: 24),
+                            const SizedBox(height: 24),
                             ElevatedButton(
-                              onPressed: _isLoading ? null : _handleLogin,
+                              onPressed: _isLoading ? null : () async {
+                                HapticHelper.lightImpact();
+                                await _handleLogin();
+                              },
                               style: ElevatedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 backgroundColor: theme.colorScheme.primary,
