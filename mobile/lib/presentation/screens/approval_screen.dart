@@ -115,8 +115,9 @@ class _ApprovalScreenState extends ConsumerState<ApprovalScreen>
     final highlightId = widget.highlightId;
     if (highlightId == null ||
         highlightId.isEmpty ||
-        highlightId == _lastScrolledHighlightId)
+        highlightId == _lastScrolledHighlightId) {
       return;
+    }
     final index = items.indexWhere(
       (it) =>
           it.id == highlightId ||

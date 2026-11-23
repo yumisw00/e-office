@@ -85,8 +85,9 @@ class SuratModel {
       return googleDriveUrl;
     }
     if (status.toLowerCase() == 'signed' || status.toLowerCase() == 'dikirim') {
-      if (signedFilePath != null && signedFilePath!.isNotEmpty)
+      if (signedFilePath != null && signedFilePath!.isNotEmpty) {
         return signedFilePath;
+      }
     }
     if (filePdf != null && filePdf!.isNotEmpty) {
       return filePdf;
@@ -320,8 +321,9 @@ class SuratModel {
 
   static DateTime _parseDate(dynamic dateValue) {
     if (dateValue is DateTime) return dateValue;
-    if (dateValue is int)
+    if (dateValue is int) {
       return DateTime.fromMillisecondsSinceEpoch(dateValue * 1000);
+    }
     if (dateValue is String) {
       try {
         return DateTime.parse(dateValue);
@@ -335,8 +337,9 @@ class SuratModel {
   static DateTime? _parseDateOrNull(dynamic dateValue) {
     if (dateValue == null) return null;
     if (dateValue is DateTime) return dateValue;
-    if (dateValue is int)
+    if (dateValue is int) {
       return DateTime.fromMillisecondsSinceEpoch(dateValue * 1000);
+    }
     if (dateValue is String) {
       try {
         return DateTime.parse(dateValue);

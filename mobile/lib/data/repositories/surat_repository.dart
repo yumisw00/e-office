@@ -278,10 +278,11 @@ class ApiSuratRepository implements SuratRepository {
           ? body['message'] as String
           : null;
 
-      if (kDebugMode)
+      if (kDebugMode) {
         debugPrint(
           '❌ GetTracking Error [$statusCode]: ${serverMessage ?? e.message}',
         );
+      }
 
       if (statusCode == 403 || statusCode == 404) {
         throw TrackingException(

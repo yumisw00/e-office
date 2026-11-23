@@ -137,8 +137,9 @@ class _DetailSuratScreenState extends ConsumerState<DetailSuratScreen> {
   /// Pesan error riwayat: pesan server apa adanya untuk 403/404.
   String _trackingErrorMessage(Object err) {
     if (err is TrackingException) return err.message;
-    if (err is DioException)
+    if (err is DioException) {
       return 'Gagal memuat riwayat: ${err.message ?? err.type.name}';
+    }
     return 'Gagal memuat riwayat: $err';
   }
 

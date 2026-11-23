@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 class AppConfig {
   /// Base URL API E-Office yang dinamis. Bisa diatur via build command:
   /// `flutter run --dart-define=BASE_URL=https://api.eoffice.com/api`
-  static const String _defaultDevUrl = 'http://192.168.0.35:8000/api';
+  static const String _defaultDevUrl = 'http://192.168.0.25:8000/api';
   static const String _defaultProdUrl =
       'https://api.eoffice.com/api'; // WAJIB HTTPS untuk produksi
 
